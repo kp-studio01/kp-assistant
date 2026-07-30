@@ -1,0 +1,143 @@
+// ============================================================
+// KP SALES ASSISTANT — Demo Server v1
+// Receives WhatsApp messages -> thinks with AI -> replies
+// ============================================================
+
+const express = require("express");
+const app = express();
+app.use(express.json());
+
+// ---------- SETTINGS (come from environment variables) ----------
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID; // from API Setup page
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;       // any secret word you choose
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+// ---------- THE DEMO SHOP (later this comes from a real seller) ----------
+const SHOP_PROFILE = `
+You are "Amara", the sales assistant for KP Collections, a small Nigerian
+online store that sells on WhatsApp. You are warm, natural and human-sounding,
+never robotic. You write short WhatsApp-style replies (1-4 sentences usually).
+You can sprinkle very light Nigerian warmth ("Boss", "No wahala") but keep
+messages clear for anyone to understand. Never use em dashes.
+
+THE CATALOG (the ONLY products that exist — never invent others):
+1. Plain white tee — N7,500
+2. Black graphic hoodie — N18,000
+3. Denim jacket — N25,000
+4. Classic baseball cap — N5,000
+5. Cargo joggers — N15,500
+
+RULES:
+- Quote prices EXACTLY as listed. Never change or guess a price.
+- Delivery: Lagos N2,000 (1-2 days), outside Lagos N3,500 (2-4 days).
+- Payment: bank transfer to KP Collections, GTBank 0123456789. Ask the
+  customer to send a screenshot after transfer, and say the owner will
+  confirm it shortly.
+- Do NOT negotiate prices. If a customer pushes for a discount, politely
+  hold the price and mention quality.
+- If you are not sure about something (custom orders, complaints, refunds,
+  anything outside the catalog), do NOT guess. Say the owner will reply
+  shortly, and keep it warm.
+- Never promise anything not listed here.
+`;
+
+// Keeps a short memory per customer so chats feel continuous.
+// (Demo-grade: resets when server restarts. Fine for now.)
+const conversations = {};
+
+// ---------- 1) WEBHOOK VERIFICATION (Meta knocks, we answer) ----------
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("Webhook verified by Meta ✓");
+    return res.status(200).send(challenge);
+  }
+  return res.sendStatus(403);
+});
+
+// ---------- 2) INCOMING MESSAGES ----------
+app.post("/webhook", async (req, res) => {
+  // Always answer Meta fast so it doesn't retry
+  res.sendStatus(200);
+
+  try {
+    const value = req.body?.entry?.[0]?.changes?.[0]?.value;
+    const message = value?.messages?.[0];
+    if (!message || message.type !== "text") return; // ignore statuses etc.
+
+    const from = message.from;             // customer's number
+    const text = message.text.body;        // what they said
+    console.log(`Customer ${from}: ${text}`);
+
+    // Build short history for this customer
+    if (!conversations[from]) conversations[from] = [];
+    conversations[from].push({ role: "user", content: text });
+    // keep only last 10 turns to stay light
+    conversations[from] = conversations[from].slice(-10);
+
+    // ---------- 3) THINK (ask the AI brain) ----------
+    const aiReply = await askAI(conversations[from]);
+    conversations[from].push({ role: "assistant", content: aiReply });
+
+    // ---------- 4) REPLY on WhatsApp ----------
+    await sendWhatsApp(from, aiReply);
+    console.log(`Amara -> ${from}: ${aiReply}`);
+  } catch (err) {
+    console.error("Error handling message:", err);
+  }
+});
+
+// ---------- The AI call ----------
+async function askAI(history) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 300,
+      system: SHOP_PROFILE,
+      messages: history,
+    }),
+  });
+  const data = await response.json();
+  if (data?.content?.[0]?.text) return data.content[0].text;
+  console.error("AI error:", JSON.stringify(data));
+  return "Give me one second please, let me confirm that for you.";
+}
+
+// ---------- The WhatsApp send ----------
+async function sendWhatsApp(to, text) {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to,
+        type: "text",
+        text: { body: text },
+      }),
+    }
+  );
+  const data = await response.json();
+  if (data.error) console.error("WhatsApp send error:", JSON.stringify(data.error));
+}
+
+// ---------- Health check (visit in browser to see server is alive) ----------
+app.get("/", (req, res) => {
+  res.send("KP Sales Assistant is running ✓");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
