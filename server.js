@@ -134,6 +134,21 @@ async function sendWhatsApp(to, text) {
   if (data.error) console.error("WhatsApp send error:", JSON.stringify(data.error));
 }
 
+// ---------- One-time fix: subscribe this app to the WhatsApp account ----------
+const WABA_ID = process.env.WABA_ID || "1563052958833458"; // Test WhatsApp Business Account
+app.get("/subscribe", async (req, res) => {
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/v21.0/${WABA_ID}/subscribed_apps`,
+      { method: "POST", headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
+    );
+    const data = await r.json();
+    res.json(data); // {"success":true} means the mail will now be delivered
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
 // ---------- Health check (visit in browser to see server is alive) ----------
 app.get("/", (req, res) => {
   res.send("KP Sales Assistant is running ✓");
