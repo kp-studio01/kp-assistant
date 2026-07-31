@@ -13,6 +13,10 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID; // from API Setup page
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;       // any secret word you choose
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
+// Upstash Redis (persistent memory, survives naps and restarts)
+const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
 const SHOP_PROFILE = `
 You are "Amara", the sales assistant for KP Collections, a small Nigerian
@@ -42,9 +46,43 @@ RULES:
 - Never promise anything not listed here.
 `;
 
-// Keeps a short memory per customer so chats feel continuous.
-// (Demo-grade: resets when server restarts. Fine for now.)
-const conversations = {};
+// ---------- PERSISTENT MEMORY (Upstash Redis via REST) ----------
+// Each customer's conversation is stored under key "conv:<phone_number>"
+// as a JSON string, with a 30-day expiry so old chats don't pile up forever.
+
+async function redisCommand(commandArray) {
+  const response = await fetch(UPSTASH_REDIS_REST_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commandArray),
+  });
+  const data = await response.json();
+  if (data.error) console.error("Redis error:", data.error);
+  return data.result;
+}
+
+async function getConversation(from) {
+  try {
+    const raw = await redisCommand(["GET", `conv:${from}`]);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("getConversation failed, starting fresh:", err);
+    return [];
+  }
+}
+
+async function saveConversation(from, history) {
+  try {
+    // EX 2592000 = expire after 30 days of no new messages
+    await redisCommand(["SET", `conv:${from}`, JSON.stringify(history), "EX", "2592000"]);
+  } catch (err) {
+    console.error("saveConversation failed:", err);
+  }
+}
 
 // ---------- 1) WEBHOOK VERIFICATION (Meta knocks, we answer) ----------
 app.get("/webhook", (req, res) => {
@@ -72,15 +110,18 @@ app.post("/webhook", async (req, res) => {
     const text = message.text.body;        // what they said
     console.log(`Customer ${from}: ${text}`);
 
-    // Build short history for this customer
-    if (!conversations[from]) conversations[from] = [];
-    conversations[from].push({ role: "user", content: text });
+    // Load this customer's history from persistent memory
+    let history = await getConversation(from);
+    history.push({ role: "user", content: text });
     // keep only last 10 turns to stay light
-    conversations[from] = conversations[from].slice(-10);
+    history = history.slice(-10);
 
     // ---------- 3) THINK (ask the AI brain) ----------
-    const aiReply = await askAI(conversations[from]);
-    conversations[from].push({ role: "assistant", content: aiReply });
+    const aiReply = await askAI(history);
+    history.push({ role: "assistant", content: aiReply });
+
+    // Save the updated history back to persistent memory
+    await saveConversation(from, history);
 
     // ---------- 4) REPLY on WhatsApp ----------
     await sendWhatsApp(from, aiReply);
