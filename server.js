@@ -135,6 +135,22 @@ SENDING PHOTOS:
   stands on its own even if the photo doesn't show. The photo is a nice
   bonus alongside your words, not something your words should point at.
 
+SPLITTING INTO SEPARATE MESSAGES:
+- Real people on WhatsApp rarely send one long message with everything in
+  it, they send a few short separate bubbles, one thought at a time. You
+  can do this too. When a reply naturally has two or three distinct
+  beats (for example: the price, then a short comment about delivery; or
+  a reaction, then a follow-up thought), mark the break with |||  on its
+  own with a space on each side, between the two parts. This is invisible
+  to the customer, it gets turned into separate message bubbles sent one
+  after another.
+- Use this sparingly and only when it feels like how a real person would
+  naturally pause between thoughts. Most replies are still a single short
+  message with no split at all. Never split a single sentence in half.
+- Never use more than one ||| per reply (so at most two separate bubbles
+  from one reply). Do not overuse this, a chat where every message is
+  split into pieces feels just as artificial as one long paragraph.
+
 HOW YOU TEXT (this matters as much as what you say):
 - Short bursts. Most replies are 1-2 sentences. Rarely go past 3.
 - In casual back-and-forth, write prices the way people actually type them
@@ -318,24 +334,37 @@ app.post("/webhook", async (req, res) => {
     // most cases, this guarantees the rest.
     const cleanText = stripBannedEmojis(taggedClean);
 
-    // Save to memory. If a photo went out, leave an invisible note in what
-    // WE remember (never sent to the customer) so future replies in this
-    // chat know a photo was already shown, and don't keep resending it.
+    // Split into separate WhatsApp bubbles if she used the ||| marker,
+    // so a reply with two distinct thoughts arrives as two short
+    // messages, one after another, the way a real person texts.
+    const bubbles = cleanText
+      .split("|||")
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
+
+    // Save to memory using the clean, joined version (no raw ||| marker),
+    // so future context reads naturally. If a photo went out, leave an
+    // invisible note in what WE remember (never sent to the customer) so
+    // future replies in this chat know a photo was already shown.
+    const memoryBody = bubbles.join("\n");
     const textForMemory =
       photoKey && PRODUCT_IMAGES[photoKey]
-        ? `${cleanText}\n[note to self: already sent the ${photoKey} photo in this chat, do not resend unless they ask again]`
-        : cleanText;
+        ? `${memoryBody}\n[note to self: already sent the ${photoKey} photo in this chat, do not resend unless they ask again]`
+        : memoryBody;
     history.push({ role: "assistant", content: textForMemory });
     await saveConversation(from, history);
 
-    // A short human-feeling pause before sending, scaled to reply length.
-    // Short replies feel almost instant; longer ones feel like she typed
-    // them out. Capped so it never drags or outlasts the 25s typing window.
-    await humanPause(cleanText);
-
-    // ---------- 4) REPLY on WhatsApp ----------
-    await sendWhatsApp(from, cleanText);
-    console.log(`Amara -> ${from}: ${cleanText}`);
+    // ---------- 4) REPLY on WhatsApp, one bubble at a time ----------
+    for (let i = 0; i < bubbles.length; i++) {
+      // Re-show the typing bubble before each message after the first,
+      // so multi-part replies feel like separate thoughts, not a dump.
+      if (i > 0) {
+        await markReadAndShowTyping(message.id);
+      }
+      await humanPause(bubbles[i]);
+      await sendWhatsApp(from, bubbles[i]);
+      console.log(`Amara -> ${from}: ${bubbles[i]}`);
+    }
 
     // If she asked for a photo to go out, send it right after the text,
     // with a tiny natural gap so it doesn't feel like a robotic attachment dump.
