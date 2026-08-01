@@ -17,6 +17,17 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+// ---------- PRODUCT PHOTOS (placeholders for now, swap in real photos later) ----------
+// Just replace these URLs with real photo links when onboarding a real seller.
+// No other code needs to change when you do that.
+const PRODUCT_IMAGES = {
+  tee: "https://placehold.co/600x600/f5f5f5/222222?text=Plain+White+Tee",
+  hoodie: "https://placehold.co/600x600/1a1a1a/ffffff?text=Black+Graphic+Hoodie",
+  jacket: "https://placehold.co/600x600/2c3e63/ffffff?text=Denim+Jacket",
+  cap: "https://placehold.co/600x600/8b5a2b/ffffff?text=Baseball+Cap",
+  joggers: "https://placehold.co/600x600/3a3a3a/ffffff?text=Cargo+Joggers",
+};
+
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
 const SHOP_PROFILE = `
 You are "Amara", the sales assistant for KP Collections, a small Nigerian
@@ -25,11 +36,27 @@ girl chatting with a customer, not like an assistant or a chatbot. Never
 use em dashes.
 
 THE CATALOG (the ONLY products that exist — never invent others):
-1. Plain white tee — N7,500
-2. Black graphic hoodie — N18,000
-3. Denim jacket — N25,000
-4. Classic baseball cap — N5,000
-5. Cargo joggers — N15,500
+1. Plain white tee — N7,500 (key: tee)
+2. Black graphic hoodie — N18,000 (key: hoodie)
+3. Denim jacket — N25,000 (key: jacket)
+4. Classic baseball cap — N5,000 (key: cap)
+5. Cargo joggers — N15,500 (key: joggers)
+
+SENDING PHOTOS:
+- You can now send a product photo along with your text reply. To do
+  this, add a tag at the very end of your message, on its own, in this
+  exact format: [PHOTO: key] using the key from the catalog above (tee,
+  hoodie, jacket, cap, or joggers). This tag is invisible to the customer,
+  it gets replaced by the actual photo, so never mention the tag itself
+  or explain it.
+- Send a photo when it naturally helps: when a customer asks to see an
+  item, asks what something looks like, seems close to deciding, or when
+  you're introducing a specific product for the first time in the chat.
+- Do not send a photo on every single message. If you're just answering
+  a quick price question you've already shown a photo for, or chatting
+  generally, skip the tag.
+- Only ever use one [PHOTO: key] tag per message, and only for products
+  that exist in the catalog.
 
 HOW YOU TEXT (this matters as much as what you say):
 - Short bursts. Most replies are 1-2 sentences. Rarely go past 3.
@@ -163,20 +190,32 @@ app.post("/webhook", async (req, res) => {
     history = history.slice(-10);
 
     // ---------- 3) THINK (ask the AI brain) ----------
-    const aiReply = await askAI(history);
-    history.push({ role: "assistant", content: aiReply });
+    const rawReply = await askAI(history);
 
-    // Save the updated history back to persistent memory
+    // Pull out the invisible [PHOTO: key] tag, if she included one, and
+    // clean it out of the text so the customer never sees the tag itself.
+    const { cleanText, photoKey } = extractPhotoTag(rawReply);
+
+    // Save the clean version (no tag) to memory, so future context stays tidy
+    history.push({ role: "assistant", content: cleanText });
     await saveConversation(from, history);
 
     // A short human-feeling pause before sending, scaled to reply length.
     // Short replies feel almost instant; longer ones feel like she typed
     // them out. Capped so it never drags or outlasts the 25s typing window.
-    await humanPause(aiReply);
+    await humanPause(cleanText);
 
     // ---------- 4) REPLY on WhatsApp ----------
-    await sendWhatsApp(from, aiReply);
-    console.log(`Amara -> ${from}: ${aiReply}`);
+    await sendWhatsApp(from, cleanText);
+    console.log(`Amara -> ${from}: ${cleanText}`);
+
+    // If she asked for a photo to go out, send it right after the text,
+    // with a tiny natural gap so it doesn't feel like a robotic attachment dump.
+    if (photoKey && PRODUCT_IMAGES[photoKey]) {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
+      console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
+    }
   } catch (err) {
     console.error("Error handling message:", err);
   }
@@ -240,6 +279,38 @@ function humanPause(replyText) {
   const capMs = 6000;               // never make anyone wait too long
   const delay = Math.min(baseMs + replyText.length * perCharMs, capMs);
   return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+// ---------- Pull the invisible [PHOTO: key] tag out of the AI's reply ----------
+function extractPhotoTag(text) {
+  const match = text.match(/\[PHOTO:\s*(\w+)\]/i);
+  if (!match) return { cleanText: text.trim(), photoKey: null };
+
+  const photoKey = match[1].toLowerCase();
+  const cleanText = text.replace(match[0], "").trim();
+  return { cleanText, photoKey };
+}
+
+// ---------- Send a product photo on WhatsApp ----------
+async function sendWhatsAppImage(to, imageUrl) {
+  const response = await fetch(
+    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to,
+        type: "image",
+        image: { link: imageUrl },
+      }),
+    }
+  );
+  const data = await response.json();
+  if (data.error) console.error("WhatsApp image send error:", JSON.stringify(data.error));
 }
 
 // ---------- The WhatsApp send ----------
