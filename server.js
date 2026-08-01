@@ -129,6 +129,10 @@ app.post("/webhook", async (req, res) => {
     const text = message.text.body;        // what they said
     console.log(`Customer ${from}: ${text}`);
 
+    // Mark the message as read and show the "typing..." bubble right away,
+    // so the customer sees a response is coming while we think.
+    await markReadAndShowTyping(message.id);
+
     // Load this customer's history from persistent memory
     let history = await getConversation(from);
     history.push({ role: "user", content: text });
@@ -142,12 +146,18 @@ app.post("/webhook", async (req, res) => {
     // Save the updated history back to persistent memory
     await saveConversation(from, history);
 
+    // A short human-feeling pause before sending, scaled to reply length.
+    // Short replies feel almost instant; longer ones feel like she typed
+    // them out. Capped so it never drags or outlasts the 25s typing window.
+    await humanPause(aiReply);
+
     // ---------- 4) REPLY on WhatsApp ----------
     await sendWhatsApp(from, aiReply);
     console.log(`Amara -> ${from}: ${aiReply}`);
   } catch (err) {
     console.error("Error handling message:", err);
   }
+
 });
 
 // ---------- The AI call ----------
@@ -170,6 +180,43 @@ async function askAI(history) {
   if (data?.content?.[0]?.text) return data.content[0].text;
   console.error("AI error:", JSON.stringify(data));
   return "Give me one second please, let me confirm that for you.";
+}
+
+// ---------- Show "typing..." on the customer's phone while we think ----------
+async function markReadAndShowTyping(messageId) {
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          status: "read",
+          message_id: messageId,
+          typing_indicator: { type: "text" },
+        }),
+      }
+    );
+    const data = await response.json();
+    if (data.error) console.error("Typing indicator error:", JSON.stringify(data.error));
+  } catch (err) {
+    console.error("markReadAndShowTyping failed:", err);
+  }
+}
+
+// ---------- A small human-feeling pause before sending the reply ----------
+// Scales gently with reply length so short answers feel snappy and longer
+// ones feel like she actually typed them, without ever dragging on too long.
+function humanPause(replyText) {
+  const baseMs = 700;               // never feel instant, even for "yes"
+  const perCharMs = 18;             // roughly a fast-typer's pace
+  const capMs = 6000;               // never make anyone wait too long
+  const delay = Math.min(baseMs + replyText.length * perCharMs, capMs);
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 // ---------- The WhatsApp send ----------
