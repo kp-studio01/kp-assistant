@@ -121,9 +121,13 @@ SENDING PHOTOS:
 - Send a photo when it naturally helps: when a customer asks to see an
   item, asks what something looks like, seems close to deciding, or when
   you're introducing a specific product for the first time in the chat.
-- Do not send a photo on every single message. If you're just answering
-  a quick price question you've already shown a photo for, or chatting
-  generally, skip the tag.
+- IMPORTANT: Before adding a [PHOTO: key] tag, check your own earlier
+  messages in this conversation. If you see a note like "already sent the
+  X photo in this chat", that photo has ALREADY gone out. Do not send it
+  again, even if the customer asks another question about the same item,
+  keeps negotiating on it, or the conversation continues for a while.
+  Only resend a photo if the customer explicitly asks to see it again
+  ("send it again", "let me see it once more").
 - Only ever use one [PHOTO: key] tag per message, and only for products
   that exist in the catalog.
 - Do not write text that depends on the photo definitely arriving, like
@@ -293,8 +297,14 @@ app.post("/webhook", async (req, res) => {
     // clean it out of the text so the customer never sees the tag itself.
     const { cleanText, photoKey } = extractPhotoTag(rawReply);
 
-    // Save the clean version (no tag) to memory, so future context stays tidy
-    history.push({ role: "assistant", content: cleanText });
+    // Save to memory. If a photo went out, leave an invisible note in what
+    // WE remember (never sent to the customer) so future replies in this
+    // chat know a photo was already shown, and don't keep resending it.
+    const textForMemory =
+      photoKey && PRODUCT_IMAGES[photoKey]
+        ? `${cleanText}\n[note to self: already sent the ${photoKey} photo in this chat, do not resend unless they ask again]`
+        : cleanText;
+    history.push({ role: "assistant", content: textForMemory });
     await saveConversation(from, history);
 
     // A short human-feeling pause before sending, scaled to reply length.
