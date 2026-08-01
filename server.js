@@ -4,6 +4,7 @@
 // ============================================================
 
 const express = require("express");
+const zlib = require("zlib");
 const app = express();
 app.use(express.json());
 
@@ -17,15 +18,83 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-// ---------- PRODUCT PHOTOS (placeholders for now, swap in real photos later) ----------
-// Just replace these URLs with real photo links when onboarding a real seller.
-// No other code needs to change when you do that.
+// Our own public URL, so we can build image links that point back at
+// ourselves. Render sets RENDER_EXTERNAL_URL automatically; the fallback
+// is just a safety net in case that's ever missing.
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || "https://kp-assistant.onrender.com";
+
+// ---------- PRODUCT PHOTOS (self-hosted, no third-party service involved) ----------
+// We generate simple solid-colour placeholder images ourselves, in code,
+// using nothing but Node's built-in zlib. This avoids ever depending on
+// getting some other service's URL format exactly right. When you're
+// ready for a real seller, swap PRODUCT_IMAGES below to point at real
+// hosted photo URLs (e.g. photos uploaded to GitHub or Google Drive with
+// public links) instead of "/images/<key>.png" — nothing else changes.
+
+function makeSolidPng(width, height, r, g, b) {
+  function crc32(buf) {
+    let c, crcTable = [];
+    for (let n = 0; n < 256; n++) {
+      c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      crcTable[n] = c;
+    }
+    let crc = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) crc = crcTable[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+  function chunk(type, data) {
+    const typeBuf = Buffer.from(type, "ascii");
+    const lenBuf = Buffer.alloc(4);
+    lenBuf.writeUInt32BE(data.length, 0);
+    const crcBuf = Buffer.alloc(4);
+    crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+    return Buffer.concat([lenBuf, typeBuf, data, crcBuf]);
+  }
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // color type: RGB
+  const rowLen = width * 3;
+  const raw = Buffer.alloc((rowLen + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const rowStart = y * (rowLen + 1);
+    raw[rowStart] = 0; // filter byte
+    for (let x = 0; x < width; x++) {
+      const px = rowStart + 1 + x * 3;
+      raw[px] = r; raw[px + 1] = g; raw[px + 2] = b;
+    }
+  }
+  const idat = zlib.deflateSync(raw);
+  return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
+}
+
+// Generate each product's placeholder once at startup and keep it in memory.
+const PRODUCT_IMAGE_BUFFERS = {
+  tee: makeSolidPng(600, 600, 245, 245, 245),
+  hoodie: makeSolidPng(600, 600, 26, 26, 26),
+  jacket: makeSolidPng(600, 600, 44, 62, 99),
+  cap: makeSolidPng(600, 600, 139, 90, 43),
+  joggers: makeSolidPng(600, 600, 58, 58, 58),
+};
+
+// Serve them at simple, predictable URLs that WhatsApp can fetch.
+app.get("/images/:key.png", (req, res) => {
+  const buffer = PRODUCT_IMAGE_BUFFERS[req.params.key];
+  if (!buffer) return res.sendStatus(404);
+  res.set("Content-Type", "image/png");
+  res.send(buffer);
+});
+
+// These are the links Amara actually sends. Swap to real photo URLs later.
 const PRODUCT_IMAGES = {
-  tee: "https://placehold.co/600x600.png/f5f5f5/222222?text=Plain+White+Tee",
-  hoodie: "https://placehold.co/600x600.png/1a1a1a/ffffff?text=Black+Graphic+Hoodie",
-  jacket: "https://placehold.co/600x600.png/2c3e63/ffffff?text=Denim+Jacket",
-  cap: "https://placehold.co/600x600.png/8b5a2b/ffffff?text=Baseball+Cap",
-  joggers: "https://placehold.co/600x600.png/3a3a3a/ffffff?text=Cargo+Joggers",
+  tee: `${BASE_URL}/images/tee.png`,
+  hoodie: `${BASE_URL}/images/hoodie.png`,
+  jacket: `${BASE_URL}/images/jacket.png`,
+  cap: `${BASE_URL}/images/cap.png`,
+  joggers: `${BASE_URL}/images/joggers.png`,
 };
 
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
