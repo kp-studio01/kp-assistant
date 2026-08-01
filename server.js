@@ -262,6 +262,15 @@ async function saveConversation(from, history) {
   }
 }
 
+// ---------- MESSAGE BUFFERING ----------
+// Real WhatsApp users often fire off several quick messages in a row
+// ("Hi", "I want the hoodie", "can I get discount") instead of one full
+// thought. Replying to the first one immediately means Amara jumps in
+// before the customer has finished. Instead, we wait a short window to
+// see if more messages are coming, then combine them into one turn.
+const BUFFER_WAIT_MS = 4000; // 4 seconds of quiet before we reply
+const pendingBuffers = new Map(); // from -> { texts: [], lastMessageId, timer }
+
 // ---------- 1) WEBHOOK VERIFICATION (Meta knocks, we answer) ----------
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
@@ -278,12 +287,6 @@ app.get("/webhook", (req, res) => {
 app.post("/webhook", async (req, res) => {
   // Always answer Meta fast so it doesn't retry
   res.sendStatus(200);
-
-  // Keep track of who we're replying to outside the try block, so that
-  // if something fails partway through, we can still attempt one last
-  // fallback reply instead of leaving the customer with a typing bubble
-  // and then total silence.
-  let from = null;
 
   try {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
@@ -308,17 +311,52 @@ app.post("/webhook", async (req, res) => {
     const message = value?.messages?.[0];
     if (!message || message.type !== "text") return; // ignore statuses etc.
 
-    from = message.from;                   // customer's number
+    const from = message.from;             // customer's number
     const text = message.text.body;        // what they said
     console.log(`Customer ${from}: ${text}`);
 
     // Mark the message as read and show the "typing..." bubble right away,
-    // so the customer sees a response is coming while we think.
+    // so the customer sees a response is coming even while we wait to see
+    // if more messages are on the way.
     await markReadAndShowTyping(message.id);
 
+    // Add this message to the customer's pending buffer. If they send
+    // another message within the wait window, we cancel the old timer and
+    // start a fresh one, so we only reply once they've paused.
+    let buffer = pendingBuffers.get(from);
+    if (!buffer) {
+      buffer = { texts: [], lastMessageId: null };
+      pendingBuffers.set(from, buffer);
+    }
+    buffer.texts.push(text);
+    buffer.lastMessageId = message.id;
+
+    if (buffer.timer) clearTimeout(buffer.timer);
+    buffer.timer = setTimeout(() => {
+      processBufferedTurn(from).catch((err) =>
+        console.error("processBufferedTurn crashed:", err)
+      );
+    }, BUFFER_WAIT_MS);
+  } catch (err) {
+    console.error("Error handling incoming webhook:", err);
+  }
+});
+
+// ---------- Handle a customer's turn once they've paused sending ----------
+async function processBufferedTurn(from) {
+  const buffer = pendingBuffers.get(from);
+  if (!buffer) return; // safety, shouldn't happen
+  pendingBuffers.delete(from);
+
+  // Combine everything they sent in this burst into one turn, so Amara
+  // replies to the whole thought instead of just the first fragment.
+  const combinedText = buffer.texts.join("\n");
+  const messageId = buffer.lastMessageId;
+
+  try {
     // Load this customer's history from persistent memory
     let history = await getConversation(from);
-    history.push({ role: "user", content: text });
+    history.push({ role: "user", content: combinedText });
     // keep only last 10 turns to stay light
     history = history.slice(-10);
 
@@ -358,8 +396,8 @@ app.post("/webhook", async (req, res) => {
     for (let i = 0; i < bubbles.length; i++) {
       // Re-show the typing bubble before each message after the first,
       // so multi-part replies feel like separate thoughts, not a dump.
-      if (i > 0) {
-        await markReadAndShowTyping(message.id);
+      if (i > 0 && messageId) {
+        await markReadAndShowTyping(messageId);
       }
       await humanPause(bubbles[i]);
       await sendWhatsApp(from, bubbles[i]);
@@ -384,18 +422,16 @@ app.post("/webhook", async (req, res) => {
     // leaving the customer with a typing bubble and then nothing forever,
     // try once to send a plain, honest fallback message. If even this
     // fails, we've at least logged it clearly above.
-    if (from) {
-      try {
-        await sendWhatsApp(
-          from,
-          "Sorry, small network wahala my side. Still here, please try that again."
-        );
-      } catch (fallbackErr) {
-        console.error("Fallback reply also failed:", fallbackErr);
-      }
+    try {
+      await sendWhatsApp(
+        from,
+        "Sorry, small network wahala my side. Still here, please try that again."
+      );
+    } catch (fallbackErr) {
+      console.error("Fallback reply also failed:", fallbackErr);
     }
   }
-});
+}
 
 // ---------- The AI call ----------
 async function askAI(history) {
