@@ -311,7 +311,12 @@ app.post("/webhook", async (req, res) => {
 
     // Pull out the invisible [PHOTO: key] tag, if she included one, and
     // clean it out of the text so the customer never sees the tag itself.
-    const { cleanText, photoKey } = extractPhotoTag(rawReply);
+    const { cleanText: taggedClean, photoKey } = extractPhotoTag(rawReply);
+
+    // Mechanically remove any banned emoji that slipped through despite
+    // the prompt instruction. Belt and suspenders: the instruction handles
+    // most cases, this guarantees the rest.
+    const cleanText = stripBannedEmojis(taggedClean);
 
     // Save to memory. If a photo went out, leave an invisible note in what
     // WE remember (never sent to the customer) so future replies in this
@@ -445,6 +450,15 @@ function extractPhotoTag(text) {
   const photoKey = match[1].toLowerCase();
   const cleanText = text.replace(match[0], "").trim();
   return { cleanText, photoKey };
+}
+
+// ---------- Guaranteed backstop: strip the banned "reflex" emoji ----------
+// Prompt instructions are a strong nudge, not a hard rule, an AI can still
+// slip and use a banned emoji anyway. This makes the ban actually airtight
+// by removing it in code, regardless of what the AI outputs.
+const BANNED_EMOJIS = /[\u{1F604}\u{1F601}]/gu; // 😄 and 😁
+function stripBannedEmojis(text) {
+  return text.replace(BANNED_EMOJIS, "").replace(/[ \t]{2,}/g, " ").trim();
 }
 
 // ---------- Send a product photo on WhatsApp ----------
