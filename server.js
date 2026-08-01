@@ -176,6 +176,24 @@ app.post("/webhook", async (req, res) => {
 
   try {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
+
+    // Meta sends delivery status updates (sent/delivered/read/FAILED) as a
+    // separate event from actual incoming messages. We were ignoring these
+    // entirely, which is why a failed photo delivery looked silent. Log any
+    // failure here so we can see Meta's real reason.
+    const statuses = value?.statuses;
+    if (statuses && statuses.length > 0) {
+      for (const status of statuses) {
+        if (status.status === "failed") {
+          console.error(
+            "DELIVERY FAILED:",
+            JSON.stringify(status.errors || status, null, 2)
+          );
+        }
+      }
+      return; // status events aren't customer messages, nothing more to do
+    }
+
     const message = value?.messages?.[0];
     if (!message || message.type !== "text") return; // ignore statuses etc.
 
