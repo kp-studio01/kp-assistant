@@ -243,6 +243,12 @@ app.post("/webhook", async (req, res) => {
   // Always answer Meta fast so it doesn't retry
   res.sendStatus(200);
 
+  // Keep track of who we're replying to outside the try block, so that
+  // if something fails partway through, we can still attempt one last
+  // fallback reply instead of leaving the customer with a typing bubble
+  // and then total silence.
+  let from = null;
+
   try {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
 
@@ -266,7 +272,7 @@ app.post("/webhook", async (req, res) => {
     const message = value?.messages?.[0];
     if (!message || message.type !== "text") return; // ignore statuses etc.
 
-    const from = message.from;             // customer's number
+    from = message.from;                   // customer's number
     const text = message.text.body;        // what they said
     console.log(`Customer ${from}: ${text}`);
 
@@ -313,30 +319,59 @@ app.post("/webhook", async (req, res) => {
     }
   } catch (err) {
     console.error("Error handling message:", err);
-  }
 
+    // LAST RESORT: something unexpected broke the normal flow. Rather than
+    // leaving the customer with a typing bubble and then nothing forever,
+    // try once to send a plain, honest fallback message. If even this
+    // fails, we've at least logged it clearly above.
+    if (from) {
+      try {
+        await sendWhatsApp(
+          from,
+          "Sorry, small network wahala my side. Still here, please try that again."
+        );
+      } catch (fallbackErr) {
+        console.error("Fallback reply also failed:", fallbackErr);
+      }
+    }
+  }
 });
 
 // ---------- The AI call ----------
 async function askAI(history) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 300,
-      system: SHOP_PROFILE,
-      messages: history,
-    }),
-  });
-  const data = await response.json();
-  if (data?.content?.[0]?.text) return data.content[0].text;
-  console.error("AI error:", JSON.stringify(data));
-  return "Give me one second please, let me confirm that for you.";
+  try {
+    // Safety cap: never let this hang forever if Anthropic's API is slow
+    // or unreachable. 20 seconds is generous but bounded.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 300,
+        system: SHOP_PROFILE,
+        messages: history,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    if (data?.content?.[0]?.text) return data.content[0].text;
+    console.error("AI error (bad response shape):", JSON.stringify(data));
+    return "Give me one second please, let me confirm that for you.";
+  } catch (err) {
+    // Network failure, timeout, or anything else unexpected: never let this
+    // bubble up as a crash that leaves the customer with no reply at all.
+    console.error("askAI failed (network/timeout):", err.message);
+    return "Sorry, network wahala for my side just now, still here! Please send that again.";
+  }
 }
 
 // ---------- Show "typing..." on the customer's phone while we think ----------
@@ -414,24 +449,30 @@ async function sendWhatsAppImage(to, imageUrl) {
 
 // ---------- The WhatsApp send ----------
 async function sendWhatsApp(to, text) {
-  const response = await fetch(
-    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: to,
-        type: "text",
-        text: { body: text },
-      }),
-    }
-  );
-  const data = await response.json();
-  if (data.error) console.error("WhatsApp send error:", JSON.stringify(data.error));
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: to,
+          type: "text",
+          text: { body: text },
+        }),
+      }
+    );
+    const data = await response.json();
+    if (data.error) console.error("WhatsApp send error:", JSON.stringify(data.error));
+  } catch (err) {
+    // Meta occasionally returns a non-JSON error page during outages or
+    // rate limiting. Don't let that crash the whole flow, just log it.
+    console.error("sendWhatsApp failed unexpectedly:", err.message);
+  }
 }
 
 // ---------- One-time fix: subscribe this app to the WhatsApp account ----------
