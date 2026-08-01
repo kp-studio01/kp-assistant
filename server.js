@@ -21,11 +21,11 @@ const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 // Just replace these URLs with real photo links when onboarding a real seller.
 // No other code needs to change when you do that.
 const PRODUCT_IMAGES = {
-  tee: "https://placehold.co/600x600/f5f5f5/222222?text=Plain+White+Tee",
-  hoodie: "https://placehold.co/600x600/1a1a1a/ffffff?text=Black+Graphic+Hoodie",
-  jacket: "https://placehold.co/600x600/2c3e63/ffffff?text=Denim+Jacket",
-  cap: "https://placehold.co/600x600/8b5a2b/ffffff?text=Baseball+Cap",
-  joggers: "https://placehold.co/600x600/3a3a3a/ffffff?text=Cargo+Joggers",
+  tee: "https://placehold.co/600x600.png/f5f5f5/222222?text=Plain+White+Tee",
+  hoodie: "https://placehold.co/600x600.png/1a1a1a/ffffff?text=Black+Graphic+Hoodie",
+  jacket: "https://placehold.co/600x600.png/2c3e63/ffffff?text=Denim+Jacket",
+  cap: "https://placehold.co/600x600.png/8b5a2b/ffffff?text=Baseball+Cap",
+  joggers: "https://placehold.co/600x600.png/3a3a3a/ffffff?text=Cargo+Joggers",
 };
 
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
@@ -57,6 +57,10 @@ SENDING PHOTOS:
   generally, skip the tag.
 - Only ever use one [PHOTO: key] tag per message, and only for products
   that exist in the catalog.
+- Do not write text that depends on the photo definitely arriving, like
+  "see for yourself 👇" or "check the image below." Write your text so it
+  stands on its own even if the photo doesn't show. The photo is a nice
+  bonus alongside your words, not something your words should point at.
 
 HOW YOU TEXT (this matters as much as what you say):
 - Short bursts. Most replies are 1-2 sentences. Rarely go past 3.
@@ -213,8 +217,12 @@ app.post("/webhook", async (req, res) => {
     // with a tiny natural gap so it doesn't feel like a robotic attachment dump.
     if (photoKey && PRODUCT_IMAGES[photoKey]) {
       await new Promise((resolve) => setTimeout(resolve, 900));
-      await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
-      console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
+      const sent = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
+      if (sent) {
+        console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
+      } else {
+        console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
+      }
     }
   } catch (err) {
     console.error("Error handling message:", err);
@@ -310,7 +318,11 @@ async function sendWhatsAppImage(to, imageUrl) {
     }
   );
   const data = await response.json();
-  if (data.error) console.error("WhatsApp image send error:", JSON.stringify(data.error));
+  if (data.error) {
+    console.error("WhatsApp image send error:", JSON.stringify(data.error));
+    return false;
+  }
+  return true;
 }
 
 // ---------- The WhatsApp send ----------
