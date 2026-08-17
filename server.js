@@ -23,6 +23,11 @@ const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 // is just a safety net in case that's ever missing.
 const BASE_URL = process.env.RENDER_EXTERNAL_URL || "https://kp-assistant.onrender.com";
 
+// The owner's own WhatsApp number, where escalation alerts get sent.
+// Set this in Render's environment variables. Include the country code,
+// no plus sign or spaces (same format WhatsApp itself uses), e.g. 234801...
+const OWNER_PHONE_NUMBER = process.env.OWNER_PHONE_NUMBER;
+
 // ---------- PRODUCT PHOTOS (self-hosted, no third-party service involved) ----------
 // We generate simple solid-colour placeholder images ourselves, in code,
 // using nothing but Node's built-in zlib. This avoids ever depending on
@@ -222,6 +227,23 @@ RULES:
   anything outside the catalog), do NOT guess. Say the owner will reply
   shortly, and keep it warm.
 - Never promise anything not listed here.
+
+ALERTING THE OWNER:
+- Whenever you tell a customer the owner will reply shortly, also alert
+  the owner for real. Add an invisible tag at the very end of your
+  message, on its own, in this exact format: [ESCALATE: short reason]
+  using a few plain words for the reason (e.g. [ESCALATE: custom color
+  request not in catalog], [ESCALATE: customer asking for a refund]).
+  This tag is invisible to the customer, it triggers a real WhatsApp
+  alert to the owner, so never mention the tag itself.
+- Also use this tag if a customer seems genuinely upset, angry, or
+  frustrated, not just confused, even if you're still able to answer
+  their question. The owner should know when someone's mood needs a
+  human touch, not just when a question stumps you.
+- Do not use this for routine price haggling or normal back-and-forth,
+  that's expected and you handle it fine on your own. This is for
+  genuine "a human needs to step in" moments only.
+- Only ever one [ESCALATE: reason] tag per message.
 `;
 
 // ---------- PERSISTENT MEMORY (Upstash Redis via REST) ----------
@@ -365,7 +387,12 @@ async function processBufferedTurn(from) {
 
     // Pull out the invisible [PHOTO: key] tag, if she included one, and
     // clean it out of the text so the customer never sees the tag itself.
-    const { cleanText: taggedClean, photoKey } = extractPhotoTag(rawReply);
+    const { cleanText: photoStripped, photoKey } = extractPhotoTag(rawReply);
+
+    // Pull out the invisible [ESCALATE: reason] tag, if she flagged that
+    // the owner needs to step in. Also cleaned out before the customer
+    // ever sees it.
+    const { cleanText: taggedClean, escalationReason } = extractEscalationTag(photoStripped);
 
     // Mechanically remove any banned emoji that slipped through despite
     // the prompt instruction. Belt and suspenders: the instruction handles
@@ -414,6 +441,13 @@ async function processBufferedTurn(from) {
       } else {
         console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
       }
+    }
+
+    // If she flagged that the owner needs to step in, send that alert now,
+    // after the customer's own reply has gone out.
+    if (escalationReason) {
+      await sendOwnerAlert(from, escalationReason, combinedText);
+      console.log(`Owner alerted: ${escalationReason}`);
     }
   } catch (err) {
     console.error("Error handling message:", err);
@@ -517,6 +551,16 @@ function extractPhotoTag(text) {
   return { cleanText, photoKey };
 }
 
+// ---------- Pull the invisible [ESCALATE: reason] tag out of the AI's reply ----------
+function extractEscalationTag(text) {
+  const match = text.match(/\[ESCALATE:\s*([^\]]+)\]/i);
+  if (!match) return { cleanText: text.trim(), escalationReason: null };
+
+  const escalationReason = match[1].trim();
+  const cleanText = text.replace(match[0], "").trim();
+  return { cleanText, escalationReason };
+}
+
 // ---------- Guaranteed backstop: strip the banned "reflex" emoji ----------
 // Prompt instructions are a strong nudge, not a hard rule, an AI can still
 // slip and use a banned emoji anyway. This makes the ban actually airtight
@@ -578,6 +622,23 @@ async function sendWhatsApp(to, text) {
     // rate limiting. Don't let that crash the whole flow, just log it.
     console.error("sendWhatsApp failed unexpectedly:", err.message);
   }
+}
+
+// ---------- Alert the owner when Amara needs a human ----------
+async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
+  if (!OWNER_PHONE_NUMBER) {
+    console.error(
+      "ESCALATION happened but OWNER_PHONE_NUMBER isn't set, no alert sent. Reason:",
+      reason
+    );
+    return;
+  }
+  const alertText =
+    `🔔 Amara needs you\n\n` +
+    `Customer: ${customerNumber}\n` +
+    `Why: ${reason}\n` +
+    `They said: "${lastCustomerMessage}"`;
+  await sendWhatsApp(OWNER_PHONE_NUMBER, alertText);
 }
 
 // ---------- One-time fix: subscribe this app to the WhatsApp account ----------
