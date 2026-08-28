@@ -28,6 +28,12 @@ const BASE_URL = process.env.RENDER_EXTERNAL_URL || "https://kp-assistant.onrend
 // no plus sign or spaces (same format WhatsApp itself uses), e.g. 234801...
 const OWNER_PHONE_NUMBER = process.env.OWNER_PHONE_NUMBER;
 
+// A simple access key for the /customers page, so it isn't wide open to
+// anyone who finds the URL. Set this in Render, then visit the page as
+// /customers?key=whatever-you-set. Not bulletproof security, but enough
+// to keep it private at this stage.
+const ADMIN_KEY = process.env.ADMIN_KEY;
+
 // ---------- PRODUCT PHOTOS (self-hosted, no third-party service involved) ----------
 // We generate simple solid-colour placeholder images ourselves, in code,
 // using nothing but Node's built-in zlib. This avoids ever depending on
@@ -294,6 +300,143 @@ async function saveConversation(from, history) {
   }
 }
 
+// ---------- OWNER TAKEOVER (pause/resume) ----------
+// The owner can tell Amara to step back from a specific customer while
+// they handle it personally, and tell her to pick back up when done.
+// A pause auto-expires after 6 hours so a forgotten pause never strands
+// a customer forever.
+const PAUSE_DURATION_SECONDS = 6 * 60 * 60; // 6 hours
+
+async function pauseCustomer(phone) {
+  try {
+    await redisCommand(["SET", `paused:${phone}`, "1", "EX", String(PAUSE_DURATION_SECONDS)]);
+    // Reset the "already told them someone's coming" flag so the one-time
+    // holding note fires fresh for this new pause, not skipped from last time.
+    await redisCommand(["DEL", `paused_notified:${phone}`]);
+    await upsertCustomer(phone, { paused: "yes" });
+  } catch (err) {
+    console.error("pauseCustomer failed:", err.message);
+  }
+}
+
+async function resumeCustomer(phone) {
+  try {
+    await redisCommand(["DEL", `paused:${phone}`]);
+    await redisCommand(["DEL", `paused_notified:${phone}`]);
+    await upsertCustomer(phone, { paused: "no" });
+  } catch (err) {
+    console.error("resumeCustomer failed:", err.message);
+  }
+}
+
+async function isCustomerPaused(phone) {
+  try {
+    const result = await redisCommand(["GET", `paused:${phone}`]);
+    return !!result;
+  } catch (err) {
+    // Fail OPEN: if Redis hiccups, Amara should keep helping the customer,
+    // not go silent. Going quiet by accident is worse than one missed pause.
+    console.error("isCustomerPaused check failed, defaulting to NOT paused:", err.message);
+    return false;
+  }
+}
+
+async function hasNotifiedPaused(phone) {
+  try {
+    const result = await redisCommand(["GET", `paused_notified:${phone}`]);
+    return !!result;
+  } catch (err) {
+    return true; // fail toward NOT repeating the note, safer than spamming
+  }
+}
+
+async function markNotifiedPaused(phone) {
+  try {
+    await redisCommand(["SET", `paused_notified:${phone}`, "1", "EX", String(PAUSE_DURATION_SECONDS)]);
+  } catch (err) {
+    console.error("markNotifiedPaused failed:", err.message);
+  }
+}
+
+async function setLastEscalatedCustomer(phone) {
+  try {
+    await redisCommand(["SET", "last_escalated_customer", phone, "EX", "86400"]); // 24h
+  } catch (err) {
+    console.error("setLastEscalatedCustomer failed:", err.message);
+  }
+}
+
+async function getLastEscalatedCustomer() {
+  try {
+    return await redisCommand(["GET", "last_escalated_customer"]);
+  } catch (err) {
+    console.error("getLastEscalatedCustomer failed:", err.message);
+    return null;
+  }
+}
+
+// ---------- CUSTOMER DATABASE ----------
+// A real, structured record per customer, not just a pile of chat text.
+// One Redis hash per phone number, plus a set listing every customer
+// we've ever talked to, so they can actually be browsed as a list, not
+// just looked up one at a time if you already know the number. This is
+// the same data a future dashboard app would read from, so nothing here
+// gets thrown away once that exists.
+
+async function upsertCustomer(phone, fields) {
+  try {
+    const flatFields = [];
+    for (const [key, value] of Object.entries(fields)) {
+      flatFields.push(key, String(value));
+    }
+    await redisCommand(["HSET", `customer:${phone}`, ...flatFields]);
+    await redisCommand(["SADD", "all_customers", phone]);
+  } catch (err) {
+    console.error(`upsertCustomer failed for ${phone}:`, err.message);
+  }
+}
+
+async function getCustomer(phone) {
+  try {
+    const raw = await redisCommand(["HGETALL", `customer:${phone}`]);
+    // Upstash returns HGETALL as a flat [key, value, key, value, ...] array
+    if (!raw || raw.length === 0) return null;
+    const record = { phone };
+    for (let i = 0; i < raw.length; i += 2) {
+      record[raw[i]] = raw[i + 1];
+    }
+    return record;
+  } catch (err) {
+    console.error(`getCustomer failed for ${phone}:`, err.message);
+    return null;
+  }
+}
+
+async function listAllCustomers() {
+  try {
+    const phones = await redisCommand(["SMEMBERS", "all_customers"]);
+    if (!phones || phones.length === 0) return [];
+    const records = await Promise.all(phones.map((phone) => getCustomer(phone)));
+    return records.filter(Boolean);
+  } catch (err) {
+    console.error("listAllCustomers failed:", err.message);
+    return [];
+  }
+}
+
+// Called on every incoming customer message: keeps first/last contact
+// time and message count up to date without needing any separate step.
+async function recordCustomerContact(phone) {
+  const existing = await getCustomer(phone);
+  const now = new Date().toISOString();
+  await upsertCustomer(phone, {
+    phone,
+    first_contact: existing?.first_contact || now,
+    last_contact: now,
+    message_count: existing?.message_count ? Number(existing.message_count) + 1 : 1,
+  });
+}
+
 // ---------- MESSAGE BUFFERING ----------
 // Real WhatsApp users often fire off several quick messages in a row
 // ("Hi", "I want the hoodie", "can I get discount") instead of one full
@@ -343,9 +486,24 @@ app.post("/webhook", async (req, res) => {
     const message = value?.messages?.[0];
     if (!message || message.type !== "text") return; // ignore statuses etc.
 
-    const from = message.from;             // customer's number
+    const from = message.from;             // sender's number
     const text = message.text.body;        // what they said
+
+    // If this message is from the owner's own number, treat it as a
+    // control command (pause/resume), not a customer conversation.
+    // Handled immediately, no buffering delay, since the owner wants
+    // an instant confirmation, especially in an urgent moment.
+    if (OWNER_PHONE_NUMBER && from === OWNER_PHONE_NUMBER) {
+      console.log(`Owner ${from}: ${text}`);
+      await handleOwnerCommand(text);
+      return;
+    }
+
     console.log(`Customer ${from}: ${text}`);
+
+    // Keep the customer database up to date: when we first heard from
+    // them, when we last did, and how many messages total.
+    await recordCustomerContact(from);
 
     // Mark the message as read and show the "typing..." bubble right away,
     // so the customer sees a response is coming even while we wait to see
@@ -391,6 +549,29 @@ async function processBufferedTurn(from) {
     history.push({ role: "user", content: combinedText });
     // keep only last 10 turns to stay light
     history = history.slice(-10);
+
+    // If the owner has taken over this specific customer, Amara stays
+    // quiet rather than replying on top of whatever the owner is doing.
+    // Still save the customer's message to history for continuity, and
+    // send one quiet note the first time this happens per pause, not
+    // on every message, so it doesn't feel repetitive or robotic.
+    const paused = await isCustomerPaused(from);
+    if (paused) {
+      let holdingNote = null;
+      const alreadyNotified = await hasNotifiedPaused(from);
+      if (!alreadyNotified) {
+        holdingNote = "Just a moment, the owner's handling this personally right now.";
+        await humanPause(holdingNote);
+        await sendWhatsApp(from, holdingNote);
+        await markNotifiedPaused(from);
+        console.log(`Amara -> ${from}: [paused, sent one-time holding note]`);
+      } else {
+        console.log(`Customer ${from} is paused, staying quiet (already notified).`);
+      }
+      history.push({ role: "assistant", content: holdingNote || "[paused: owner is handling this personally]" });
+      await saveConversation(from, history);
+      return;
+    }
 
     // ---------- 3) THINK (ask the AI brain) ----------
     const rawReply = await askAI(history);
@@ -626,15 +807,125 @@ async function sendWhatsApp(to, text) {
       }
     );
     const data = await response.json();
-    if (data.error) console.error("WhatsApp send error:", JSON.stringify(data.error));
+    if (data.error) {
+      console.error("WhatsApp send error:", JSON.stringify(data.error));
+      return false;
+    }
+    return true;
   } catch (err) {
     // Meta occasionally returns a non-JSON error page during outages or
     // rate limiting. Don't let that crash the whole flow, just log it.
     console.error("sendWhatsApp failed unexpectedly:", err.message);
+    return false;
+  }
+}
+
+// ---------- Send a pre-approved WhatsApp template message ----------
+// Templates are the only message type Meta allows OUTSIDE the 24-hour
+// customer service window, which is exactly the situation owner alerts
+// run into (the owner may not have messaged Amara's number recently).
+// The template must be created and approved in Meta's WhatsApp Manager
+// first; see OWNER_ALERT_TEMPLATE_NAME below.
+const OWNER_ALERT_TEMPLATE_NAME = "owner_alert_v1";
+const OWNER_ALERT_TEMPLATE_LANGUAGE = "en_US";
+
+async function sendWhatsAppTemplate(to, templateName, languageCode, parameters) {
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: to,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: languageCode },
+            components: [
+              {
+                type: "body",
+                parameters: parameters.map((text) => ({ type: "text", text })),
+              },
+            ],
+          },
+        }),
+      }
+    );
+    const data = await response.json();
+    if (data.error) {
+      console.error("WhatsApp template send error:", JSON.stringify(data.error));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("sendWhatsAppTemplate failed unexpectedly:", err.message);
+    return false;
   }
 }
 
 // ---------- Alert the owner when Amara needs a human ----------
+// ---------- Owner control commands (pause/resume a specific customer) ----------
+// The owner texts these from OWNER_PHONE_NUMBER. "last" refers to whoever
+// was most recently escalated, so the owner doesn't need to type or find
+// a phone number while dealing with a real, possibly stressful moment.
+function parseOwnerCommand(text) {
+  const trimmed = text.trim();
+  if (/^pause\s+last$/i.test(trimmed)) return { action: "pause", target: "last" };
+  if (/^resume\s+last$/i.test(trimmed)) return { action: "resume", target: "last" };
+  const pauseMatch = trimmed.match(/^pause\s+(\d{7,15})$/i);
+  if (pauseMatch) return { action: "pause", target: pauseMatch[1] };
+  const resumeMatch = trimmed.match(/^resume\s+(\d{7,15})$/i);
+  if (resumeMatch) return { action: "resume", target: resumeMatch[1] };
+  return null;
+}
+
+async function handleOwnerCommand(text) {
+  const command = parseOwnerCommand(text);
+
+  if (!command) {
+    // Unrecognized: send a short, self-documenting help message rather
+    // than staying silent, so the commands are discoverable.
+    await sendWhatsApp(
+      OWNER_PHONE_NUMBER,
+      "Hi! I listen for a few commands here:\n\n" +
+        `pause <number> — I'll stop replying to that customer so you can handle them\n` +
+        `pause last — same, but for whoever I most recently alerted you about\n` +
+        `resume <number> / resume last — I'll pick back up\n\n` +
+        `Pauses lift automatically after 6 hours either way.`
+    );
+    return;
+  }
+
+  let target = command.target;
+  if (target === "last") {
+    target = await getLastEscalatedCustomer();
+    if (!target) {
+      await sendWhatsApp(
+        OWNER_PHONE_NUMBER,
+        `No recent customer to ${command.action}. Try "${command.action} <their number>" instead.`
+      );
+      return;
+    }
+  }
+
+  if (command.action === "pause") {
+    await pauseCustomer(target);
+    await sendWhatsApp(
+      OWNER_PHONE_NUMBER,
+      `Got it, I'll step back for ${target}. Text "resume ${target}" when you're done, or I'll pick back up automatically in 6 hours.`
+    );
+  } else {
+    await resumeCustomer(target);
+    await sendWhatsApp(OWNER_PHONE_NUMBER, `Back on it for ${target}.`);
+  }
+}
+
+
 async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
   if (!OWNER_PHONE_NUMBER) {
     console.error(
@@ -643,12 +934,50 @@ async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
     );
     return;
   }
+
+  // Remember who this was about, so "pause last" / "resume last" work
+  // without the owner needing to type or copy a phone number under pressure.
+  await setLastEscalatedCustomer(customerNumber);
+
+  // Template parameters can't contain newlines, keep them single-line.
+  const cleanReason = reason.replace(/\s+/g, " ").trim();
+  const cleanLastMessage = lastCustomerMessage.replace(/\s+/g, " ").trim();
+
+  // Keep this on the customer's own record too, so it's visible at a
+  // glance in the customer list, not just buried in a WhatsApp alert.
+  await upsertCustomer(customerNumber, {
+    last_escalation_reason: cleanReason,
+    last_escalation_at: new Date().toISOString(),
+  });
+
+  // Try the cheap, simple path first: a plain free-form message. This
+  // works whenever the owner has messaged Amara within the last 24
+  // hours. If that fails (most likely because that window is closed),
+  // automatically fall back to the pre-approved template, which Meta
+  // allows to reach the owner regardless of the window.
   const alertText =
     `🔔 Amara needs you\n\n` +
     `Customer: ${customerNumber}\n` +
-    `Why: ${reason}\n` +
-    `They said: "${lastCustomerMessage}"`;
-  await sendWhatsApp(OWNER_PHONE_NUMBER, alertText);
+    `Why: ${cleanReason}\n` +
+    `They said: "${cleanLastMessage}"\n\n` +
+    `Want to handle this yourself? Reply "pause last" and I'll step back.`;
+
+  const freeFormSucceeded = await sendWhatsApp(OWNER_PHONE_NUMBER, alertText);
+  if (freeFormSucceeded) return;
+
+  console.log("Free-form owner alert failed, falling back to template message.");
+  const templateSucceeded = await sendWhatsAppTemplate(
+    OWNER_PHONE_NUMBER,
+    OWNER_ALERT_TEMPLATE_NAME,
+    OWNER_ALERT_TEMPLATE_LANGUAGE,
+    [customerNumber, cleanReason, cleanLastMessage]
+  );
+  if (!templateSucceeded) {
+    console.error(
+      "BOTH free-form and template owner alerts failed. Owner was NOT notified. Reason was:",
+      cleanReason
+    );
+  }
 }
 
 // ---------- One-time fix: subscribe this app to the WhatsApp account ----------
@@ -664,6 +993,64 @@ app.get("/subscribe", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
+});
+
+// ---------- Customer list (simple viewable database, no dashboard yet) ----------
+// Visit /customers?key=YOUR_ADMIN_KEY in any browser to see every customer
+// Amara has ever talked to, in one place. This is the seed of the real
+// dashboard app planned for later; the underlying data is the same.
+app.get("/customers", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
+  }
+
+  const customers = await listAllCustomers();
+  // Most recently contacted first, so the busiest/newest conversations are on top.
+  customers.sort((a, b) => new Date(b.last_contact || 0) - new Date(a.last_contact || 0));
+
+  const rows = customers
+    .map((c) => {
+      const pausedBadge =
+        c.paused === "yes"
+          ? '<span style="color:#b45309;font-weight:600;">Paused</span>'
+          : '<span style="color:#15803d;">Active</span>';
+      return `<tr>
+        <td>${c.phone || ""}</td>
+        <td>${pausedBadge}</td>
+        <td>${c.first_contact ? new Date(c.first_contact).toLocaleString() : ""}</td>
+        <td>${c.last_contact ? new Date(c.last_contact).toLocaleString() : ""}</td>
+        <td>${c.message_count || 0}</td>
+        <td>${c.last_escalation_reason || ""}</td>
+        <td>${c.last_escalation_at ? new Date(c.last_escalation_at).toLocaleString() : ""}</td>
+      </tr>`;
+    })
+    .join("");
+
+  res.send(`
+    <html>
+    <head>
+      <title>KP Studio - Customers</title>
+      <style>
+        body { font-family: -apple-system, sans-serif; margin: 24px; background: #f8fafc; }
+        h1 { font-size: 20px; }
+        table { border-collapse: collapse; width: 100%; background: white; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+        th { background: #1e293b; color: white; }
+        tr:hover { background: #f1f5f9; }
+      </style>
+    </head>
+    <body>
+      <h1>Customers (${customers.length})</h1>
+      <table>
+        <tr>
+          <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
+          <th>Messages</th><th>Last escalation</th><th>Escalated at</th>
+        </tr>
+        ${rows || '<tr><td colspan="7">No customers yet.</td></tr>'}
+      </table>
+    </body>
+    </html>
+  `);
 });
 
 // ---------- Health check (visit in browser to see server is alive) ----------
