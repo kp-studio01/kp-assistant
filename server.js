@@ -265,13 +265,23 @@ async function redisCommand(commandArray) {
 }
 
 async function getConversation(from) {
-  try {
-    const raw = await redisCommand(["GET", `conv:${from}`]);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error("getConversation failed, starting fresh:", err);
-    return [];
+  // Try twice before giving up. A single transient network hiccup (most
+  // likely right as the free server wakes from a nap) shouldn't make a
+  // real returning customer look like a stranger. If both attempts fail,
+  // we still fall back safely to an empty history rather than crashing.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const raw = await redisCommand(["GET", `conv:${from}`]);
+      if (!raw) return [];
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error(`getConversation attempt ${attempt} failed:`, err.message);
+      if (attempt === 2) {
+        console.error(`MEMORY LOAD FAILED for ${from} after retry, starting this reply with empty history.`);
+        return [];
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500)); // brief pause before retry
+    }
   }
 }
 
