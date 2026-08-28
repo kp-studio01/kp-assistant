@@ -505,6 +505,16 @@ app.post("/webhook", async (req, res) => {
     // them, when we last did, and how many messages total.
     await recordCustomerContact(from);
 
+    // If the owner has paused this customer, handle it separately and
+    // stop here. This must happen BEFORE we show any typing indicator,
+    // otherwise the customer sees "typing..." for a reply that may
+    // never come, which is misleading.
+    const paused = await isCustomerPaused(from);
+    if (paused) {
+      await handlePausedCustomerMessage(from, text, message.id);
+      return;
+    }
+
     // Mark the message as read and show the "typing..." bubble right away,
     // so the customer sees a response is coming even while we wait to see
     // if more messages are on the way.
@@ -533,6 +543,38 @@ app.post("/webhook", async (req, res) => {
 });
 
 // ---------- Handle a customer's turn once they've paused sending ----------
+// ---------- Handle a message from a customer the owner has paused ----------
+// Bypasses the normal buffer/typing flow entirely, since we already know
+// whether Amara is going to say anything. Only shows typing when she's
+// actually about to send the one-time holding note.
+async function handlePausedCustomerMessage(from, text, messageId) {
+  let history = await getConversation(from);
+  history.push({ role: "user", content: text });
+  history = history.slice(-10);
+
+  const alreadyNotified = await hasNotifiedPaused(from);
+
+  if (!alreadyNotified) {
+    // First message since the pause started: show typing, since we ARE
+    // about to reply once, then mark it so we don't repeat this.
+    await markReadAndShowTyping(messageId);
+    const holdingNote = "Just a moment, the owner's handling this personally right now.";
+    await humanPause(holdingNote);
+    await sendWhatsApp(from, holdingNote);
+    await markNotifiedPaused(from);
+    history.push({ role: "assistant", content: holdingNote });
+    console.log(`Amara -> ${from}: [paused, sent one-time holding note]`);
+  } else {
+    // Already told them once. Mark it read so they see it was received,
+    // but no typing bubble, since nothing else is coming.
+    await markReadOnly(messageId);
+    console.log(`Customer ${from} is paused, staying quiet (already notified).`);
+  }
+
+  await saveConversation(from, history);
+}
+
+
 async function processBufferedTurn(from) {
   const buffer = pendingBuffers.get(from);
   if (!buffer) return; // safety, shouldn't happen
@@ -721,6 +763,34 @@ async function markReadAndShowTyping(messageId) {
   }
 }
 
+// ---------- Mark a message read WITHOUT showing typing ----------
+// Used when we already know Amara isn't going to reply (e.g. a paused
+// customer who's already been told someone will be with them). Showing
+// "typing..." when nothing is actually coming is misleading.
+async function markReadOnly(messageId) {
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          status: "read",
+          message_id: messageId,
+        }),
+      }
+    );
+    const data = await response.json();
+    if (data.error) console.error("markReadOnly error:", JSON.stringify(data.error));
+  } catch (err) {
+    console.error("markReadOnly failed:", err);
+  }
+}
+
 // ---------- A small human-feeling pause before sending the reply ----------
 // Scales gently with reply length so short answers feel snappy and longer
 // ones feel like she actually typed them, without ever dragging on too long.
@@ -884,18 +954,75 @@ function parseOwnerCommand(text) {
   return null;
 }
 
+// ---------- Understand natural phrasing, not just exact commands ----------
+// A real person under pressure won't always type "pause last" exactly.
+// If the quick pattern match above finds nothing, ask the AI what they
+// meant. Cheap (tiny prompt, tiny reply) and only runs on owner messages,
+// which are rare. Defaults to "last" since that's who the owner is
+// almost always reacting to when they use natural language.
+async function interpretOwnerIntent(text) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 10,
+        system:
+          `The owner of a small business just texted their AI sales ` +
+          `assistant. Decide what they want:\n` +
+          `PAUSE - they want the AI to stop replying to a customer so ` +
+          `they can handle it themselves (e.g. "I'll take this one", ` +
+          `"let me handle it", "I got this", "pause, I'll deal with it")\n` +
+          `RESUME - they want the AI to start replying to that customer ` +
+          `again (e.g. "ok you can continue", "I'm done", "go ahead and ` +
+          `take back over")\n` +
+          `NONE - neither, or genuinely unclear\n\n` +
+          `Reply with ONLY one word: PAUSE, RESUME, or NONE.`,
+        messages: [{ role: "user", content: text }],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    const reply = data?.content?.[0]?.text?.trim().toUpperCase();
+    if (reply === "PAUSE" || reply === "RESUME") return reply;
+    return "NONE";
+  } catch (err) {
+    console.error("interpretOwnerIntent failed:", err.message);
+    return "NONE"; // fail safe: don't guess on a broken call, fall through to help text
+  }
+}
+
 async function handleOwnerCommand(text) {
-  const command = parseOwnerCommand(text);
+  let command = parseOwnerCommand(text);
 
   if (!command) {
-    // Unrecognized: send a short, self-documenting help message rather
-    // than staying silent, so the commands are discoverable.
+    // No exact match. Ask the AI whether this was natural-language
+    // pause/resume phrasing before giving up and showing the help menu.
+    const intent = await interpretOwnerIntent(text);
+    if (intent === "PAUSE") command = { action: "pause", target: "last" };
+    else if (intent === "RESUME") command = { action: "resume", target: "last" };
+  }
+
+  if (!command) {
+    // Genuinely unrecognized: send a short, self-documenting help message
+    // rather than staying silent, so the commands are discoverable.
     await sendWhatsApp(
       OWNER_PHONE_NUMBER,
       "Hi! I listen for a few commands here:\n\n" +
         `pause <number> — I'll stop replying to that customer so you can handle them\n` +
         `pause last — same, but for whoever I most recently alerted you about\n` +
         `resume <number> / resume last — I'll pick back up\n\n` +
+        `You can also just say it naturally, like "I'll take this one" or "ok you can continue".\n\n` +
         `Pauses lift automatically after 6 hours either way.`
     );
     return;
@@ -917,7 +1044,7 @@ async function handleOwnerCommand(text) {
     await pauseCustomer(target);
     await sendWhatsApp(
       OWNER_PHONE_NUMBER,
-      `Got it, I'll step back for ${target}. Text "resume ${target}" when you're done, or I'll pick back up automatically in 6 hours.`
+      `Got it, I'll step back for ${target}. Text "resume ${target}" (or just tell me naturally) when you're done, or I'll pick back up automatically in 6 hours.`
     );
   } else {
     await resumeCustomer(target);
