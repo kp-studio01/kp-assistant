@@ -1021,7 +1021,7 @@ function parseOwnerCommand(text) {
 // actually needed. This uses Amara's own voice to reference the real
 // reason for the escalation, so a refund request and "let me speak to
 // the owner" don't get the exact same boilerplate reply.
-async function generateResumeFollowUp(reason) {
+async function generateResumeFollowUp(reason, ownerMessage) {
   const genericFallback =
     "Hey, I'm back! The owner just finished handling things on their end. Let me know if you still need anything.";
 
@@ -1029,11 +1029,22 @@ async function generateResumeFollowUp(reason) {
 
   try {
     const instruction =
-      `[Internal note, not a real customer message: the owner just finished ` +
-      `personally handling this customer's issue, which was: "${reason}". ` +
-      `Send them a short, warm, natural message letting them know the owner ` +
-      `has sorted it out, in your usual voice. Reference what it was about, ` +
-      `don't be generic. Don't use a [PHOTO] tag or an [ESCALATE] tag here.]`;
+      `[Internal note, not a real customer message: the owner just resumed ` +
+      `you on this customer's issue, which was: "${reason}". The owner's ` +
+      `own message when doing this was: "${ownerMessage}".\n\n` +
+      `If that message contains real, specific detail about what was said ` +
+      `or done (e.g. what price was agreed, what was explained, what was ` +
+      `promised), reference those specific details naturally when you tell ` +
+      `the customer.\n\n` +
+      `If it's just a bare confirmation with no real detail (things like ` +
+      `"sure", "done", "continue", "ok", "you can continue"), do NOT assert ` +
+      `a specific outcome you can't actually confirm happened, especially ` +
+      `don't claim the owner personally spoke with or contacted the ` +
+      `customer if you have no way of knowing that's true. Be warm but ` +
+      `honest instead, for example checking in on whether the owner already ` +
+      `reached them, rather than asserting it as fact.\n\n` +
+      `Send a short, warm, natural message in your usual voice. Don't use ` +
+      `a [PHOTO] tag or an [ESCALATE] tag here.]`;
     const reply = await askAI([{ role: "user", content: instruction }]);
     const { cleanText: step1 } = extractPhotoTag(reply);
     const { cleanText: step2 } = extractEscalationTag(step1);
@@ -1167,7 +1178,7 @@ async function handleOwnerCommand(text) {
     // if they happen to message again before anyone's told her otherwise.
     // What she actually says reflects what they needed, not a generic line.
     const customerRecord = await getCustomer(target);
-    const followUp = await generateResumeFollowUp(customerRecord?.last_escalation_reason);
+    const followUp = await generateResumeFollowUp(customerRecord?.last_escalation_reason, text);
     const notified = await sendWhatsApp(target, followUp);
     if (notified) {
       let customerHistory = await getConversation(target);
