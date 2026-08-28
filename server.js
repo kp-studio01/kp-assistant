@@ -1092,6 +1092,32 @@ async function handleOwnerCommand(text) {
   let command = parseOwnerCommand(text);
 
   if (!command) {
+    // If Amara just asked "want to pause?" (an escalation alert), a
+    // short bare affirmative right after it clearly means "yes, pause",
+    // even though the same word alone, with no context, would be too
+    // ambiguous to guess at. Check this deterministically before
+    // spending an AI call on it.
+    const trimmed = text.trim().toLowerCase();
+    const isShortAffirmative = /^(sure|yes|yeah|yep|yh|ok|okay|alright)[.!]?$/i.test(trimmed);
+    if (isShortAffirmative) {
+      let awaitingPauseConfirmation = false;
+      try {
+        awaitingPauseConfirmation = !!(await redisCommand(["GET", "awaiting_pause_confirmation"]));
+      } catch (err) {
+        console.error("Could not check awaiting_pause_confirmation flag:", err.message);
+      }
+      if (awaitingPauseConfirmation) {
+        command = { action: "pause", target: "last" };
+        try {
+          await redisCommand(["DEL", "awaiting_pause_confirmation"]);
+        } catch (err) {
+          console.error("Could not clear awaiting_pause_confirmation flag:", err.message);
+        }
+      }
+    }
+  }
+
+  if (!command) {
     // No exact match. Ask the AI whether this was natural-language
     // pause/resume phrasing before giving up and showing the help menu.
     const intent = await interpretOwnerIntent(text);
@@ -1196,6 +1222,15 @@ async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
     `Why: ${cleanReason}\n` +
     `They said: "${cleanLastMessage}"\n\n` +
     `Want to handle this yourself? Reply "pause last" and I'll step back.`;
+
+  // Remember that we just asked "want to pause?", so a short reply like
+  // "Sure" or "Yes" right after this can be understood as agreement,
+  // instead of being ambiguous out of context.
+  try {
+    await redisCommand(["SET", "awaiting_pause_confirmation", "1", "EX", "600"]); // 10 min window
+  } catch (err) {
+    console.error("Could not set awaiting_pause_confirmation flag:", err.message);
+  }
 
   const freeFormSucceeded = await sendWhatsApp(OWNER_PHONE_NUMBER, alertText);
   if (freeFormSucceeded) return;
