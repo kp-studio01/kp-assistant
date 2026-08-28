@@ -548,30 +548,33 @@ app.post("/webhook", async (req, res) => {
 // whether Amara is going to say anything. Only shows typing when she's
 // actually about to send the one-time holding note.
 async function handlePausedCustomerMessage(from, text, messageId) {
-  let history = await getConversation(from);
-  history.push({ role: "user", content: text });
-  history = history.slice(-10);
-
   const alreadyNotified = await hasNotifiedPaused(from);
 
   if (!alreadyNotified) {
-    // First message since the pause started: show typing, since we ARE
-    // about to reply once, then mark it so we don't repeat this.
+    // First message since the pause started: this is a real conversation
+    // turn, save it along with the holding note, same as any normal reply.
+    let history = await getConversation(from);
+    history.push({ role: "user", content: text });
+
     await markReadAndShowTyping(messageId);
     const holdingNote = "Just a moment, the owner's handling this personally right now.";
     await humanPause(holdingNote);
     await sendWhatsApp(from, holdingNote);
     await markNotifiedPaused(from);
     history.push({ role: "assistant", content: holdingNote });
+    history = history.slice(-10);
+    await saveConversation(from, history);
     console.log(`Amara -> ${from}: [paused, sent one-time holding note]`);
   } else {
-    // Already told them once. Mark it read so they see it was received,
-    // but no typing bubble, since nothing else is coming.
+    // Already told them once, staying quiet. Deliberately NOT saved to
+    // conversation history: a customer waiting on a pause often sends
+    // several "hello? you there?" style check-ins, and letting each one
+    // consume a slot in the last-10-message window pushes the real,
+    // meaningful conversation out before the owner even resumes. Just
+    // mark it read and keep count in the customer database instead.
     await markReadOnly(messageId);
-    console.log(`Customer ${from} is paused, staying quiet (already notified).`);
+    console.log(`Customer ${from} is paused, staying quiet (already notified): "${text}"`);
   }
-
-  await saveConversation(from, history);
 }
 
 
