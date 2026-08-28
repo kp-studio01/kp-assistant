@@ -673,8 +673,9 @@ async function processBufferedTurn(from) {
 
     // Mechanically remove any banned emoji that slipped through despite
     // the prompt instruction. Belt and suspenders: the instruction handles
-    // most cases, this guarantees the rest.
-    const cleanText = stripBannedEmojis(taggedClean);
+    // most cases, this guarantees the rest. Also catch and clean up any
+    // leaked self-correction narration before it ever reaches a customer.
+    const cleanText = stripBannedEmojis(stripSelfCorrection(taggedClean));
 
     // Split into separate WhatsApp bubbles if she used the ||| marker,
     // so a reply with two distinct thoughts arrives as two short
@@ -887,6 +888,28 @@ function stripBannedEmojis(text) {
   return text.replace(BANNED_EMOJIS, "").replace(/[ \t]{2,}/g, " ").trim();
 }
 
+// ---------- Guaranteed backstop: strip leaked self-correction ----------
+// Occasionally the model drafts a reply, catches itself on something (like
+// thinking it used a banned emoji), and narrates the correction out loud
+// instead of just producing the fixed final text ("Wait, let me redo that
+// without..."). If that happens, only the real final version should ever
+// reach a customer or owner. This detects the pattern and keeps only the
+// last paragraph, which is reliably where the corrected version lands.
+const SELF_CORRECTION_MARKERS =
+  /\b(let me redo|let me rewrite|wait,? let me|scratch that|let me try (that )?again|actually,? let me|here'?s a better (version|one)|redo(?:ing)? (that|this)|without the banned)\b/i;
+function stripSelfCorrection(text) {
+  if (!SELF_CORRECTION_MARKERS.test(text)) return text;
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (paragraphs.length > 1) {
+    console.error("Caught leaked self-correction, using final paragraph only. Raw:", text);
+    return paragraphs[paragraphs.length - 1];
+  }
+  return text;
+}
+
 // ---------- Send a product photo on WhatsApp ----------
 async function sendWhatsAppImage(to, imageUrl) {
   const response = await fetch(
@@ -1072,12 +1095,14 @@ async function answerOwnerQuestion(ownerText, businessSummary) {
       `or "pause last" to have you step back from a customer, and ` +
       `"resume <number>" / "resume last" to pick back up, either as exact ` +
       `commands or said naturally. Don't mention this unless it's actually ` +
-      `relevant to what they asked.]\n\n` +
+      `relevant to what they asked. Output ONLY the final message itself, ` +
+      `nothing else, no drafts, no narrating your own corrections, no ` +
+      `"let me redo that", just the finished text ready to send.]\n\n` +
       `Owner's message: "${ownerText}"`;
     const reply = await askAI([{ role: "user", content: instruction }]);
     const { cleanText: step1 } = extractPhotoTag(reply);
     const { cleanText: step2 } = extractEscalationTag(step1);
-    const finalText = stripBannedEmojis(step2).trim();
+    const finalText = stripBannedEmojis(stripSelfCorrection(step2)).trim();
     return finalText || fallback;
   } catch (err) {
     console.error("answerOwnerQuestion failed:", err.message);
@@ -1109,11 +1134,14 @@ async function generateResumeFollowUp(reason, ownerMessage) {
       `honest instead, for example checking in on whether the owner already ` +
       `reached them, rather than asserting it as fact.\n\n` +
       `Send a short, warm, natural message in your usual voice. Don't use ` +
-      `a [PHOTO] tag or an [ESCALATE] tag here.]`;
+      `a [PHOTO] tag or an [ESCALATE] tag here. Output ONLY the final ` +
+      `message itself, nothing else, no drafts, no narrating your own ` +
+      `corrections, no "let me redo that", just the finished text ready ` +
+      `to send.]`;
     const reply = await askAI([{ role: "user", content: instruction }]);
     const { cleanText: step1 } = extractPhotoTag(reply);
     const { cleanText: step2 } = extractEscalationTag(step1);
-    const finalText = stripBannedEmojis(step2).trim();
+    const finalText = stripBannedEmojis(stripSelfCorrection(step2)).trim();
     return finalText || genericFallback;
   } catch (err) {
     console.error("generateResumeFollowUp failed:", err.message);
