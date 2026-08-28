@@ -1016,6 +1016,36 @@ function parseOwnerCommand(text) {
 // meant. Cheap (tiny prompt, tiny reply) and only runs on owner messages,
 // which are rare. Defaults to "last" since that's who the owner is
 // almost always reacting to when they use natural language.
+// ---------- Generate a contextual resume message ----------
+// A generic "the owner's done" message doesn't reflect what the customer
+// actually needed. This uses Amara's own voice to reference the real
+// reason for the escalation, so a refund request and "let me speak to
+// the owner" don't get the exact same boilerplate reply.
+async function generateResumeFollowUp(reason) {
+  const genericFallback =
+    "Hey, I'm back! The owner just finished handling things on their end. Let me know if you still need anything.";
+
+  if (!reason) return genericFallback;
+
+  try {
+    const instruction =
+      `[Internal note, not a real customer message: the owner just finished ` +
+      `personally handling this customer's issue, which was: "${reason}". ` +
+      `Send them a short, warm, natural message letting them know the owner ` +
+      `has sorted it out, in your usual voice. Reference what it was about, ` +
+      `don't be generic. Don't use a [PHOTO] tag or an [ESCALATE] tag here.]`;
+    const reply = await askAI([{ role: "user", content: instruction }]);
+    const { cleanText: step1 } = extractPhotoTag(reply);
+    const { cleanText: step2 } = extractEscalationTag(step1);
+    const finalText = stripBannedEmojis(step2).trim();
+    return finalText || genericFallback;
+  } catch (err) {
+    console.error("generateResumeFollowUp failed:", err.message);
+    return genericFallback;
+  }
+}
+
+
 async function interpretOwnerIntent(text) {
   try {
     const controller = new AbortController();
@@ -1105,6 +1135,28 @@ async function handleOwnerCommand(text) {
   } else {
     await resumeCustomer(target);
     await sendWhatsApp(OWNER_PHONE_NUMBER, `Back on it for ${target}.`);
+
+    // Proactively let the customer know, rather than leaving them to
+    // wonder, or risking Amara improvising a stale "still waiting" reply
+    // if they happen to message again before anyone's told her otherwise.
+    // What she actually says reflects what they needed, not a generic line.
+    const customerRecord = await getCustomer(target);
+    const followUp = await generateResumeFollowUp(customerRecord?.last_escalation_reason);
+    const notified = await sendWhatsApp(target, followUp);
+    if (notified) {
+      let customerHistory = await getConversation(target);
+      customerHistory.push({ role: "assistant", content: followUp });
+      customerHistory = customerHistory.slice(-10);
+      await saveConversation(target, customerHistory);
+      console.log(`Amara -> ${target}: [proactive resume notification] ${followUp}`);
+    } else {
+      // Most likely cause: more than 24 hours since the customer last
+      // messaged, so a free-form message isn't allowed. Not fatal, the
+      // customer just won't hear from us until they message again.
+      console.error(
+        `Could not proactively notify customer ${target} after resume (likely outside the 24h messaging window).`
+      );
+    }
   }
 }
 
