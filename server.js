@@ -249,6 +249,14 @@ ALERTING THE OWNER:
 - Do not use this for routine price haggling or normal back-and-forth,
   that's expected and you handle it fine on your own. This is for
   genuine "a human needs to step in" moments only.
+- Do not re-escalate for a plain greeting or small talk ("hey", "hi",
+  "you there?") even if the same customer had an unresolved issue
+  earlier in the conversation. A bare greeting is not a new request.
+  Only escalate again if the customer raises something new and
+  substantive, or if real time has passed with no resolution and they
+  are now following up specifically about that unresolved matter (e.g.
+  "any update on my refund?" is worth escalating again, "hey" alone is
+  not).
 - Only ever one [ESCALATE: reason] tag per message.
 `;
 
@@ -437,6 +445,30 @@ async function recordCustomerContact(phone) {
   });
 }
 
+// ---------- Durable "photo already sent" tracking ----------
+// This used to live only as a note buried in the last-10-message chat
+// history, which meant a busy conversation (escalations, pauses, small
+// talk) could push it out and cause an accidental resend. Tracking it
+// here instead, permanently, per customer, means it can never be
+// forgotten no matter how long or chaotic the conversation gets.
+async function markPhotoSent(phone, photoKey) {
+  try {
+    await redisCommand(["SADD", `photos_sent:${phone}`, photoKey]);
+    await redisCommand(["EXPIRE", `photos_sent:${phone}`, "2592000"]); // 30 days
+  } catch (err) {
+    console.error(`markPhotoSent failed for ${phone}:`, err.message);
+  }
+}
+
+async function getPhotosSent(phone) {
+  try {
+    return await redisCommand(["SMEMBERS", `photos_sent:${phone}`]);
+  } catch (err) {
+    console.error(`getPhotosSent failed for ${phone}:`, err.message);
+    return [];
+  }
+}
+
 // ---------- MESSAGE BUFFERING ----------
 // Real WhatsApp users often fire off several quick messages in a row
 // ("Hi", "I want the hoodie", "can I get discount") instead of one full
@@ -619,7 +651,16 @@ async function processBufferedTurn(from) {
     }
 
     // ---------- 3) THINK (ask the AI brain) ----------
-    const rawReply = await askAI(history);
+    // Look up which photos have already gone out to this customer from
+    // durable storage (not chat history, which can get pushed out by a
+    // busy conversation), and remind her fresh every single call so this
+    // can never be forgotten no matter how the conversation has gone.
+    const photosAlreadySent = await getPhotosSent(from);
+    const photoReminder =
+      photosAlreadySent.length > 0
+        ? `You have ALREADY sent these product photos to this customer in this chat: ${photosAlreadySent.join(", ")}. Do not resend any of these unless the customer explicitly asks to see it again.`
+        : "";
+    const rawReply = await askAI(history, photoReminder);
 
     // Pull out the invisible [PHOTO: key] tag, if she included one, and
     // clean it out of the text so the customer never sees the tag itself.
@@ -644,15 +685,10 @@ async function processBufferedTurn(from) {
       .filter((b) => b.length > 0);
 
     // Save to memory using the clean, joined version (no raw ||| marker),
-    // so future context reads naturally. If a photo went out, leave an
-    // invisible note in what WE remember (never sent to the customer) so
-    // future replies in this chat know a photo was already shown.
+    // so future context reads naturally. Photo tracking now lives in
+    // durable storage (see above), not as a note buried in this text.
     const memoryBody = bubbles.join("\n");
-    const textForMemory =
-      photoKey && PRODUCT_IMAGES[photoKey]
-        ? `${memoryBody}\n[note to self: already sent the ${photoKey} photo in this chat, do not resend unless they ask again]`
-        : memoryBody;
-    history.push({ role: "assistant", content: textForMemory });
+    history.push({ role: "assistant", content: memoryBody });
     await saveConversation(from, history);
 
     // ---------- 4) REPLY on WhatsApp, one bubble at a time ----------
@@ -674,14 +710,25 @@ async function processBufferedTurn(from) {
       const sent = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
       if (sent) {
         console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
+        await markPhotoSent(from, photoKey); // durable, survives everything
       } else {
         console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
       }
     }
 
-    // If she flagged that the owner needs to step in, send that alert now,
-    // after the customer's own reply has gone out.
-    if (escalationReason) {
+    // If she flagged that the owner needs to step in, send that alert,
+    // UNLESS the message that triggered it was just a bare greeting or
+    // check-in. The prompt already tells her not to re-escalate on a
+    // plain "hey", but that instruction alone isn't reliable enough on
+    // its own, so this is a hard backstop, same idea as the emoji ban.
+    const isBareGreeting = /^(h+i+|h+e+y+|hell+o+|yo+|good\s?(morning|afternoon|evening)|you\s?there\??|sup)[.!?]*$/i.test(
+      combinedText.trim()
+    );
+    if (escalationReason && isBareGreeting) {
+      console.log(
+        `Escalation SUPPRESSED (bare greeting, likely over-eager): "${combinedText}" | reason was: ${escalationReason}`
+      );
+    } else if (escalationReason) {
       await sendOwnerAlert(from, escalationReason, combinedText);
       console.log(`Owner alerted: ${escalationReason}`);
     }
@@ -704,12 +751,18 @@ async function processBufferedTurn(from) {
 }
 
 // ---------- The AI call ----------
-async function askAI(history) {
+async function askAI(history, dynamicReminder = "") {
   try {
     // Safety cap: never let this hang forever if Anthropic's API is slow
     // or unreachable. 20 seconds is generous but bounded.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    // Facts that must never be forgotten (like which photos already went
+    // out) get appended fresh to the system prompt on every single call,
+    // rather than relying on them surviving inside the rolling chat
+    // history, which can get pushed out during a long or busy conversation.
+    const systemPrompt = dynamicReminder ? `${SHOP_PROFILE}\n\n${dynamicReminder}` : SHOP_PROFILE;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -721,7 +774,7 @@ async function askAI(history) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 300,
-        system: SHOP_PROFILE,
+        system: systemPrompt,
         messages: history,
       }),
       signal: controller.signal,
