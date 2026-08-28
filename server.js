@@ -1021,6 +1021,71 @@ function parseOwnerCommand(text) {
 // actually needed. This uses Amara's own voice to reference the real
 // reason for the escalation, so a refund request and "let me speak to
 // the owner" don't get the exact same boilerplate reply.
+// ---------- Let the owner ask real questions, not just pause/resume ----------
+// Gathers an honest snapshot of what's actually happening, so Amara can
+// answer using real numbers instead of guessing or giving a static menu.
+async function buildOwnerBusinessSummary() {
+  const customers = await listAllCustomers();
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const activeToday = customers.filter(
+    (c) => c.last_contact && c.last_contact.slice(0, 10) === todayStr
+  );
+  const pausedNow = customers.filter((c) => c.paused === "yes");
+  const recentEscalations = customers
+    .filter((c) => c.last_escalation_at)
+    .sort((a, b) => new Date(b.last_escalation_at) - new Date(a.last_escalation_at))
+    .slice(0, 8);
+
+  const lines = [];
+  lines.push(`Total customers ever talked to: ${customers.length}`);
+  lines.push(
+    `Customers active today: ${activeToday.length}` +
+      (activeToday.length ? ` (${activeToday.map((c) => c.phone).join(", ")})` : "")
+  );
+  lines.push(`Currently paused (you're handling personally): ${pausedNow.length}`);
+  for (const c of pausedNow) {
+    lines.push(`  - ${c.phone}: ${c.last_escalation_reason || "no reason recorded"}`);
+  }
+  lines.push(`Recent escalations, most recent first:`);
+  if (recentEscalations.length === 0) lines.push("  - none yet");
+  for (const c of recentEscalations) {
+    const status = c.paused === "yes" ? "[still paused / being handled]" : "[not currently paused]";
+    lines.push(`  - ${c.phone} at ${c.last_escalation_at}: ${c.last_escalation_reason} ${status}`);
+  }
+  return lines.join("\n");
+}
+
+async function answerOwnerQuestion(ownerText, businessSummary) {
+  const fallback =
+    "Hey, having a bit of trouble pulling that up right now, mind trying again in a moment?";
+  try {
+    const instruction =
+      `[Internal note: you're talking directly to the shop owner right now, ` +
+      `not a customer. They just asked or said something. Answer using ONLY ` +
+      `the real data below, honestly. If the data doesn't actually answer ` +
+      `their question, say so plainly rather than guessing or making up ` +
+      `numbers. Keep it short and natural, WhatsApp style, like texting ` +
+      `your boss, not a customer.\n\n` +
+      `CURRENT BUSINESS DATA:\n${businessSummary}\n\n` +
+      `Reminder in case it's relevant: they can also say "pause <number>" ` +
+      `or "pause last" to have you step back from a customer, and ` +
+      `"resume <number>" / "resume last" to pick back up, either as exact ` +
+      `commands or said naturally. Don't mention this unless it's actually ` +
+      `relevant to what they asked.]\n\n` +
+      `Owner's message: "${ownerText}"`;
+    const reply = await askAI([{ role: "user", content: instruction }]);
+    const { cleanText: step1 } = extractPhotoTag(reply);
+    const { cleanText: step2 } = extractEscalationTag(step1);
+    const finalText = stripBannedEmojis(step2).trim();
+    return finalText || fallback;
+  } catch (err) {
+    console.error("answerOwnerQuestion failed:", err.message);
+    return fallback;
+  }
+}
+
+
 async function generateResumeFollowUp(reason, ownerMessage) {
   const genericFallback =
     "Hey, I'm back! The owner just finished handling things on their end. Let me know if you still need anything.";
@@ -1137,17 +1202,12 @@ async function handleOwnerCommand(text) {
   }
 
   if (!command) {
-    // Genuinely unrecognized: send a short, self-documenting help message
-    // rather than staying silent, so the commands are discoverable.
-    await sendWhatsApp(
-      OWNER_PHONE_NUMBER,
-      "Hi! I listen for a few commands here:\n\n" +
-        `pause <number> — I'll stop replying to that customer so you can handle them\n` +
-        `pause last — same, but for whoever I most recently alerted you about\n` +
-        `resume <number> / resume last — I'll pick back up\n\n` +
-        `You can also just say it naturally, like "I'll take this one" or "ok you can continue".\n\n` +
-        `Pauses lift automatically after 6 hours either way.`
-    );
+    // Not a pause/resume command, exact or natural-language. Rather than a
+    // static help menu, let her actually answer, using real business data,
+    // the same way a normal conversation would work.
+    const businessSummary = await buildOwnerBusinessSummary();
+    const answer = await answerOwnerQuestion(text, businessSummary);
+    await sendWhatsApp(OWNER_PHONE_NUMBER, answer);
     return;
   }
 
