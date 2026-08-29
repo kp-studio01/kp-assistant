@@ -722,9 +722,17 @@ async function processBufferedTurn(from) {
     // check-in. The prompt already tells her not to re-escalate on a
     // plain "hey", but that instruction alone isn't reliable enough on
     // its own, so this is a hard backstop, same idea as the emoji ban.
-    const isBareGreeting = /^(h+i+|h+e+y+|hell+o+|yo+|good\s?(morning|afternoon|evening)|you\s?there\??|sup)[.!?]*$/i.test(
-      combinedText.trim()
-    );
+    // Checked per-line, since the buffer can combine several quick
+    // messages ("Good morning" then "Hi") into one turn joined by
+    // newlines, and each one alone still needs to count as a greeting.
+    const BARE_GREETING_LINE =
+      /^(h+i+|h+e+y+|hell+o+|yo+|good\s?(morning|afternoon|evening)|you\s?there\??|sup)[.!?]*$/i;
+    const messageLines = combinedText
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const isBareGreeting =
+      messageLines.length > 0 && messageLines.every((line) => BARE_GREETING_LINE.test(line));
     if (escalationReason && isBareGreeting) {
       console.log(
         `Escalation SUPPRESSED (bare greeting, likely over-eager): "${combinedText}" | reason was: ${escalationReason}`
