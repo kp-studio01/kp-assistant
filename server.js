@@ -797,6 +797,104 @@ async function markOrderPaid(reference, order) {
   }
 }
 
+// ---------- ANALYTICS ----------
+// Durable, aggregate counters recorded at the moment of each confirmed
+// payment. Deliberately NOT reconstructed later from customer records or
+// individual order keys — a customer's record only keeps their LATEST
+// payment (a repeat buyer would silently erase their earlier one from any
+// derived view), and paid orders themselves expire after 30 days. These
+// counters are separate, dedicated, and never expire, so trends and
+// best-sellers stay correct regardless of either of those.
+async function recordOrderAnalytics(order) {
+  try {
+    const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    await redisCommand(["INCRBYFLOAT", `analytics:day:${dateStr}:revenue`, String(order.totalNaira)]);
+    await redisCommand(["INCR", `analytics:day:${dateStr}:orders`]);
+    await redisCommand(["INCR", `analytics:product:${order.productKey}:sold`]);
+    await redisCommand(["INCRBYFLOAT", `analytics:product:${order.productKey}:revenue`, String(order.totalNaira)]);
+    // Tracked in its own set (same pattern as all_customers) so a product
+    // removed from the catalog later doesn't lose its sales history from
+    // the best-sellers list, and so we never need a slow Redis KEYS scan
+    // to find out which products have ever sold anything.
+    await redisCommand(["SADD", "analytics:products_sold", order.productKey]);
+    // Unique paying customers, for the chat-to-order conversion stat.
+    await redisCommand(["SADD", "analytics:paid_customers", order.phone]);
+  } catch (err) {
+    console.error("recordOrderAnalytics failed:", err.message);
+  }
+}
+
+async function getAnalyticsSummary(customers) {
+  // Last 14 days of revenue + order count, oldest to newest. Always
+  // generates the full 14-day range and lets a missing key read as 0,
+  // rather than needing a separate index of "which days have data" —
+  // one GET per day per metric, cheap at this scale.
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const trend = [];
+  for (const dateStr of days) {
+    let revenue = 0;
+    let orders = 0;
+    try {
+      const [revenueRaw, ordersRaw] = await Promise.all([
+        redisCommand(["GET", `analytics:day:${dateStr}:revenue`]),
+        redisCommand(["GET", `analytics:day:${dateStr}:orders`]),
+      ]);
+      revenue = Number(revenueRaw) || 0;
+      orders = Number(ordersRaw) || 0;
+    } catch (err) {
+      console.error(`getAnalyticsSummary: trend lookup failed for ${dateStr}:`, err.message);
+    }
+    trend.push({ date: dateStr, revenue, orders });
+  }
+
+  // Best sellers, sorted by units sold.
+  let bestSellers = [];
+  try {
+    const soldKeys = (await redisCommand(["SMEMBERS", "analytics:products_sold"])) || [];
+    const rows = await Promise.all(
+      soldKeys.map(async (key) => {
+        const [soldRaw, revenueRaw] = await Promise.all([
+          redisCommand(["GET", `analytics:product:${key}:sold`]),
+          redisCommand(["GET", `analytics:product:${key}:revenue`]),
+        ]);
+        return {
+          key,
+          name: PRODUCT_NAMES[key] || key, // falls back to the raw key if the product was since removed from the catalog
+          sold: Number(soldRaw) || 0,
+          revenue: Number(revenueRaw) || 0,
+        };
+      })
+    );
+    bestSellers = rows.sort((a, b) => b.sold - a.sold);
+  } catch (err) {
+    console.error("getAnalyticsSummary: best-sellers lookup failed:", err.message);
+  }
+
+  // Chat-to-order conversion: unique paying customers vs everyone who's
+  // ever messaged. Whole-history, not date-limited — with volumes this
+  // low a daily conversion rate would be too noisy to mean anything yet.
+  let paidCustomerCount = 0;
+  try {
+    const paidPhones = (await redisCommand(["SMEMBERS", "analytics:paid_customers"])) || [];
+    paidCustomerCount = paidPhones.length;
+  } catch (err) {
+    console.error("getAnalyticsSummary: paid-customers lookup failed:", err.message);
+  }
+  const totalCustomers = customers.length;
+  const conversionPct = totalCustomers > 0 ? Math.round((paidCustomerCount / totalCustomers) * 1000) / 10 : 0;
+
+  return {
+    trend,
+    bestSellers,
+    conversion: { totalCustomers, paidCustomers: paidCustomerCount, conversionPct },
+  };
+}
+
 // ---------- MESSAGE BUFFERING ----------
 // Real WhatsApp users often fire off several quick messages in a row
 // ("Hi", "I want the hoodie", "can I get discount") instead of one full
@@ -2077,6 +2175,13 @@ function dashboardHtml(key) {
         .notes-box { padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #fdfdfd; }
         .notes-box label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
         .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
+        .trend-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding-top: 16px; }
+        .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+        .trend-bar { width: 100%; background: #1e293b; border-radius: 3px 3px 0 0; min-height: 2px; }
+        .trend-label { font-size: 10px; color: #94a3b8; }
+        .trend-value { font-size: 10px; color: #64748b; white-space: nowrap; }
+        .conversion-stat { font-size: 32px; font-weight: 700; color: #1e293b; }
+        .conversion-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
       </style>
     </head>
     <body>
@@ -2085,6 +2190,7 @@ function dashboardHtml(key) {
         <nav class="tabs">
           <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
           <button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>
+          <button id="tabAnalytics" onclick="switchTab('analytics')">Analytics</button>
         </nav>
         <div class="stats" id="stats"></div>
       </header>
@@ -2160,6 +2266,24 @@ function dashboardHtml(key) {
             <button class="catalog-btn" onclick="saveBankDetails()">Save</button>
           </div>
           <div class="catalog-msg" id="bankMsg"></div>
+        </div>
+      </div>
+      <div class="catalog-view" id="analyticsView" style="display:none;">
+        <div class="catalog-card">
+          <h2>Revenue — last 14 days</h2>
+          <div class="trend-chart" id="trendChart"></div>
+        </div>
+        <div class="catalog-card">
+          <h2>Best sellers</h2>
+          <table class="catalog-table">
+            <thead><tr><th>Product</th><th>Units sold</th><th>Revenue</th></tr></thead>
+            <tbody id="bestSellersBody"></tbody>
+          </table>
+        </div>
+        <div class="catalog-card">
+          <h2>Chat &rarr; order conversion</h2>
+          <div class="conversion-stat" id="conversionStat">&mdash;</div>
+          <div class="conversion-sub" id="conversionSub"></div>
         </div>
       </div>
       <script>
@@ -2376,12 +2500,53 @@ function dashboardHtml(key) {
         }
 
         function switchTab(tab) {
-          const showConversations = tab === "conversations";
-          document.getElementById("conversationsView").style.display = showConversations ? "flex" : "none";
-          document.getElementById("catalogView").style.display = showConversations ? "none" : "block";
-          document.getElementById("tabConversations").className = showConversations ? "active-tab" : "";
-          document.getElementById("tabCatalog").className = showConversations ? "" : "active-tab";
-          if (!showConversations) loadCatalog();
+          document.getElementById("conversationsView").style.display = tab === "conversations" ? "flex" : "none";
+          document.getElementById("catalogView").style.display = tab === "catalog" ? "block" : "none";
+          document.getElementById("analyticsView").style.display = tab === "analytics" ? "block" : "none";
+          document.getElementById("tabConversations").className = tab === "conversations" ? "active-tab" : "";
+          document.getElementById("tabCatalog").className = tab === "catalog" ? "active-tab" : "";
+          document.getElementById("tabAnalytics").className = tab === "analytics" ? "active-tab" : "";
+          if (tab === "catalog") loadCatalog();
+          if (tab === "analytics") loadAnalytics();
+        }
+
+        async function loadAnalytics() {
+          try {
+            const res = await fetch("/api/analytics?key=" + encodeURIComponent(KEY));
+            const data = await res.json();
+            if (data.error) return;
+            renderAnalytics(data);
+          } catch (err) {
+            console.error("analytics load failed", err);
+          }
+        }
+
+        function renderAnalytics(data) {
+          const maxRevenue = Math.max(1, ...data.trend.map((d) => d.revenue));
+          const chart = document.getElementById("trendChart");
+          chart.innerHTML = data.trend.map((d) => {
+            const heightPct = Math.max(Math.round((d.revenue / maxRevenue) * 100), d.revenue > 0 ? 4 : 1);
+            const dayLabel = new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2);
+            const valueLabel = d.revenue > 0 ? (d.revenue >= 1000 ? "N" + Math.round(d.revenue / 1000) + "k" : "N" + d.revenue) : "";
+            const tooltip = d.date + ": N" + d.revenue.toLocaleString() + " (" + d.orders + " order" + (d.orders === 1 ? "" : "s") + ")";
+            return '<div class="trend-bar-wrap" title="' + escapeHtml(tooltip) + '">' +
+              '<div class="trend-value">' + valueLabel + '</div>' +
+              '<div class="trend-bar" style="height:' + heightPct + '%;"></div>' +
+              '<div class="trend-label">' + dayLabel + '</div>' +
+            '</div>';
+          }).join("");
+
+          const body = document.getElementById("bestSellersBody");
+          body.innerHTML = data.bestSellers.length > 0
+            ? data.bestSellers.map((p) =>
+                '<tr><td>' + escapeHtml(p.name) + '</td><td>' + p.sold + '</td><td>N' + p.revenue.toLocaleString() + '</td></tr>'
+              ).join("")
+            : '<tr><td colspan="3" style="color:#94a3b8;">No sales yet.</td></tr>';
+
+          document.getElementById("conversionStat").textContent = data.conversion.conversionPct + "%";
+          document.getElementById("conversionSub").textContent =
+            data.conversion.paidCustomers + " of " + data.conversion.totalCustomers + " conversation" +
+            (data.conversion.totalCustomers === 1 ? "" : "s") + " turned into a paid order";
         }
 
         async function loadCatalog() {
@@ -2643,6 +2808,20 @@ app.post("/api/handback", async (req, res) => {
   }
 });
 
+app.get("/api/analytics", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  try {
+    const customers = await listAllCustomers();
+    const summary = await getAnalyticsSummary(customers);
+    res.json(summary);
+  } catch (err) {
+    console.error("api/analytics failed:", err.message);
+    res.status(500).json({ error: "failed to load analytics" });
+  }
+});
+
 app.post("/api/send-message", async (req, res) => {
   if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
     return res.status(403).json({ error: "unauthorized" });
@@ -2898,6 +3077,7 @@ app.post("/paystack-webhook", async (req, res) => {
     }
 
     await markOrderPaid(reference, order);
+    await recordOrderAnalytics(order);
 
     const productName = PRODUCT_NAMES[order.productKey] || order.productKey;
 
