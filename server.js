@@ -2031,7 +2031,10 @@ function dashboardHtml(key) {
         .stat { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 13px; white-space: nowrap; }
         .stat b { font-size: 15px; }
         .layout { display: flex; height: calc(100vh - 64px); }
-        .list { width: 320px; border-right: 1px solid #e2e8f0; overflow-y: auto; background: white; flex-shrink: 0; }
+        .list-pane { width: 320px; border-right: 1px solid #e2e8f0; background: white; flex-shrink: 0; display: flex; flex-direction: column; }
+        .search-box { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+        .search-box input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .list { flex: 1; overflow-y: auto; }
         .list-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
         .list-item:hover { background: #f8fafc; }
         .list-item.active-row { background: #eff6ff; }
@@ -2069,6 +2072,11 @@ function dashboardHtml(key) {
         .catalog-msg.ok { color: #15803d; }
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
+        .msg-compose { display: flex; gap: 8px; padding: 12px 24px; border-top: 1px solid #e2e8f0; background: white; }
+        .msg-compose input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .notes-box { padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #fdfdfd; }
+        .notes-box label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
+        .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
       </style>
     </head>
     <body>
@@ -2081,7 +2089,10 @@ function dashboardHtml(key) {
         <div class="stats" id="stats"></div>
       </header>
       <div class="layout" id="conversationsView">
-        <div class="list" id="list"><div class="empty">Loading…</div></div>
+        <div class="list-pane">
+          <div class="search-box"><input id="searchBox" placeholder="Search by phone or escalation reason..." oninput="applyFilter()"></div>
+          <div class="list" id="list"><div class="empty">Loading…</div></div>
+        </div>
         <div class="main" id="main"><div class="empty">Select a conversation on the left</div></div>
       </div>
       <div class="catalog-view" id="catalogView" style="display:none;">
@@ -2167,7 +2178,7 @@ function dashboardHtml(key) {
             if (data.error) return;
             customersCache = data.customers;
             renderStats(data.stats);
-            renderList(data.customers);
+            renderList(getFilteredCustomers());
             if (selectedPhone) loadConversation(selectedPhone, false);
           } catch (err) {
             console.error("dashboard load failed", err);
@@ -2180,6 +2191,19 @@ function dashboardHtml(key) {
             '<div class="stat"><b>' + stats.activeToday + '</b> active today</div>' +
             '<div class="stat"><b>' + stats.pausedNow + '</b> paused</div>' +
             '<div class="stat"><b>N' + stats.revenueTodayNaira.toLocaleString() + '</b> today (' + stats.paymentsToday + ' order' + (stats.paymentsToday === 1 ? "" : "s") + ')</div>';
+        }
+
+        function getFilteredCustomers() {
+          const q = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+          if (!q) return customersCache;
+          return customersCache.filter((c) =>
+            (c.phone || "").toLowerCase().indexOf(q) !== -1 ||
+            (c.last_escalation_reason || "").toLowerCase().indexOf(q) !== -1
+          );
+        }
+
+        function applyFilter() {
+          renderList(getFilteredCustomers());
         }
 
         function renderList(customers) {
@@ -2208,7 +2232,7 @@ function dashboardHtml(key) {
 
         async function loadConversation(phone, isClick) {
           selectedPhone = phone;
-          if (isClick) renderList(customersCache); // re-highlight the selected row immediately
+          if (isClick) renderList(getFilteredCustomers()); // re-highlight the selected row immediately
           try {
             const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&key=" + encodeURIComponent(KEY));
             const data = await res.json();
@@ -2229,12 +2253,74 @@ function dashboardHtml(key) {
                 (isPaused ? "Hand back to Amara" : "Take over") +
               '</button>' +
             '</div>' +
-            '<div class="thread" id="thread"></div>';
+            '<div class="thread" id="thread"></div>' +
+            '<div class="msg-compose">' +
+              '<input id="composeInput" placeholder="Type a message to send directly to this customer..." onkeydown="if(event.key===\\'Enter\\') sendManualMessage(\\'' + phone + '\\')">' +
+              '<button class="catalog-btn small" onclick="sendManualMessage(\\'' + phone + '\\')">Send</button>' +
+            '</div>' +
+            '<div class="notes-box">' +
+              '<label>Notes (only visible to you, never sent to the customer or Amara)</label>' +
+              '<textarea id="notesInput">' + escapeHtml((customer && customer.note) || "") + '</textarea><br>' +
+              '<button class="catalog-btn small" onclick="saveNote(\\'' + phone + '\\')" style="margin-top:6px;">Save note</button> ' +
+              '<span class="catalog-msg" id="noteMsg"></span>' +
+            '</div>';
           const threadEl = document.getElementById("thread");
           threadEl.innerHTML = (history && history.length > 0)
             ? history.map((m) => '<div class="bubble ' + (m.role === "user" ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>').join("")
             : '<div class="empty">No messages yet.</div>';
           threadEl.scrollTop = threadEl.scrollHeight;
+        }
+
+        async function sendManualMessage(phone) {
+          const input = document.getElementById("composeInput");
+          const text = input.value.trim();
+          if (!text) return;
+          input.disabled = true;
+          try {
+            const res = await fetch("/api/send-message?key=" + encodeURIComponent(KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: phone, message: text }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              alert(data.error || "Could not send message.");
+              input.disabled = false;
+              return;
+            }
+            input.value = "";
+            input.disabled = false;
+            loadDashboard();
+            loadConversation(phone, false);
+          } catch (err) {
+            alert("Network error, please try again.");
+            input.disabled = false;
+          }
+        }
+
+        async function saveNote(phone) {
+          const note = document.getElementById("notesInput").value;
+          const msg = document.getElementById("noteMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          try {
+            const res = await fetch("/api/note?key=" + encodeURIComponent(KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: phone, note: note }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not save note.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            msg.textContent = "Saved.";
+            msg.className = "catalog-msg ok";
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
         }
 
         async function toggleTakeover(phone, isPaused) {
@@ -2517,6 +2603,51 @@ app.post("/api/handback", async (req, res) => {
   } catch (err) {
     console.error("api/handback failed:", err.message);
     res.status(500).json({ error: "failed to hand back" });
+  }
+});
+
+app.post("/api/send-message", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const phone = req.body?.phone;
+  const text = (req.body?.message || "").trim();
+  if (!phone || !text) return res.status(400).json({ error: "missing phone or message" });
+  try {
+    // Sending a message directly from the dashboard means the owner is now
+    // personally in this thread — auto-pause so Amara doesn't also reply
+    // on top of the owner, same protection as clicking "Take over".
+    await pauseCustomer(phone);
+    const sent = await sendWhatsApp(phone, text);
+    if (!sent) return res.status(502).json({ error: "WhatsApp rejected the message, please try again" });
+    let history = await getConversation(phone);
+    history.push({ role: "assistant", content: text });
+    history = history.slice(-10);
+    await saveConversation(phone, history);
+    console.log(`Dashboard manual message: owner messaged ${phone} directly from the dashboard.`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/send-message failed:", err.message);
+    res.status(500).json({ error: "failed to send message" });
+  }
+});
+
+app.post("/api/note", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const phone = req.body?.phone;
+  const note = req.body?.note ?? "";
+  if (!phone) return res.status(400).json({ error: "missing phone" });
+  try {
+    // Owner-only scratch space per customer — stored on the same customer
+    // hash as everything else, never read by Amara's prompt or shown to
+    // the customer, purely a memory aid for the owner.
+    await upsertCustomer(phone, { note: String(note).slice(0, 2000) });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/note failed:", err.message);
+    res.status(500).json({ error: "failed to save note" });
   }
 });
 
