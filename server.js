@@ -85,6 +85,18 @@ let DELIVERY_FEES = {
   outside: 3500,
 };
 
+// Bank transfer details, offered as a fallback alongside the Paystack
+// payment link (see buildShopProfile's RULES section). Owner-editable
+// from the dashboard's Catalog tab, same live-update + Redis-persist
+// pattern as everything else on this page -- not editable by customers,
+// this is purely an owner-facing setting, same trust boundary as the
+// rest of the dashboard (gated by ADMIN_KEY).
+let BANK_DETAILS = {
+  bankName: "GTBank",
+  accountNumber: "0123456789",
+  accountName: "KP Collections",
+};
+
 // ---------- PRODUCT PHOTOS (self-hosted, no third-party service involved) ----------
 // We generate simple solid-colour placeholder images ourselves, in code,
 // using nothing but Node's built-in zlib. This avoids ever depending on
@@ -219,6 +231,16 @@ async function loadCatalogFromRedis() {
     } else {
       await saveDeliveryFeesToRedis();
     }
+
+    const rawBankDetails = await redisCommand(["GET", "shop:bank_details"]);
+    if (rawBankDetails) {
+      const bd = JSON.parse(rawBankDetails);
+      if (bd.bankName) BANK_DETAILS.bankName = bd.bankName;
+      if (bd.accountNumber) BANK_DETAILS.accountNumber = bd.accountNumber;
+      if (bd.accountName) BANK_DETAILS.accountName = bd.accountName;
+    } else {
+      await saveBankDetailsToRedis();
+    }
   } catch (err) {
     // If Redis is unreachable at startup, keep running on the hardcoded
     // demo catalog rather than crashing the whole server over this.
@@ -244,6 +266,10 @@ async function saveCatalogToRedis() {
 
 async function saveDeliveryFeesToRedis() {
   await redisCommand(["SET", "catalog:delivery_fees", JSON.stringify(DELIVERY_FEES)]);
+}
+
+async function saveBankDetailsToRedis() {
+  await redisCommand(["SET", "shop:bank_details", JSON.stringify(BANK_DETAILS)]);
 }
 
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
@@ -376,10 +402,10 @@ RULES:
 - Payment: the automatic payment link (see SENDING A PAYMENT LINK below)
   is the preferred way, use it once an order is confirmed. If a customer
   specifically asks to pay by direct bank transfer instead, that's fine
-  too: bank transfer to KP Collections, GTBank 0123456789. Ask them to
-  send a screenshot after transferring, and say the owner will confirm
-  it shortly. Don't bring up bank transfer yourself unprompted, only
-  offer it if the customer asks for it.
+  too: bank transfer to ${BANK_DETAILS.accountName}, ${BANK_DETAILS.bankName} ${BANK_DETAILS.accountNumber}.
+  Ask them to send a screenshot after transferring, and say the owner
+  will confirm it shortly. Don't bring up bank transfer yourself
+  unprompted, only offer it if the customer asks for it.
 - If you are not sure about something (custom orders, complaints, refunds,
   anything outside the catalog), do NOT guess. Say the owner will reply
   shortly, and keep it warm.
@@ -2104,6 +2130,26 @@ function dashboardHtml(key) {
           </div>
           <div class="catalog-msg" id="feesMsg"></div>
         </div>
+        <div class="catalog-card">
+          <h2>Bank transfer details</h2>
+          <div style="font-size:12px;color:#64748b;margin-bottom:10px;">Offered to a customer only if they specifically ask to pay by bank transfer instead of the payment link.</div>
+          <div class="fees-row">
+            <div>
+              <label>Bank name</label>
+              <input id="bankName" placeholder="e.g. GTBank">
+            </div>
+            <div>
+              <label>Account number</label>
+              <input id="bankAccountNumber" placeholder="0123456789">
+            </div>
+            <div>
+              <label>Account name</label>
+              <input id="bankAccountName" placeholder="e.g. KP Collections">
+            </div>
+            <button class="catalog-btn" onclick="saveBankDetails()">Save</button>
+          </div>
+          <div class="catalog-msg" id="bankMsg"></div>
+        </div>
       </div>
       <script>
         const KEY = ${JSON.stringify(key)};
@@ -2220,13 +2266,13 @@ function dashboardHtml(key) {
             const res = await fetch("/api/catalog?key=" + encodeURIComponent(KEY));
             const data = await res.json();
             if (data.error) return;
-            renderCatalog(data.products, data.deliveryFees);
+            renderCatalog(data.products, data.deliveryFees, data.bankDetails);
           } catch (err) {
             console.error("catalog load failed", err);
           }
         }
 
-        function renderCatalog(products, deliveryFees) {
+        function renderCatalog(products, deliveryFees, bankDetails) {
           const body = document.getElementById("catalogTableBody");
           const keys = Object.keys(products);
           body.innerHTML = keys.length > 0
@@ -2248,6 +2294,12 @@ function dashboardHtml(key) {
 
           document.getElementById("feeLagos").value = deliveryFees.lagos;
           document.getElementById("feeOutside").value = deliveryFees.outside;
+
+          if (bankDetails) {
+            document.getElementById("bankName").value = bankDetails.bankName || "";
+            document.getElementById("bankAccountNumber").value = bankDetails.accountNumber || "";
+            document.getElementById("bankAccountName").value = bankDetails.accountName || "";
+          }
         }
 
         function editProduct(key) {
@@ -2330,6 +2382,35 @@ function dashboardHtml(key) {
             const data = await res.json();
             if (!res.ok || data.error) {
               msg.textContent = data.error || "Could not save delivery fees.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            msg.textContent = data.warning || "Saved.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function saveBankDetails() {
+          const msg = document.getElementById("bankMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const body = {
+            bankName: document.getElementById("bankName").value,
+            accountNumber: document.getElementById("bankAccountNumber").value,
+            accountName: document.getElementById("bankAccountName").value,
+          };
+          try {
+            const res = await fetch("/api/catalog/bank-details?key=" + encodeURIComponent(KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not save bank details.";
               msg.className = "catalog-msg error";
               return;
             }
@@ -2461,7 +2542,42 @@ app.get("/api/catalog", (req, res) => {
       imageUrl: PRODUCT_IMAGES[key],
     };
   }
-  res.json({ products, deliveryFees: DELIVERY_FEES });
+  res.json({ products, deliveryFees: DELIVERY_FEES, bankDetails: BANK_DETAILS });
+});
+
+app.post("/api/catalog/bank-details", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const bankName = String(req.body?.bankName || "").trim();
+  const accountNumber = String(req.body?.accountNumber || "").trim();
+  const accountName = String(req.body?.accountName || "").trim();
+
+  if (!bankName || !accountNumber || !accountName) {
+    return res.status(400).json({ error: "Bank name, account number, and account name are all required." });
+  }
+  if (!/^\d{6,20}$/.test(accountNumber)) {
+    return res.status(400).json({ error: "Account number should be digits only (6-20 of them)." });
+  }
+
+  // Same pattern as products/delivery fees: update the live value Amara's
+  // prompt reads from first (so it's correct on the very next reply
+  // regardless of what happens next), then persist to Redis.
+  BANK_DETAILS.bankName = bankName;
+  BANK_DETAILS.accountNumber = accountNumber;
+  BANK_DETAILS.accountName = accountName;
+  console.log(`Catalog: bank details updated from the dashboard (${bankName}, ${accountName}).`);
+
+  try {
+    await saveBankDetailsToRedis();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/catalog/bank-details: live update succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
+    });
+  }
 });
 
 app.post("/api/catalog/product", async (req, res) => {
