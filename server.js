@@ -56,21 +56,31 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 // Same "prompt is a suggestion, code is the guarantee" pattern as the
 // other backstops in this file (banned emojis, photo resends), just
 // applied to money, where it matters most.
-const PRODUCT_PRICES = {
+//
+// These start out as the hardcoded demo catalog below, but from here on
+// they're editable live from the dashboard's Catalog tab (add/edit/remove
+// a product, change delivery fees) and persisted in Redis, so a restart
+// or redeploy never reverts an owner's real edits back to this demo data.
+// They're declared with `let` and mutated in place (see loadCatalogFromRedis
+// and the /api/catalog routes near the bottom of this file) rather than
+// reassigned, so every other place in this file that reads from these same
+// objects automatically sees the current catalog without needing its own
+// Redis call.
+let PRODUCT_PRICES = {
   tee: 7500,
   hoodie: 18000,
   jacket: 25000,
   cap: 5000,
   joggers: 15500,
 };
-const PRODUCT_NAMES = {
+let PRODUCT_NAMES = {
   tee: "Plain white tee",
   hoodie: "Black graphic hoodie",
   jacket: "Denim jacket",
   cap: "Classic baseball cap",
   joggers: "Cargo joggers",
 };
-const DELIVERY_FEES = {
+let DELIVERY_FEES = {
   lagos: 2000,
   outside: 3500,
 };
@@ -123,7 +133,11 @@ function makeSolidPng(width, height, r, g, b) {
   return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
 }
 
-// Generate each product's placeholder once at startup and keep it in memory.
+// Placeholders for the original 5 demo products, generated once at
+// startup. Any product added later from the dashboard's Catalog tab
+// doesn't have a fixed color baked in here, so its placeholder gets
+// generated the first time it's actually requested (see getOrMakePlaceholder
+// below) and cached from then on, rather than needing a server restart.
 const PRODUCT_IMAGE_BUFFERS = {
   tee: makeSolidPng(600, 600, 245, 245, 245),
   hoodie: makeSolidPng(600, 600, 26, 26, 26),
@@ -132,16 +146,34 @@ const PRODUCT_IMAGE_BUFFERS = {
   joggers: makeSolidPng(600, 600, 58, 58, 58),
 };
 
+// A new product (added from the dashboard, with no photo URL of its own)
+// still needs *some* image to send, or the [PHOTO: key] flow would just
+// fail. Derive a color deterministically from the key so different new
+// products at least look visually distinct from one another, rather than
+// every single one defaulting to identical grey.
+function getOrMakePlaceholder(key) {
+  if (PRODUCT_IMAGE_BUFFERS[key]) return PRODUCT_IMAGE_BUFFERS[key];
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  const r = 40 + (hash % 180);
+  const g = 40 + ((hash >> 8) % 180);
+  const b = 40 + ((hash >> 16) % 180);
+  PRODUCT_IMAGE_BUFFERS[key] = makeSolidPng(600, 600, r, g, b);
+  return PRODUCT_IMAGE_BUFFERS[key];
+}
+
 // Serve them at simple, predictable URLs that WhatsApp can fetch.
 app.get("/images/:key.png", (req, res) => {
-  const buffer = PRODUCT_IMAGE_BUFFERS[req.params.key];
-  if (!buffer) return res.sendStatus(404);
   res.set("Content-Type", "image/png");
-  res.send(buffer);
+  res.send(getOrMakePlaceholder(req.params.key));
 });
 
-// These are the links Amara actually sends. Swap to real photo URLs later.
-const PRODUCT_IMAGES = {
+// The links Amara actually sends. A product gets its own real photo URL
+// here if the owner pasted one in when adding/editing it on the dashboard;
+// otherwise it falls back to the self-hosted placeholder above. Mutated
+// in place by loadCatalogFromRedis and the /api/catalog routes, same
+// pattern as PRODUCT_PRICES/PRODUCT_NAMES above.
+let PRODUCT_IMAGES = {
   tee: `${BASE_URL}/images/tee.png`,
   hoodie: `${BASE_URL}/images/hoodie.png`,
   jacket: `${BASE_URL}/images/jacket.png`,
@@ -149,25 +181,99 @@ const PRODUCT_IMAGES = {
   joggers: `${BASE_URL}/images/joggers.png`,
 };
 
+// ---------- CATALOG PERSISTENCE (Redis-backed, editable from the dashboard) ----------
+// PRODUCT_PRICES / PRODUCT_NAMES / PRODUCT_IMAGES above are the live,
+// in-memory catalog everything else in this file reads from. These
+// functions are what keep that in sync with Redis, so an owner's edits
+// from the dashboard survive a restart or redeploy instead of quietly
+// reverting to the demo data hardcoded above.
+async function loadCatalogFromRedis() {
+  try {
+    const rawProducts = await redisCommand(["GET", "catalog:products"]);
+    if (rawProducts) {
+      const products = JSON.parse(rawProducts);
+      // Replace the in-memory catalog wholesale with what's actually
+      // stored, so a product removed on a previous edit doesn't come
+      // back from these hardcoded defaults after a restart.
+      for (const key of Object.keys(PRODUCT_PRICES)) delete PRODUCT_PRICES[key];
+      for (const key of Object.keys(PRODUCT_NAMES)) delete PRODUCT_NAMES[key];
+      for (const key of Object.keys(PRODUCT_IMAGES)) delete PRODUCT_IMAGES[key];
+      for (const [key, p] of Object.entries(products)) {
+        PRODUCT_PRICES[key] = p.price;
+        PRODUCT_NAMES[key] = p.name;
+        PRODUCT_IMAGES[key] = p.imageUrl || `${BASE_URL}/images/${key}.png`;
+      }
+      console.log(`Catalog loaded from Redis: ${Object.keys(PRODUCT_PRICES).length} product(s).`);
+    } else {
+      // First run ever: nothing saved yet, so persist today's hardcoded
+      // demo catalog as the real starting point from now on.
+      await saveCatalogToRedis();
+      console.log("No catalog in Redis yet, saved the built-in demo catalog as the starting point.");
+    }
+
+    const rawFees = await redisCommand(["GET", "catalog:delivery_fees"]);
+    if (rawFees) {
+      const fees = JSON.parse(rawFees);
+      if (typeof fees.lagos === "number") DELIVERY_FEES.lagos = fees.lagos;
+      if (typeof fees.outside === "number") DELIVERY_FEES.outside = fees.outside;
+    } else {
+      await saveDeliveryFeesToRedis();
+    }
+  } catch (err) {
+    // If Redis is unreachable at startup, keep running on the hardcoded
+    // demo catalog rather than crashing the whole server over this.
+    console.error("loadCatalogFromRedis failed, starting on hardcoded demo catalog instead:", err.message);
+  }
+}
+
+async function saveCatalogToRedis() {
+  const products = {};
+  for (const key of Object.keys(PRODUCT_PRICES)) {
+    const selfHostedUrl = `${BASE_URL}/images/${key}.png`;
+    products[key] = {
+      name: PRODUCT_NAMES[key],
+      price: PRODUCT_PRICES[key],
+      // Only persist an imageUrl when it's a real external photo the
+      // owner supplied -- a self-hosted placeholder link is regenerated
+      // from the key on every load, no need to store it explicitly.
+      imageUrl: PRODUCT_IMAGES[key] && PRODUCT_IMAGES[key] !== selfHostedUrl ? PRODUCT_IMAGES[key] : undefined,
+    };
+  }
+  await redisCommand(["SET", "catalog:products", JSON.stringify(products)]);
+}
+
+async function saveDeliveryFeesToRedis() {
+  await redisCommand(["SET", "catalog:delivery_fees", JSON.stringify(DELIVERY_FEES)]);
+}
+
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
-const SHOP_PROFILE = `
+// This used to be one static template literal with the catalog and
+// delivery fees typed directly into the prompt text. Now that both are
+// editable live from the dashboard's Catalog tab (see PRODUCT_PRICES,
+// PRODUCT_NAMES, DELIVERY_FEES above), the prompt has to be rebuilt fresh
+// from whatever the current catalog actually is every time Amara replies
+// — otherwise an owner could correct a price on the dashboard and Amara
+// would keep quoting the old one from a stale, baked-in copy. Everything
+// else about the prompt is unchanged.
+function buildShopProfile() {
+  const catalogLines = Object.keys(PRODUCT_NAMES)
+    .map((key, i) => `${i + 1}. ${PRODUCT_NAMES[key]} — N${PRODUCT_PRICES[key].toLocaleString()} (key: ${key})`)
+    .join("\n");
+
+  return `
 You are "Amara", the sales assistant for KP Collections, a small Nigerian
 online store that sells on WhatsApp. You text like a real Nigerian shop
 girl chatting with a customer, not like an assistant or a chatbot. Never
 use em dashes.
 
 THE CATALOG (the ONLY products that exist — never invent others):
-1. Plain white tee — N7,500 (key: tee)
-2. Black graphic hoodie — N18,000 (key: hoodie)
-3. Denim jacket — N25,000 (key: jacket)
-4. Classic baseball cap — N5,000 (key: cap)
-5. Cargo joggers — N15,500 (key: joggers)
+${catalogLines}
 
 SENDING PHOTOS:
 - You can now send a product photo along with your text reply. To do
   this, add a tag at the very end of your message, on its own, in this
-  exact format: [PHOTO: key] using the key from the catalog above (tee,
-  hoodie, jacket, cap, or joggers). This tag is invisible to the customer,
+  exact format: [PHOTO: key] using the exact key shown next to the
+  product in the catalog above. This tag is invisible to the customer,
   it gets replaced by the actual photo, so never mention the tag itself
   or explain it.
 - Send a photo when it naturally helps: when a customer asks to see an
@@ -266,10 +372,10 @@ NEGOTIATION AND PRICE INTEGRITY (read this carefully):
 RULES:
 - Quote prices EXACTLY as listed (never change or guess a price), even
   when writing them the casual "18k" way.
-- Delivery: Lagos N2,000 (1-2 days), outside Lagos N3,500 (2-4 days).
-- Payment: bank transfer to KP Collections, GTBank 0123456789. Ask the
-  customer to send a screenshot after transfer, and say the owner will
-  confirm it shortly.
+- Delivery: Lagos N${DELIVERY_FEES.lagos.toLocaleString()} (1-2 days), outside Lagos N${DELIVERY_FEES.outside.toLocaleString()} (2-4 days).
+- Payment happens through the payment link the system sends (see SENDING
+  A PAYMENT LINK below) once an order is confirmed. Don't offer manual
+  bank transfer as an alternative, and don't invent account details.
 - If you are not sure about something (custom orders, complaints, refunds,
   anything outside the catalog), do NOT guess. Say the owner will reply
   shortly, and keep it warm.
@@ -280,8 +386,8 @@ SENDING A PAYMENT LINK:
   catalog item AND told you which delivery zone they're in (Lagos, or
   outside Lagos), add an invisible tag at the very end of your message,
   on its own, in this exact format: [PAY: key, zone] using the product
-  key from the catalog (tee, hoodie, jacket, cap, or joggers) and zone as
-  exactly "lagos" or "outside". This tag is invisible to the customer, it
+  key from the catalog above and zone as exactly "lagos" or "outside".
+  This tag is invisible to the customer, it
   triggers a real, correct payment link to be generated and sent right
   after your message, so never mention the tag itself or explain it.
 - You do NOT need to calculate or state the exact total yourself. The
@@ -322,6 +428,7 @@ ALERTING THE OWNER:
   not).
 - Only ever one [ESCALATE: reason] tag per message.
 `;
+}
 
 // ---------- PERSISTENT MEMORY (Upstash Redis via REST) ----------
 // Each customer's conversation is stored under key "conv:<phone_number>"
@@ -1127,7 +1234,8 @@ async function askAI(history, dynamicReminder = "") {
     // out) get appended fresh to the system prompt on every single call,
     // rather than relying on them surviving inside the rolling chat
     // history, which can get pushed out during a long or busy conversation.
-    const systemPrompt = dynamicReminder ? `${SHOP_PROFILE}\n\n${dynamicReminder}` : SHOP_PROFILE;
+    const shopProfile = buildShopProfile();
+    const systemPrompt = dynamicReminder ? `${shopProfile}\n\n${dynamicReminder}` : shopProfile;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -1886,6 +1994,9 @@ function dashboardHtml(key) {
         header { background: #1e293b; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
         header h1 { font-size: 18px; margin: 0; }
         header a { color: #93c5fd; font-size: 12px; }
+        nav.tabs { display: flex; gap: 4px; }
+        nav.tabs button { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+        nav.tabs button.active-tab { background: white; color: #1e293b; border-color: white; font-weight: 600; }
         .stats { display: flex; gap: 12px; flex-wrap: wrap; }
         .stat { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 13px; white-space: nowrap; }
         .stat b { font-size: 15px; }
@@ -1910,16 +2021,85 @@ function dashboardHtml(key) {
         button.takeover-btn.take { background: #b45309; color: white; }
         button.takeover-btn.hand { background: #15803d; color: white; }
         .empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
+        .catalog-view { padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; height: calc(100vh - 64px); }
+        .catalog-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .catalog-card h2 { font-size: 15px; margin: 0 0 14px; }
+        table.catalog-table { width: 100%; border-collapse: collapse; }
+        table.catalog-table th, table.catalog-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+        table.catalog-table th { color: #64748b; font-weight: 600; font-size: 12px; }
+        table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: #f1f5f9; }
+        .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
+        .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
+        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .catalog-btn { background: #1e293b; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .catalog-btn.danger { background: transparent; color: #dc2626; font-weight: 500; padding: 4px 8px; }
+        .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
+        .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+        .catalog-msg.error { color: #dc2626; }
+        .catalog-msg.ok { color: #15803d; }
+        .fees-row { display: flex; gap: 16px; align-items: end; }
+        .fees-row div { width: 160px; }
       </style>
     </head>
     <body>
       <header>
         <h1>KP Studio — Live Dashboard &nbsp; <a href="/customers?key=${key}">plain table view</a></h1>
+        <nav class="tabs">
+          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
+          <button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>
+        </nav>
         <div class="stats" id="stats"></div>
       </header>
-      <div class="layout">
+      <div class="layout" id="conversationsView">
         <div class="list" id="list"><div class="empty">Loading…</div></div>
         <div class="main" id="main"><div class="empty">Select a conversation on the left</div></div>
+      </div>
+      <div class="catalog-view" id="catalogView" style="display:none;">
+        <div class="catalog-card">
+          <h2>Products</h2>
+          <table class="catalog-table" id="catalogTable">
+            <thead><tr><th></th><th>Name</th><th>Key</th><th>Price</th><th></th></tr></thead>
+            <tbody id="catalogTableBody"></tbody>
+          </table>
+          <div class="catalog-form">
+            <div>
+              <label>Key (edit uses existing key)</label>
+              <input id="pKey" placeholder="e.g. tee">
+            </div>
+            <div>
+              <label>Name</label>
+              <input id="pName" placeholder="e.g. Plain white tee">
+            </div>
+            <div>
+              <label>Price (N)</label>
+              <input id="pPrice" type="number" min="1" placeholder="7500">
+            </div>
+            <button class="catalog-btn" onclick="saveProduct()">Save product</button>
+          </div>
+          <div class="catalog-form" style="grid-template-columns: 1fr auto;">
+            <div>
+              <label>Photo URL (optional — leave blank for an auto placeholder)</label>
+              <input id="pImageUrl" placeholder="https://...">
+            </div>
+            <div></div>
+          </div>
+          <div class="catalog-msg" id="catalogMsg"></div>
+        </div>
+        <div class="catalog-card">
+          <h2>Delivery fees</h2>
+          <div class="fees-row">
+            <div>
+              <label>Lagos (N)</label>
+              <input id="feeLagos" type="number" min="0">
+            </div>
+            <div>
+              <label>Outside Lagos (N)</label>
+              <input id="feeOutside" type="number" min="0">
+            </div>
+            <button class="catalog-btn" onclick="saveDeliveryFees()">Save fees</button>
+          </div>
+          <div class="catalog-msg" id="feesMsg"></div>
+        </div>
       </div>
       <script>
         const KEY = ${JSON.stringify(key)};
@@ -2022,6 +2202,141 @@ function dashboardHtml(key) {
           }
         }
 
+        function switchTab(tab) {
+          const showConversations = tab === "conversations";
+          document.getElementById("conversationsView").style.display = showConversations ? "flex" : "none";
+          document.getElementById("catalogView").style.display = showConversations ? "none" : "block";
+          document.getElementById("tabConversations").className = showConversations ? "active-tab" : "";
+          document.getElementById("tabCatalog").className = showConversations ? "" : "active-tab";
+          if (!showConversations) loadCatalog();
+        }
+
+        async function loadCatalog() {
+          try {
+            const res = await fetch("/api/catalog?key=" + encodeURIComponent(KEY));
+            const data = await res.json();
+            if (data.error) return;
+            renderCatalog(data.products, data.deliveryFees);
+          } catch (err) {
+            console.error("catalog load failed", err);
+          }
+        }
+
+        function renderCatalog(products, deliveryFees) {
+          const body = document.getElementById("catalogTableBody");
+          const keys = Object.keys(products);
+          body.innerHTML = keys.length > 0
+            ? keys.map((k) => {
+                const p = products[k];
+                return '<tr>' +
+                  '<td><img src="' + escapeHtml(p.imageUrl) + '" alt=""></td>' +
+                  '<td>' + escapeHtml(p.name) + '</td>' +
+                  '<td><code>' + escapeHtml(k) + '</code></td>' +
+                  '<td>N' + Number(p.price).toLocaleString() + '</td>' +
+                  '<td>' +
+                    '<button class="catalog-btn small" onclick="editProduct(\\'' + k + '\\')">Edit</button> ' +
+                    '<button class="catalog-btn danger" onclick="deleteProduct(\\'' + k + '\\')">Remove</button>' +
+                  '</td>' +
+                '</tr>';
+              }).join("")
+            : '<tr><td colspan="5" style="color:#94a3b8;">No products yet.</td></tr>';
+          window.catalogCache = products;
+
+          document.getElementById("feeLagos").value = deliveryFees.lagos;
+          document.getElementById("feeOutside").value = deliveryFees.outside;
+        }
+
+        function editProduct(key) {
+          const p = (window.catalogCache || {})[key];
+          if (!p) return;
+          document.getElementById("pKey").value = key;
+          document.getElementById("pName").value = p.name;
+          document.getElementById("pPrice").value = p.price;
+          document.getElementById("pImageUrl").value = (p.imageUrl && p.imageUrl.indexOf("/images/") === -1) ? p.imageUrl : "";
+          document.getElementById("pKey").focus();
+        }
+
+        async function saveProduct() {
+          const msg = document.getElementById("catalogMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const body = {
+            key: document.getElementById("pKey").value,
+            name: document.getElementById("pName").value,
+            price: document.getElementById("pPrice").value,
+            imageUrl: document.getElementById("pImageUrl").value,
+          };
+          try {
+            const res = await fetch("/api/catalog/product?key=" + encodeURIComponent(KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not save product.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            msg.textContent = data.warning || "Saved.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+            document.getElementById("pKey").value = "";
+            document.getElementById("pName").value = "";
+            document.getElementById("pPrice").value = "";
+            document.getElementById("pImageUrl").value = "";
+            loadCatalog();
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function deleteProduct(key) {
+          if (!confirm('Remove "' + key + '" from the catalog? Amara will no longer be able to sell it.')) return;
+          try {
+            const res = await fetch("/api/catalog/product/" + encodeURIComponent(key) + "?key=" + encodeURIComponent(KEY), {
+              method: "DELETE",
+            });
+            const data = await res.json();
+            if (data && data.warning) {
+              const msg = document.getElementById("catalogMsg");
+              msg.textContent = data.warning;
+              msg.className = "catalog-msg error";
+            }
+            loadCatalog();
+          } catch (err) {
+            console.error("delete product failed", err);
+          }
+        }
+
+        async function saveDeliveryFees() {
+          const msg = document.getElementById("feesMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const body = {
+            lagos: document.getElementById("feeLagos").value,
+            outside: document.getElementById("feeOutside").value,
+          };
+          try {
+            const res = await fetch("/api/catalog/delivery-fees?key=" + encodeURIComponent(KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not save delivery fees.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            msg.textContent = data.warning || "Saved.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
         loadDashboard();
         setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
       </script>
@@ -2117,6 +2432,133 @@ app.post("/api/handback", async (req, res) => {
   } catch (err) {
     console.error("api/handback failed:", err.message);
     res.status(500).json({ error: "failed to hand back" });
+  }
+});
+
+// ---------- CATALOG MANAGEMENT (Stage 4 dashboard, Catalog tab) ----------
+// Add, edit and remove products, and change delivery fees, straight from
+// the dashboard instead of needing a code change and a redeploy every
+// time. Every edit here updates the SAME in-memory PRODUCT_PRICES /
+// PRODUCT_NAMES / PRODUCT_IMAGES / DELIVERY_FEES objects that Amara's
+// prompt, the payment hard-backstop, and the photo-sending code all
+// already read from, so a saved change takes effect on the very next
+// customer message, no restart needed, and is also persisted to Redis so
+// it survives one.
+
+app.get("/api/catalog", (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const products = {};
+  for (const key of Object.keys(PRODUCT_PRICES)) {
+    products[key] = {
+      name: PRODUCT_NAMES[key],
+      price: PRODUCT_PRICES[key],
+      imageUrl: PRODUCT_IMAGES[key],
+    };
+  }
+  res.json({ products, deliveryFees: DELIVERY_FEES });
+});
+
+app.post("/api/catalog/product", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const { key, name, price, imageUrl } = req.body || {};
+
+  // Same "code is the guarantee" rule as everywhere else money-adjacent
+  // in this file: validate for real here, don't just trust whatever the
+  // dashboard's own JS happened to send.
+  const cleanKey = String(key || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const cleanName = String(name || "").trim();
+  const cleanPrice = Number(price);
+  const cleanImageUrl = imageUrl ? String(imageUrl).trim() : "";
+
+  if (!cleanKey) {
+    return res.status(400).json({ error: "Product key is required (letters, numbers, - and _ only)." });
+  }
+  if (!cleanName) {
+    return res.status(400).json({ error: "Product name is required." });
+  }
+  if (!Number.isFinite(cleanPrice) || cleanPrice <= 0) {
+    return res.status(400).json({ error: "Price must be a positive number." });
+  }
+  if (cleanImageUrl && !/^https?:\/\//i.test(cleanImageUrl)) {
+    return res.status(400).json({ error: "Image URL must start with http:// or https://" });
+  }
+
+  // Update the live catalog first -- this alone is what Amara and the
+  // payment backstop actually read from, so the change is already in
+  // effect for the very next customer message regardless of what happens
+  // next. Persisting to Redis is what makes it survive a restart; if that
+  // one part fails (a transient Upstash hiccup), say so honestly rather
+  // than silently, but don't report the whole save as failed when the
+  // live behavior change already succeeded.
+  PRODUCT_NAMES[cleanKey] = cleanName;
+  PRODUCT_PRICES[cleanKey] = cleanPrice;
+  PRODUCT_IMAGES[cleanKey] = cleanImageUrl || `${BASE_URL}/images/${cleanKey}.png`;
+  console.log(`Catalog: product "${cleanKey}" saved (${cleanName}, N${cleanPrice}) from the dashboard.`);
+
+  try {
+    await saveCatalogToRedis();
+    res.json({ ok: true, key: cleanKey });
+  } catch (err) {
+    console.error("api/catalog/product: live update succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      key: cleanKey,
+      warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
+    });
+  }
+});
+
+app.delete("/api/catalog/product/:key", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const key = req.params.key;
+  if (!PRODUCT_PRICES[key]) {
+    return res.status(404).json({ error: "no such product" });
+  }
+  delete PRODUCT_PRICES[key];
+  delete PRODUCT_NAMES[key];
+  delete PRODUCT_IMAGES[key];
+  console.log(`Catalog: product "${key}" removed from the dashboard.`);
+
+  try {
+    await saveCatalogToRedis();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/catalog/product delete: live removal succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      warning: "Removed and live now, but couldn't persist to storage -- it may come back if the server restarts before you try again.",
+    });
+  }
+});
+
+app.post("/api/catalog/delivery-fees", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const lagos = Number(req.body?.lagos);
+  const outside = Number(req.body?.outside);
+  if (!Number.isFinite(lagos) || lagos < 0 || !Number.isFinite(outside) || outside < 0) {
+    return res.status(400).json({ error: "Both delivery fees must be numbers, 0 or higher." });
+  }
+  DELIVERY_FEES.lagos = lagos;
+  DELIVERY_FEES.outside = outside;
+  console.log(`Catalog: delivery fees updated from the dashboard (lagos=${lagos}, outside=${outside}).`);
+
+  try {
+    await saveDeliveryFeesToRedis();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/catalog/delivery-fees: live update succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
+    });
   }
 });
 
@@ -2223,4 +2665,10 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+// Load the real catalog from Redis (or persist the demo one as the
+// starting point, if this is the very first run) before accepting any
+// traffic, so the first webhook or dashboard request never sees stale
+// hardcoded data instead of an owner's actual saved edits.
+loadCatalogFromRedis().finally(() => {
+  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+});
