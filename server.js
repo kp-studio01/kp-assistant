@@ -373,9 +373,13 @@ RULES:
 - Quote prices EXACTLY as listed (never change or guess a price), even
   when writing them the casual "18k" way.
 - Delivery: Lagos N${DELIVERY_FEES.lagos.toLocaleString()} (1-2 days), outside Lagos N${DELIVERY_FEES.outside.toLocaleString()} (2-4 days).
-- Payment happens through the payment link the system sends (see SENDING
-  A PAYMENT LINK below) once an order is confirmed. Don't offer manual
-  bank transfer as an alternative, and don't invent account details.
+- Payment: the automatic payment link (see SENDING A PAYMENT LINK below)
+  is the preferred way, use it once an order is confirmed. If a customer
+  specifically asks to pay by direct bank transfer instead, that's fine
+  too: bank transfer to KP Collections, GTBank 0123456789. Ask them to
+  send a screenshot after transferring, and say the owner will confirm
+  it shortly. Don't bring up bank transfer yourself unprompted, only
+  offer it if the customer asks for it.
 - If you are not sure about something (custom orders, complaints, refunds,
   anything outside the catalog), do NOT guess. Say the owner will reply
   shortly, and keep it warm.
