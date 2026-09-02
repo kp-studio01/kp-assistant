@@ -532,6 +532,59 @@ async function getPhotosSent(phone) {
   }
 }
 
+// Meta accepting a photo send only means it was QUEUED, not delivered --
+// it fetches the image URL itself afterward, and if that fails, it tells
+// us later via a separate "failed" status event, not the original API
+// response. Without this, a photo we marked "sent" could have actually
+// never reached the customer, with nothing correcting that record.
+async function unmarkPhotoSent(phone, photoKey) {
+  try {
+    await redisCommand(["SREM", `photos_sent:${phone}`, photoKey]);
+  } catch (err) {
+    console.error(`unmarkPhotoSent failed for ${phone}:`, err.message);
+  }
+}
+
+// ---------- Tracking in-flight photo sends, so an async delivery failure
+// can be traced back to exactly who/what it was ----------
+// This is what closes the gap that caused "photo not delivering to
+// customer, tried twice": Meta returned success on the initial API call
+// both times (so our old code marked it sent and moved on), then reported
+// the real failure later as a status event with nothing tying it back to
+// a customer or photo. Keyed by WhatsApp's own message id, short-lived
+// (failures are reported within minutes, not days).
+async function trackPendingPhotoSend(messageId, phone, photoKey) {
+  try {
+    await redisCommand([
+      "SET",
+      `pending_photo:${messageId}`,
+      JSON.stringify({ phone, photoKey }),
+      "EX",
+      "86400",
+    ]);
+  } catch (err) {
+    console.error(`trackPendingPhotoSend failed for ${messageId}:`, err.message);
+  }
+}
+
+async function getPendingPhotoSend(messageId) {
+  try {
+    const raw = await redisCommand(["GET", `pending_photo:${messageId}`]);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error(`getPendingPhotoSend failed for ${messageId}:`, err.message);
+    return null;
+  }
+}
+
+async function clearPendingPhotoSend(messageId) {
+  try {
+    await redisCommand(["DEL", `pending_photo:${messageId}`]);
+  } catch (err) {
+    console.error(`clearPendingPhotoSend failed for ${messageId}:`, err.message);
+  }
+}
+
 // ---------- PAYSTACK PAYMENT LINKS ----------
 // Turns a confirmed order into a real, payable link, and later confirms
 // automatically the moment Paystack tells us it's actually been paid
@@ -648,6 +701,47 @@ app.post("/webhook", async (req, res) => {
             "DELIVERY FAILED:",
             JSON.stringify(status.errors || status, null, 2)
           );
+
+          // If this was a product photo we thought went out fine, Meta
+          // just told us otherwise: it accepted the send, then couldn't
+          // actually deliver the image. Left alone, the customer had
+          // already been told "here you go!" and our own tracking said
+          // this photo was "already sent" -- so if they followed up
+          // ("did that come through?"), the resend-suppression logic
+          // would brush them off instead of retrying. Fixed here, in
+          // code, rather than relying on the AI to notice on some later
+          // turn, which is exactly what let this go unnoticed twice.
+          const pending = await getPendingPhotoSend(status.id);
+          if (pending) {
+            await clearPendingPhotoSend(status.id);
+            await unmarkPhotoSent(pending.phone, pending.photoKey);
+
+            await sendWhatsApp(
+              pending.phone,
+              "Ah, that photo didn't actually go through on my end, sending it again now, one sec."
+            );
+            const retry = await sendWhatsAppImage(
+              pending.phone,
+              PRODUCT_IMAGES[pending.photoKey]
+            );
+            if (retry.success) {
+              await markPhotoSent(pending.phone, pending.photoKey);
+              if (retry.messageId) {
+                await trackPendingPhotoSend(retry.messageId, pending.phone, pending.photoKey);
+              }
+            }
+
+            // Owner gets told either way. A photo that silently failed to
+            // deliver once is worth knowing about even if the retry just
+            // fixed it, and this alert fires from code, not from the AI
+            // choosing to mention it, so it can't get missed again.
+            await sendOwnerAlert(
+              pending.phone,
+              `Photo delivery failed for ${pending.photoKey} (WhatsApp couldn't deliver it)` +
+                (retry.success ? ", auto-retried and it went through" : ", retry also failed"),
+              `[product photo: ${pending.photoKey}]`
+            );
+          }
         }
       }
       return; // status events aren't customer messages, nothing more to do
@@ -889,12 +983,31 @@ async function processBufferedTurn(from) {
         await saveConversation(from, clarifyHistory);
       } else {
         await new Promise((resolve) => setTimeout(resolve, 900));
-        const sent = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
-        if (sent) {
+        const imageResult = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
+        if (imageResult.success) {
           console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
           await markPhotoSent(from, photoKey); // durable, survives everything
+          if (imageResult.messageId) {
+            // Meta accepting the call isn't proof it actually reached the
+            // customer -- see the /webhook "failed" status handling below,
+            // which is what catches it if this one silently doesn't land.
+            await trackPendingPhotoSend(imageResult.messageId, from, photoKey);
+          }
         } else {
+          // A hard, immediate rejection from the API (bad token, bad
+          // format, etc). Don't just log it and leave the customer with
+          // an empty promise -- say so, and get the owner involved right
+          // away rather than hoping a future AI turn notices and tags it.
           console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
+          await sendWhatsApp(
+            from,
+            "Hmm, that photo isn't sending from my side right now, let me flag this and sort it out."
+          );
+          await sendOwnerAlert(
+            from,
+            `Photo send failed immediately (${photoKey}) -- WhatsApp API rejected it`,
+            combinedText
+          );
         }
       }
     }
@@ -1174,28 +1287,44 @@ function stripSelfCorrection(text) {
 
 // ---------- Send a product photo on WhatsApp ----------
 async function sendWhatsAppImage(to, imageUrl) {
-  const response = await fetch(
-    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: to,
-        type: "image",
-        image: { link: imageUrl },
-      }),
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: to,
+          type: "image",
+          image: { link: imageUrl },
+        }),
+      }
+    );
+    const data = await response.json();
+    if (data.error) {
+      console.error("WhatsApp image send error:", JSON.stringify(data.error));
+      return { success: false, messageId: null };
     }
-  );
-  const data = await response.json();
-  if (data.error) {
-    console.error("WhatsApp image send error:", JSON.stringify(data.error));
-    return false;
+    // A successful response here means Meta QUEUED the send and will go
+    // fetch imageUrl itself -- it does not mean the photo actually
+    // reached the customer. If that fetch fails, Meta reports it later as
+    // a separate "failed" status event carrying this message id, which is
+    // why the caller tracks it instead of trusting this return value alone.
+    const messageId = data.messages?.[0]?.id || null;
+    return { success: true, messageId };
+  } catch (err) {
+    // Mirrors sendWhatsApp's own try/catch below. Without this, a network
+    // blip here threw uncaught -- after the text reply ("here you go!")
+    // had already gone out -- aborting the whole turn into the generic
+    // "network wahala" fallback instead of anything that made sense next
+    // to a broken photo promise.
+    console.error("sendWhatsAppImage failed unexpectedly:", err.message);
+    return { success: false, messageId: null };
   }
-  return true;
 }
 
 // ---------- The WhatsApp send ----------
