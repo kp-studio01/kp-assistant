@@ -5,8 +5,19 @@
 
 const express = require("express");
 const zlib = require("zlib");
+const crypto = require("crypto");
 const app = express();
-app.use(express.json());
+// The `verify` hook stashes the raw request bytes on req.rawBody. We need
+// those, untouched, to check Paystack's webhook signature later — HMACing
+// the re-serialized JSON object instead of the original bytes would give
+// a different signature and reject every real webhook call.
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // ---------- SETTINGS (come from environment variables) ----------
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
@@ -33,6 +44,36 @@ const OWNER_PHONE_NUMBER = process.env.OWNER_PHONE_NUMBER;
 // /customers?key=whatever-you-set. Not bulletproof security, but enough
 // to keep it private at this stage.
 const ADMIN_KEY = process.env.ADMIN_KEY;
+
+// Paystack secret key, used both to create payment links and to verify
+// that a webhook claiming "payment succeeded" really came from Paystack.
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+// ---------- PRODUCT PRICES & DELIVERY FEES (server-side source of truth) ----------
+// Amara's prompt states these same numbers so she can talk about them
+// naturally, but the ACTUAL amount ever charged through a payment link is
+// computed here in code, never trusted from anything the AI free-texts.
+// Same "prompt is a suggestion, code is the guarantee" pattern as the
+// other backstops in this file (banned emojis, photo resends), just
+// applied to money, where it matters most.
+const PRODUCT_PRICES = {
+  tee: 7500,
+  hoodie: 18000,
+  jacket: 25000,
+  cap: 5000,
+  joggers: 15500,
+};
+const PRODUCT_NAMES = {
+  tee: "Plain white tee",
+  hoodie: "Black graphic hoodie",
+  jacket: "Denim jacket",
+  cap: "Classic baseball cap",
+  joggers: "Cargo joggers",
+};
+const DELIVERY_FEES = {
+  lagos: 2000,
+  outside: 3500,
+};
 
 // ---------- PRODUCT PHOTOS (self-hosted, no third-party service involved) ----------
 // We generate simple solid-colour placeholder images ourselves, in code,
@@ -233,6 +274,28 @@ RULES:
   anything outside the catalog), do NOT guess. Say the owner will reply
   shortly, and keep it warm.
 - Never promise anything not listed here.
+
+SENDING A PAYMENT LINK:
+- Once a customer has clearly confirmed they want to buy a specific
+  catalog item AND told you which delivery zone they're in (Lagos, or
+  outside Lagos), add an invisible tag at the very end of your message,
+  on its own, in this exact format: [PAY: key, zone] using the product
+  key from the catalog (tee, hoodie, jacket, cap, or joggers) and zone as
+  exactly "lagos" or "outside". This tag is invisible to the customer, it
+  triggers a real, correct payment link to be generated and sent right
+  after your message, so never mention the tag itself or explain it.
+- You do NOT need to calculate or state the exact total yourself. The
+  system computes the real amount from the fixed catalog and delivery
+  prices above and sends it along with the link in its own message right
+  after yours. Feel free to mention the individual prices naturally in
+  your own message if it helps ("18k for the hoodie plus delivery to
+  Lagos"), but the actual amount ever charged always comes from the
+  system, never from your words.
+- Only add this tag once the order is genuinely confirmed, not while the
+  customer is still deciding, asking questions, or negotiating. Only one
+  [PAY: key, zone] tag per message, and only for products in the catalog.
+- If the customer hasn't told you their delivery zone yet, ask first
+  instead of guessing or assuming Lagos. Never invent a zone.
 
 ALERTING THE OWNER:
 - Whenever you tell a customer the owner will reply shortly, also alert
@@ -469,6 +532,81 @@ async function getPhotosSent(phone) {
   }
 }
 
+// ---------- PAYSTACK PAYMENT LINKS ----------
+// Turns a confirmed order into a real, payable link, and later confirms
+// automatically the moment Paystack tells us it's actually been paid
+// (see the /paystack-webhook route below), no manual bank-screenshot
+// checking needed for that path anymore.
+
+async function initializePaystackTransaction(email, amountKobo, reference, metadata) {
+  try {
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        amount: amountKobo, // Paystack works in kobo, the smallest currency unit
+        reference,
+        metadata,
+      }),
+    });
+    const data = await response.json();
+    if (!data.status) {
+      console.error("Paystack initialize failed:", JSON.stringify(data));
+      return null;
+    }
+    return data.data; // { authorization_url, access_code, reference }
+  } catch (err) {
+    console.error("initializePaystackTransaction failed:", err.message);
+    return null;
+  }
+}
+
+// Pending orders live in Redis so the webhook (which only hands back a
+// bare reference string) can look up who it belongs to and what was
+// actually agreed, without trusting anything from the webhook body
+// itself beyond that reference and a verified signature.
+async function createPendingOrder(reference, order) {
+  try {
+    await redisCommand([
+      "SET",
+      `order:${reference}`,
+      JSON.stringify(order),
+      "EX",
+      "86400", // 24h: a stale, unpaid link shouldn't linger forever
+    ]);
+  } catch (err) {
+    console.error(`createPendingOrder failed for ${reference}:`, err.message);
+  }
+}
+
+async function getPendingOrder(reference) {
+  try {
+    const raw = await redisCommand(["GET", `order:${reference}`]);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error(`getPendingOrder failed for ${reference}:`, err.message);
+    return null;
+  }
+}
+
+async function markOrderPaid(reference, order) {
+  try {
+    await redisCommand([
+      "SET",
+      `order:${reference}`,
+      JSON.stringify({ ...order, status: "paid", paidAt: new Date().toISOString() }),
+      "EX",
+      "2592000", // keep paid orders around 30 days, useful for owner Q&A later
+    ]);
+  } catch (err) {
+    console.error(`markOrderPaid failed for ${reference}:`, err.message);
+  }
+}
+
 // ---------- MESSAGE BUFFERING ----------
 // Real WhatsApp users often fire off several quick messages in a row
 // ("Hi", "I want the hoodie", "can I get discount") instead of one full
@@ -666,10 +804,14 @@ async function processBufferedTurn(from) {
     // clean it out of the text so the customer never sees the tag itself.
     const { cleanText: photoStripped, photoKey } = extractPhotoTag(rawReply);
 
+    // Pull out the invisible [PAY: key, zone] tag, if she flagged a
+    // confirmed order. Also cleaned out before the customer ever sees it.
+    const { cleanText: paymentStripped, paymentKey, paymentZone } = extractPaymentTag(photoStripped);
+
     // Pull out the invisible [ESCALATE: reason] tag, if she flagged that
     // the owner needs to step in. Also cleaned out before the customer
     // ever sees it.
-    const { cleanText: taggedClean, escalationReason } = extractEscalationTag(photoStripped);
+    const { cleanText: taggedClean, escalationReason } = extractEscalationTag(paymentStripped);
 
     // Mechanically remove any banned emoji that slipped through despite
     // the prompt instruction. Belt and suspenders: the instruction handles
@@ -713,19 +855,38 @@ async function processBufferedTurn(from) {
     // escalate + pause all mixed in) that reminder alone isn't reliable
     // enough, same lesson as the banned-emoji and bare-greeting rules
     // below. So a photo already recorded as sent for this customer only
-    // goes out again when the customer's OWN current message explicitly
-    // asks to see it again. Otherwise the duplicate is silently dropped,
-    // no matter what the model included in its reply.
-    const EXPLICIT_RESEND_REQUEST =
-      /\b(send|show|see)\b[^.!?]{0,20}\bagain\b|\bresend\b|\bonce more\b|\bone more time\b/i;
+    // goes out again when the customer's OWN current message actually
+    // asks to see one. Otherwise the duplicate is silently dropped, no
+    // matter what the model included in its reply.
+    //
+    // This has to recognize ANY normal way of asking to see a photo, not
+    // just resend-specific wording ("send it again"). An earlier version
+    // only matched "again"/"resend"/"once more", so a plain "can I see a
+    // picture?" fell through: the AI said "Here you go!" anyway, the code
+    // correctly blocked the actual image, and the customer was left with
+    // a promise and nothing after it, worse than either sending the photo
+    // or saying nothing.
+    const PHOTO_REQUEST_PATTERN =
+      /\b(see|show|send|share)\b[^.!?]{0,25}\b(pic|pics|picture|pictures|photo|photos|image|images)\b|\bresend\b|\bonce more\b|\bone more time\b|\bagain\b/i;
     if (photoKey && PRODUCT_IMAGES[photoKey]) {
       const alreadySentThisPhoto = photosAlreadySent.includes(photoKey);
-      const explicitlyRequested = EXPLICIT_RESEND_REQUEST.test(combinedText);
+      const explicitlyRequested = PHOTO_REQUEST_PATTERN.test(combinedText);
 
       if (alreadySentThisPhoto && !explicitlyRequested) {
+        // Safety net: even with the broadened pattern above, some future
+        // phrasing could still slip through uncaught. Rather than risk
+        // repeating tonight's exact bug (a promised photo that never
+        // shows up, with no explanation), say so plainly instead of
+        // just going silent on the photo.
         console.log(
           `Photo resend SUPPRESSED (already sent, no explicit request): ${photoKey} for ${from}`
         );
+        const clarifyText = "Already sent that one above, let me know if you want me to send it again!";
+        await sendWhatsApp(from, clarifyText);
+        let clarifyHistory = await getConversation(from);
+        clarifyHistory.push({ role: "assistant", content: clarifyText });
+        clarifyHistory = clarifyHistory.slice(-10);
+        await saveConversation(from, clarifyHistory);
       } else {
         await new Promise((resolve) => setTimeout(resolve, 900));
         const sent = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
@@ -734,6 +895,67 @@ async function processBufferedTurn(from) {
           await markPhotoSent(from, photoKey); // durable, survives everything
         } else {
           console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
+        }
+      }
+    }
+
+    // If she flagged a confirmed order, generate the real payment link.
+    //
+    // HARD BACKSTOP for money: the actual amount charged is ALWAYS
+    // computed here from PRODUCT_PRICES + DELIVERY_FEES, never from
+    // anything the AI said in its own reply. Same "code is the real
+    // guarantee, the prompt is just a nudge" principle as everywhere
+    // else in this file, just applied to the one place a slip actually
+    // costs real naira.
+    if (paymentKey && paymentZone) {
+      const productPrice = PRODUCT_PRICES[paymentKey];
+      const deliveryFee = DELIVERY_FEES[paymentZone];
+
+      if (!PAYSTACK_SECRET_KEY) {
+        console.error("Payment tag fired but PAYSTACK_SECRET_KEY isn't set, no link sent.");
+      } else if (productPrice === undefined || deliveryFee === undefined) {
+        console.error(
+          `Payment tag had an unrecognized key/zone (${paymentKey}/${paymentZone}), no link sent.`
+        );
+      } else {
+        const totalNaira = productPrice + deliveryFee;
+        const reference = `KP-${from}-${Date.now()}`;
+        // WhatsApp customers rarely have an email on hand mid-chat, and
+        // Paystack requires one to initialize a transaction. A stable
+        // placeholder per phone number is the standard workaround; it
+        // never has to be real for the payment itself to work.
+        const placeholderEmail = `${from}@customer.kpcollections.ng`;
+
+        const transaction = await initializePaystackTransaction(
+          placeholderEmail,
+          totalNaira * 100,
+          reference,
+          { phone: from, productKey: paymentKey, zone: paymentZone }
+        );
+
+        if (transaction?.authorization_url) {
+          await createPendingOrder(reference, {
+            phone: from,
+            productKey: paymentKey,
+            zone: paymentZone,
+            totalNaira,
+            status: "pending",
+          });
+
+          const linkMessage =
+            `Total: N${totalNaira.toLocaleString()} (N${productPrice.toLocaleString()} item + N${deliveryFee.toLocaleString()} delivery)\n` +
+            `Pay here to lock in your order: ${transaction.authorization_url}`;
+
+          await new Promise((resolve) => setTimeout(resolve, 900));
+          await sendWhatsApp(from, linkMessage);
+          console.log(`Amara -> ${from}: [sent payment link] ${reference}`);
+
+          let paymentHistory = await getConversation(from);
+          paymentHistory.push({ role: "assistant", content: linkMessage });
+          paymentHistory = paymentHistory.slice(-10);
+          await saveConversation(from, paymentHistory);
+        } else {
+          console.error(`Paystack link generation FAILED for ${from}, order ${reference}.`);
         }
       }
     }
@@ -906,6 +1128,17 @@ function extractEscalationTag(text) {
   const escalationReason = match[1].trim();
   const cleanText = text.replace(match[0], "").trim();
   return { cleanText, escalationReason };
+}
+
+// ---------- Pull the invisible [PAY: key, zone] tag out of the AI's reply ----------
+function extractPaymentTag(text) {
+  const match = text.match(/\[PAY:\s*(\w+)\s*,\s*(\w+)\]/i);
+  if (!match) return { cleanText: text.trim(), paymentKey: null, paymentZone: null };
+
+  const paymentKey = match[1].toLowerCase();
+  const paymentZone = match[2].toLowerCase();
+  const cleanText = text.replace(match[0], "").trim();
+  return { cleanText, paymentKey, paymentZone };
 }
 
 // ---------- Guaranteed backstop: strip the banned "reflex" emoji ----------
@@ -1105,6 +1338,25 @@ async function buildOwnerBusinessSummary() {
     const status = c.paused === "yes" ? "[still paused / being handled]" : "[not currently paused]";
     lines.push(`  - ${c.phone} at ${c.last_escalation_at}: ${c.last_escalation_reason} ${status}`);
   }
+
+  const paidCustomers = customers.filter((c) => c.last_payment_at);
+  const paidToday = paidCustomers.filter((c) => c.last_payment_at.slice(0, 10) === todayStr);
+  const totalPaidTodayNaira = paidToday.reduce(
+    (sum, c) => sum + (Number(c.last_payment_amount) || 0),
+    0
+  );
+  lines.push(
+    `Payments today: ${paidToday.length} order(s), N${totalPaidTodayNaira.toLocaleString()} total`
+  );
+  lines.push(`Recent payments, most recent first:`);
+  const recentPayments = paidCustomers
+    .sort((a, b) => new Date(b.last_payment_at) - new Date(a.last_payment_at))
+    .slice(0, 8);
+  if (recentPayments.length === 0) lines.push("  - none yet");
+  for (const c of recentPayments) {
+    lines.push(`  - ${c.phone} at ${c.last_payment_at}: N${c.last_payment_amount} (ref ${c.last_payment_reference})`);
+  }
+
   return lines.join("\n");
 }
 
@@ -1412,6 +1664,9 @@ app.get("/customers", async (req, res) => {
         c.paused === "yes"
           ? '<span style="color:#b45309;font-weight:600;">Paused</span>'
           : '<span style="color:#15803d;">Active</span>';
+      const paidBadge = c.last_payment_at
+        ? `<span style="color:#15803d;font-weight:600;">N${Number(c.last_payment_amount || 0).toLocaleString()}</span>`
+        : "";
       return `<tr>
         <td>${c.phone || ""}</td>
         <td>${pausedBadge}</td>
@@ -1420,6 +1675,8 @@ app.get("/customers", async (req, res) => {
         <td>${c.message_count || 0}</td>
         <td>${c.last_escalation_reason || ""}</td>
         <td>${c.last_escalation_at ? new Date(c.last_escalation_at).toLocaleString() : ""}</td>
+        <td>${paidBadge}</td>
+        <td>${c.last_payment_at ? new Date(c.last_payment_at).toLocaleString() : ""}</td>
       </tr>`;
     })
     .join("");
@@ -1443,12 +1700,110 @@ app.get("/customers", async (req, res) => {
         <tr>
           <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
           <th>Messages</th><th>Last escalation</th><th>Escalated at</th>
+          <th>Last payment</th><th>Paid at</th>
         </tr>
-        ${rows || '<tr><td colspan="7">No customers yet.</td></tr>'}
+        ${rows || '<tr><td colspan="9">No customers yet.</td></tr>'}
       </table>
     </body>
     </html>
   `);
+});
+
+// ---------- PAYSTACK WEBHOOK (automatic payment confirmation) ----------
+// Paystack calls this the instant a payment actually completes. We verify
+// the signature so nobody can fake a "payment succeeded" call by hitting
+// this URL directly with a browser or curl, then confirm the customer and
+// alert the owner automatically, no manual bank-screenshot matching
+// needed for anything paid through this link.
+app.post("/paystack-webhook", async (req, res) => {
+  // Always acknowledge fast, same reasoning as the WhatsApp webhook above:
+  // don't make Paystack retry just because our own processing is slow.
+  res.sendStatus(200);
+
+  try {
+    if (!PAYSTACK_SECRET_KEY) {
+      console.error("Paystack webhook fired but PAYSTACK_SECRET_KEY isn't set, ignoring.");
+      return;
+    }
+
+    // Signature check using the RAW request bytes (captured by the
+    // express.json() verify hook up top), not the re-serialized body —
+    // those can differ in whitespace/key order and silently break this.
+    const signature = req.headers["x-paystack-signature"];
+    const expectedSignature = crypto
+      .createHmac("sha512", PAYSTACK_SECRET_KEY)
+      .update(req.rawBody)
+      .digest("hex");
+
+    if (signature !== expectedSignature) {
+      console.error("Paystack webhook signature mismatch, ignoring (possible spoofed call).");
+      return;
+    }
+
+    const event = req.body;
+    if (event.event !== "charge.success") return; // only care about successful payments
+
+    const reference = event.data?.reference;
+    if (!reference) return;
+
+    const order = await getPendingOrder(reference);
+    if (!order) {
+      console.error(`Paystack webhook: no matching pending order for reference ${reference}.`);
+      return;
+    }
+    if (order.status === "paid") {
+      console.log(`Paystack webhook: order ${reference} already processed, ignoring duplicate call.`);
+      return;
+    }
+
+    await markOrderPaid(reference, order);
+
+    const productName = PRODUCT_NAMES[order.productKey] || order.productKey;
+
+    // Deterministic confirmation text, NOT AI-generated: this is a real
+    // money confirmation reaching a real customer, not a place to risk
+    // any AI phrasing drift or hallucinated detail.
+    const confirmationText =
+      `Payment received! ✅ Your ${productName} (N${order.totalNaira.toLocaleString()}) is confirmed, ` +
+      `we'll get it sorted for delivery. Thank you!`;
+    await sendWhatsApp(order.phone, confirmationText);
+
+    let history = await getConversation(order.phone);
+    history.push({ role: "assistant", content: confirmationText });
+    history = history.slice(-10);
+    await saveConversation(order.phone, history);
+
+    await upsertCustomer(order.phone, {
+      last_payment_reference: reference,
+      last_payment_amount: order.totalNaira,
+      last_payment_at: new Date().toISOString(),
+    });
+
+    if (OWNER_PHONE_NUMBER) {
+      const ownerNote =
+        `💰 Payment received\n\n` +
+        `Customer: ${order.phone}\n` +
+        `Item: ${productName}\n` +
+        `Amount: N${order.totalNaira.toLocaleString()}\n` +
+        `Ref: ${reference}`;
+      const notified = await sendWhatsApp(OWNER_PHONE_NUMBER, ownerNote);
+      if (!notified) {
+        // Most likely cause: more than 24h since the owner last messaged
+        // Amara, so a free-form message isn't allowed. Unlike escalation
+        // alerts, there's no approved template fallback for this yet —
+        // worth adding one (e.g. "payment_alert_v1") if this ever bites.
+        console.error(
+          `Could not notify owner of payment ${reference} (likely outside the 24h window, no template fallback set up for this yet).`
+        );
+      }
+    }
+
+    console.log(
+      `Payment CONFIRMED: ${reference} — ${order.phone} paid N${order.totalNaira} for ${order.productKey}`
+    );
+  } catch (err) {
+    console.error("Paystack webhook handler crashed:", err);
+  }
 });
 
 // ---------- Health check (visit in browser to see server is alive) ----------
