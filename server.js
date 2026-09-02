@@ -2166,6 +2166,12 @@ function dashboardHtml(key) {
         const KEY = ${JSON.stringify(key)};
         let selectedPhone = null;
         let customersCache = [];
+        // Tracks which phone's full thread panel (header/compose/notes) is
+        // currently built in the DOM, so the 5s background poll only ever
+        // touches the message bubbles + takeover button on repeat loads of
+        // the SAME conversation, and never rebuilds (and so never wipes)
+        // whatever the owner is mid-typing into the compose or notes box.
+        let renderedThreadPhone = null;
 
         function escapeHtml(str) {
           return String(str || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
@@ -2237,9 +2243,40 @@ function dashboardHtml(key) {
             const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&key=" + encodeURIComponent(KEY));
             const data = await res.json();
             if (data.error) return;
-            renderThread(phone, data.history, data.customer);
+            // Only rebuild the whole panel (header/compose/notes) when this
+            // is a real switch to a conversation — an explicit click, or the
+            // first load of it. A background poll on the SAME conversation
+            // just refreshes the messages + button, so it never wipes text
+            // the owner is actively typing into the compose or notes box.
+            if (isClick || phone !== renderedThreadPhone) {
+              renderThread(phone, data.history, data.customer);
+              renderedThreadPhone = phone;
+            } else {
+              updateThreadMessages(data.history, data.customer);
+            }
           } catch (err) {
             console.error("conversation load failed", err);
+          }
+        }
+
+        function updateThreadMessages(history, customer) {
+          const threadEl = document.getElementById("thread");
+          if (!threadEl) return; // panel isn't built yet, nothing to update
+          const nearBottom = threadEl.scrollTop + threadEl.clientHeight >= threadEl.scrollHeight - 20;
+          threadEl.innerHTML = (history && history.length > 0)
+            ? history.map((m) => '<div class="bubble ' + (m.role === "user" ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>').join("")
+            : '<div class="empty">No messages yet.</div>';
+          if (nearBottom) threadEl.scrollTop = threadEl.scrollHeight;
+
+          // Keep the Take over / Hand back button in sync too (e.g. if the
+          // owner paused/resumed from elsewhere), without touching the
+          // compose or notes box at all.
+          const isPaused = customer && customer.paused === "yes";
+          const btn = document.querySelector(".takeover-btn");
+          if (btn) {
+            btn.className = "takeover-btn " + (isPaused ? "hand" : "take");
+            btn.textContent = isPaused ? "Hand back to Amara" : "Take over";
+            btn.onclick = function () { toggleTakeover(selectedPhone, isPaused); };
           }
         }
 
