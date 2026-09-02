@@ -1645,10 +1645,10 @@ app.get("/subscribe", async (req, res) => {
   }
 });
 
-// ---------- Customer list (simple viewable database, no dashboard yet) ----------
+// ---------- Customer list (simple read-only table; see /dashboard for the live cockpit) ----------
 // Visit /customers?key=YOUR_ADMIN_KEY in any browser to see every customer
-// Amara has ever talked to, in one place. This is the seed of the real
-// dashboard app planned for later; the underlying data is the same.
+// Amara has ever talked to, in one place. Kept around as a plain,
+// zero-JS fallback view of the same data the dashboard below uses.
 app.get("/customers", async (req, res) => {
   if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
     return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
@@ -1695,7 +1695,7 @@ app.get("/customers", async (req, res) => {
       </style>
     </head>
     <body>
-      <h1>Customers (${customers.length})</h1>
+      <h1>Customers (${customers.length}) — <a href="/dashboard?key=${ADMIN_KEY}" style="font-size:14px;">Open live dashboard →</a></h1>
       <table>
         <tr>
           <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
@@ -1707,6 +1707,288 @@ app.get("/customers", async (req, res) => {
     </body>
     </html>
   `);
+});
+
+// ---------- OWNER DASHBOARD (Stage 4 cockpit) ----------
+// A lightweight, self-contained live dashboard: every conversation at a
+// glance, the ability to open one and actually read it, and a one-click
+// takeover switch that reuses the exact same pause/resume machinery the
+// owner already controls today from plain WhatsApp text ("pause last" /
+// "resume last"). No separate frontend app, no new dependencies — just
+// another Express route serving HTML + vanilla JS that polls a small
+// JSON API every few seconds. Good enough for one owner watching a
+// handful of live conversations; a real realtime layer (websockets) can
+// replace the polling later without touching anything else.
+
+async function getDashboardStats(customers) {
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const activeToday = customers.filter(
+    (c) => c.last_contact && c.last_contact.slice(0, 10) === todayStr
+  );
+  const pausedNow = customers.filter((c) => c.paused === "yes");
+  const paidToday = customers.filter(
+    (c) => c.last_payment_at && c.last_payment_at.slice(0, 10) === todayStr
+  );
+  const revenueTodayNaira = paidToday.reduce(
+    (sum, c) => sum + (Number(c.last_payment_amount) || 0),
+    0
+  );
+  return {
+    totalCustomers: customers.length,
+    activeToday: activeToday.length,
+    pausedNow: pausedNow.length,
+    paymentsToday: paidToday.length,
+    revenueTodayNaira,
+  };
+}
+
+function dashboardHtml(key) {
+  // The admin key gets embedded into the page's own JS so its fetch calls
+  // can authenticate, same trust boundary as the ?key= on the page itself
+  // — anyone who could load this page already has the key.
+  return `
+    <html>
+    <head>
+      <title>KP Studio — Dashboard</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+        header { background: #1e293b; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        header h1 { font-size: 18px; margin: 0; }
+        header a { color: #93c5fd; font-size: 12px; }
+        .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+        .stat { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 13px; white-space: nowrap; }
+        .stat b { font-size: 15px; }
+        .layout { display: flex; height: calc(100vh - 64px); }
+        .list { width: 320px; border-right: 1px solid #e2e8f0; overflow-y: auto; background: white; flex-shrink: 0; }
+        .list-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .list-item:hover { background: #f8fafc; }
+        .list-item.active-row { background: #eff6ff; }
+        .list-item .phone { font-weight: 600; font-size: 14px; }
+        .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+        .badge.paused { background: #fef3c7; color: #b45309; }
+        .badge.active { background: #dcfce7; color: #15803d; }
+        .badge.paid { background: #dbeafe; color: #1d4ed8; }
+        .snippet { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .thread-header { padding: 16px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; }
+        .thread { flex: 1; overflow-y: auto; padding: 24px; }
+        .bubble { max-width: 70%; padding: 10px 14px; border-radius: 12px; margin-bottom: 10px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+        .bubble.user { background: #e2e8f0; margin-right: auto; }
+        .bubble.assistant { background: #1e293b; color: white; margin-left: auto; }
+        button.takeover-btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+        button.takeover-btn.take { background: #b45309; color: white; }
+        button.takeover-btn.hand { background: #15803d; color: white; }
+        .empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <header>
+        <h1>KP Studio — Live Dashboard &nbsp; <a href="/customers?key=${key}">plain table view</a></h1>
+        <div class="stats" id="stats"></div>
+      </header>
+      <div class="layout">
+        <div class="list" id="list"><div class="empty">Loading…</div></div>
+        <div class="main" id="main"><div class="empty">Select a conversation on the left</div></div>
+      </div>
+      <script>
+        const KEY = ${JSON.stringify(key)};
+        let selectedPhone = null;
+        let customersCache = [];
+
+        function escapeHtml(str) {
+          return String(str || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+        }
+
+        async function loadDashboard() {
+          try {
+            const res = await fetch("/api/dashboard-data?key=" + encodeURIComponent(KEY));
+            const data = await res.json();
+            if (data.error) return;
+            customersCache = data.customers;
+            renderStats(data.stats);
+            renderList(data.customers);
+            if (selectedPhone) loadConversation(selectedPhone, false);
+          } catch (err) {
+            console.error("dashboard load failed", err);
+          }
+        }
+
+        function renderStats(stats) {
+          document.getElementById("stats").innerHTML =
+            '<div class="stat"><b>' + stats.totalCustomers + '</b> total</div>' +
+            '<div class="stat"><b>' + stats.activeToday + '</b> active today</div>' +
+            '<div class="stat"><b>' + stats.pausedNow + '</b> paused</div>' +
+            '<div class="stat"><b>N' + stats.revenueTodayNaira.toLocaleString() + '</b> today (' + stats.paymentsToday + ' order' + (stats.paymentsToday === 1 ? "" : "s") + ')</div>';
+        }
+
+        function renderList(customers) {
+          const list = document.getElementById("list");
+          if (customers.length === 0) {
+            list.innerHTML = '<div class="empty">No customers yet.</div>';
+            return;
+          }
+          list.innerHTML = customers.map((c) => {
+            const isActiveRow = c.phone === selectedPhone;
+            const statusBadge = c.paused === "yes"
+              ? '<span class="badge paused">Paused</span>'
+              : '<span class="badge active">Active</span>';
+            const paidBadge = c.last_payment_at ? '<span class="badge paid">Paid</span>' : "";
+            const lastContact = c.last_contact ? new Date(c.last_contact).toLocaleString() : "";
+            const escalationLine = c.last_escalation_reason
+              ? '<div class="snippet">⚠ ' + escapeHtml(c.last_escalation_reason) + '</div>'
+              : "";
+            return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
+              '<div class="phone">' + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
+              '<div class="snippet">' + (c.message_count || 0) + ' messages · last ' + lastContact + '</div>' +
+              escalationLine +
+              '</div>';
+          }).join("");
+        }
+
+        async function loadConversation(phone, isClick) {
+          selectedPhone = phone;
+          if (isClick) renderList(customersCache); // re-highlight the selected row immediately
+          try {
+            const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&key=" + encodeURIComponent(KEY));
+            const data = await res.json();
+            if (data.error) return;
+            renderThread(phone, data.history, data.customer);
+          } catch (err) {
+            console.error("conversation load failed", err);
+          }
+        }
+
+        function renderThread(phone, history, customer) {
+          const isPaused = customer && customer.paused === "yes";
+          const main = document.getElementById("main");
+          main.innerHTML =
+            '<div class="thread-header">' +
+              '<div><b>' + escapeHtml(phone) + '</b></div>' +
+              '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
+                (isPaused ? "Hand back to Amara" : "Take over") +
+              '</button>' +
+            '</div>' +
+            '<div class="thread" id="thread"></div>';
+          const threadEl = document.getElementById("thread");
+          threadEl.innerHTML = (history && history.length > 0)
+            ? history.map((m) => '<div class="bubble ' + (m.role === "user" ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>').join("")
+            : '<div class="empty">No messages yet.</div>';
+          threadEl.scrollTop = threadEl.scrollHeight;
+        }
+
+        async function toggleTakeover(phone, isPaused) {
+          const endpoint = isPaused ? "/api/handback" : "/api/takeover";
+          try {
+            await fetch(endpoint + "?key=" + encodeURIComponent(KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: phone }),
+            });
+            loadDashboard();
+            loadConversation(phone, false);
+          } catch (err) {
+            console.error("takeover toggle failed", err);
+          }
+        }
+
+        loadDashboard();
+        setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
+      </script>
+    </body>
+    </html>
+  `;
+}
+
+app.get("/dashboard", (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
+  }
+  res.send(dashboardHtml(req.query.key));
+});
+
+app.get("/api/dashboard-data", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  try {
+    const customers = await listAllCustomers();
+    customers.sort((a, b) => new Date(b.last_contact || 0) - new Date(a.last_contact || 0));
+    const stats = await getDashboardStats(customers);
+    res.json({ stats, customers });
+  } catch (err) {
+    console.error("api/dashboard-data failed:", err.message);
+    res.status(500).json({ error: "failed to load dashboard data" });
+  }
+});
+
+app.get("/api/conversation", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const phone = req.query.phone;
+  if (!phone) return res.status(400).json({ error: "missing phone" });
+  try {
+    const history = await getConversation(phone);
+    const customer = await getCustomer(phone);
+    res.json({ history, customer });
+  } catch (err) {
+    console.error("api/conversation failed:", err.message);
+    res.status(500).json({ error: "failed to load conversation" });
+  }
+});
+
+app.post("/api/takeover", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const phone = req.body?.phone;
+  if (!phone) return res.status(400).json({ error: "missing phone" });
+  try {
+    // Same pauseCustomer() the owner already triggers via "pause last" on
+    // WhatsApp — the dashboard button is just a second door into the
+    // identical, already-tested mechanism, not a separate code path.
+    await pauseCustomer(phone);
+    console.log(`Dashboard takeover: owner took over ${phone} from the web dashboard.`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/takeover failed:", err.message);
+    res.status(500).json({ error: "failed to take over" });
+  }
+});
+
+app.post("/api/handback", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const phone = req.body?.phone;
+  if (!phone) return res.status(400).json({ error: "missing phone" });
+  try {
+    await resumeCustomer(phone);
+
+    // Same proactive, context-aware notification the customer already
+    // gets when the owner resumes via WhatsApp text — the dashboard is
+    // just a different door into the same handback, so the customer
+    // experience should be identical either way, not a lesser version.
+    const customerRecord = await getCustomer(phone);
+    const followUp = await generateResumeFollowUp(
+      customerRecord?.last_escalation_reason,
+      "Handled directly, resumed from the owner dashboard."
+    );
+    const notified = await sendWhatsApp(phone, followUp);
+    if (notified) {
+      let history = await getConversation(phone);
+      history.push({ role: "assistant", content: followUp });
+      history = history.slice(-10);
+      await saveConversation(phone, history);
+    }
+    console.log(`Dashboard handback: owner resumed ${phone} from the web dashboard.`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/handback failed:", err.message);
+    res.status(500).json({ error: "failed to hand back" });
+  }
 });
 
 // ---------- PAYSTACK WEBHOOK (automatic payment confirmation) ----------
