@@ -706,14 +706,35 @@ async function processBufferedTurn(from) {
 
     // If she asked for a photo to go out, send it right after the text,
     // with a tiny natural gap so it doesn't feel like a robotic attachment dump.
+    //
+    // HARD BACKSTOP against accidental repeats: the prompt already tells
+    // her which photos went out already (the photoReminder above) and not
+    // to resend them, but across a long, tag-heavy conversation (photo +
+    // escalate + pause all mixed in) that reminder alone isn't reliable
+    // enough, same lesson as the banned-emoji and bare-greeting rules
+    // below. So a photo already recorded as sent for this customer only
+    // goes out again when the customer's OWN current message explicitly
+    // asks to see it again. Otherwise the duplicate is silently dropped,
+    // no matter what the model included in its reply.
+    const EXPLICIT_RESEND_REQUEST =
+      /\b(send|show|see)\b[^.!?]{0,20}\bagain\b|\bresend\b|\bonce more\b|\bone more time\b/i;
     if (photoKey && PRODUCT_IMAGES[photoKey]) {
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      const sent = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
-      if (sent) {
-        console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
-        await markPhotoSent(from, photoKey); // durable, survives everything
+      const alreadySentThisPhoto = photosAlreadySent.includes(photoKey);
+      const explicitlyRequested = EXPLICIT_RESEND_REQUEST.test(combinedText);
+
+      if (alreadySentThisPhoto && !explicitlyRequested) {
+        console.log(
+          `Photo resend SUPPRESSED (already sent, no explicit request): ${photoKey} for ${from}`
+        );
       } else {
-        console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        const sent = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
+        if (sent) {
+          console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
+          await markPhotoSent(from, photoKey); // durable, survives everything
+        } else {
+          console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
+        }
       }
     }
 
