@@ -1951,7 +1951,7 @@ app.get("/customers", async (req, res) => {
   res.send(`
     <html>
     <head>
-      <title>KP Studio - Customers</title>
+      <title>Stafly.AI - Customers</title>
       <style>
         body { font-family: -apple-system, sans-serif; margin: 24px; background: #f8fafc; }
         h1 { font-size: 20px; }
@@ -2016,7 +2016,7 @@ function dashboardHtml(key) {
   return `
     <html>
     <head>
-      <title>KP Studio — Dashboard</title>
+      <title>Stafly.AI — Dashboard</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
         * { box-sizing: border-box; }
@@ -2073,7 +2073,7 @@ function dashboardHtml(key) {
     </head>
     <body>
       <header>
-        <h1>KP Studio — Live Dashboard &nbsp; <a href="/customers?key=${key}">plain table view</a></h1>
+        <h1>Stafly.AI — Live Dashboard &nbsp; <a href="/customers?key=${key}">plain table view</a></h1>
         <nav class="tabs">
           <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
           <button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>
@@ -2781,7 +2781,7 @@ app.post("/paystack-webhook", async (req, res) => {
 
 // ---------- Health check (visit in browser to see server is alive) ----------
 app.get("/", (req, res) => {
-  res.send("KP Sales Assistant is running ✓");
+  res.send("Stafly.AI engine is running ✓");
 });
 
 const PORT = process.env.PORT || 3000;
