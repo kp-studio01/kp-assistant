@@ -1,15 +1,7 @@
 {
-  "name": "kp-sales-assistant",
-  "version": "1.0.0",
-  "description": "AI sales assistant for WhatsApp - demo v1",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
   "dependencies": {
-    "express": "^4.19.2"
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1"
   }
 }
