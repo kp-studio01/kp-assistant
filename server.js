@@ -78,21 +78,28 @@ const SESSION_SECRET = process.env.SESSION_SECRET || "dev-only-insecure-secret-c
 // reassigned, so every other place in this file that reads from these same
 // objects automatically sees the current catalog without needing its own
 // Redis call.
-let PRODUCT_PRICES = {
+// NOTE (Phase C, multi-tenant rewrite): these are no longer THE live
+// catalog — that's now per-seller (see sellerCatalogs / ensureCatalogEntry
+// below). These stay as literal, hardcoded values used ONLY to seed
+// seller1 (the original KP Collections shop) the very first time it ever
+// loads with nothing in Redis yet -- exactly what used to happen anyway.
+// A brand new seller signing up later starts with a genuinely empty
+// catalog of their own, never this demo data.
+const DEFAULT_PRODUCT_PRICES = {
   tee: 7500,
   hoodie: 18000,
   jacket: 25000,
   cap: 5000,
   joggers: 15500,
 };
-let PRODUCT_NAMES = {
+const DEFAULT_PRODUCT_NAMES = {
   tee: "Plain white tee",
   hoodie: "Black graphic hoodie",
   jacket: "Denim jacket",
   cap: "Classic baseball cap",
   joggers: "Cargo joggers",
 };
-let DELIVERY_FEES = {
+const DEFAULT_DELIVERY_FEES = {
   lagos: 2000,
   outside: 3500,
 };
@@ -103,11 +110,127 @@ let DELIVERY_FEES = {
 // pattern as everything else on this page -- not editable by customers,
 // this is purely an owner-facing setting, same trust boundary as the
 // rest of the dashboard (gated by ADMIN_KEY).
-let BANK_DETAILS = {
+const DEFAULT_BANK_DETAILS = {
   bankName: "GTBank",
   accountNumber: "0123456789",
   accountName: "KP Collections",
 };
+
+// ---------- PER-SELLER STATE (Phase C: multi-tenant message engine) ----------
+// Everything that used to be one global shop -- catalog, WhatsApp
+// credentials, owner phone, bank details -- now lives per-seller, keyed by
+// sellerId, so the same running server can serve many independent sellers
+// at once, each with their own catalog, their own connected WhatsApp
+// number, and their own fully separate customer/conversation/order data.
+//
+// The original demo shop becomes "seller1" below. ADMIN_KEY keeps working
+// exactly as before as a fixed alias to seller1, and seller1's Redis keys
+// stay completely UNPREFIXED (conv:<phone>, customer:<phone>,
+// catalog:products, etc, exactly as they've always been) -- no data
+// migration needed, nothing about the live dashboard or the current dry
+// run changes underneath it. Every other seller's keys get an
+// `s:<sellerId>:` prefix instead. See nsKey() below.
+const SELLER1_ID = "seller1";
+
+function nsKey(sellerId, key) {
+  return sellerId === SELLER1_ID ? key : `s:${sellerId}:${key}`;
+}
+
+// In-memory catalog cache, one entry per seller -- same shape and same
+// cache-aside pattern as the old globals (mutated in place, persisted to
+// Redis separately, rebuilt into the AI prompt on every message).
+const sellerCatalogs = {};
+
+function ensureCatalogEntry(sellerId) {
+  if (!sellerCatalogs[sellerId]) {
+    sellerCatalogs[sellerId] = {
+      PRODUCT_PRICES: {},
+      PRODUCT_NAMES: {},
+      PRODUCT_IMAGES: {},
+      DELIVERY_FEES: { lagos: 0, outside: 0 },
+      BANK_DETAILS: { bankName: "", accountNumber: "", accountName: "" },
+    };
+  }
+  return sellerCatalogs[sellerId];
+}
+
+// Reverse index: Meta's phone_number_id -> which seller that WhatsApp
+// number belongs to. This is what lets one shared /webhook URL route each
+// incoming message to the right seller's data, catalog, and AI prompt.
+const phoneNumberIdToSellerId = {};
+function registerSellerPhoneNumberId(sellerId, phoneNumberId) {
+  if (phoneNumberId) phoneNumberIdToSellerId[phoneNumberId] = sellerId;
+}
+
+// Full seller context (identity + WhatsApp credentials + catalog),
+// resolved once per process per seller and cached in memory from then on
+// -- same cache-aside philosophy as everything else in this file. Call
+// invalidateSellerContextCache(sellerId) after changing a seller's stored
+// credentials so the next access picks up the change.
+const sellerContextCache = {};
+
+async function loadSellerCreds(sellerId) {
+  const stored = await getSellerById(sellerId);
+  if (sellerId === SELLER1_ID) {
+    // seller1's credentials are the original env vars, unless an admin
+    // has explicitly reconnected seller1 to a different number via the
+    // same manual-connect route every other seller uses -- that write
+    // overwrites these fields in Redis, which then take priority.
+    return {
+      phoneNumberId: stored?.phoneNumberId || PHONE_NUMBER_ID,
+      whatsappToken: stored?.whatsappToken || WHATSAPP_TOKEN,
+      ownerPhoneNumber: stored?.ownerPhoneNumber || OWNER_PHONE_NUMBER,
+    };
+  }
+  return {
+    phoneNumberId: stored?.phoneNumberId || null,
+    whatsappToken: stored?.whatsappToken || null,
+    ownerPhoneNumber: stored?.ownerPhoneNumber || null,
+  };
+}
+
+async function getSellerContext(sellerId) {
+  if (sellerContextCache[sellerId]) return sellerContextCache[sellerId];
+  const record = await getSellerById(sellerId);
+  if (sellerId !== SELLER1_ID && !record) return null; // unknown seller
+  const creds = await loadSellerCreds(sellerId);
+  await loadCatalogFromRedis(sellerId); // populates sellerCatalogs[sellerId]
+  const context = {
+    sellerId,
+    businessName: record?.businessName || (sellerId === SELLER1_ID ? "KP Collections" : "Your shop"),
+    status: record?.status || (sellerId === SELLER1_ID ? "active" : "pending_whatsapp_connection"),
+    phoneNumberId: creds.phoneNumberId,
+    whatsappToken: creds.whatsappToken,
+    ownerPhoneNumber: creds.ownerPhoneNumber,
+    catalog: ensureCatalogEntry(sellerId),
+  };
+  sellerContextCache[sellerId] = context;
+  if (context.phoneNumberId) registerSellerPhoneNumberId(sellerId, context.phoneNumberId);
+  return context;
+}
+
+function invalidateSellerContextCache(sellerId) {
+  delete sellerContextCache[sellerId];
+}
+
+// Resolves which seller's data a dashboard/API request is acting on.
+// Path 1 (legacy, unchanged): ?key=ADMIN_KEY always resolves to seller1 --
+// every existing dashboard URL and bookmark keeps working exactly as
+// before. Path 2 (new): a logged-in seller's own session cookie resolves
+// to their own sellerId, so once a seller's WhatsApp is connected, this
+// same dashboard UI works for them too, scoped to only their own data,
+// with no separate frontend needed.
+async function resolveActingSeller(req) {
+  if (ADMIN_KEY && req.query.key === ADMIN_KEY) {
+    return await getSellerContext(SELLER1_ID);
+  }
+  const sellerId = verifySession(req.cookies?.session);
+  if (sellerId) {
+    const seller = await getSellerContext(sellerId);
+    if (seller) return seller;
+  }
+  return null;
+}
 
 // ---------- PRODUCT PHOTOS (self-hosted, no third-party service involved) ----------
 // We generate simple solid-colour placeholder images ourselves, in code,
@@ -192,12 +315,10 @@ app.get("/images/:key.png", (req, res) => {
   res.send(getOrMakePlaceholder(req.params.key));
 });
 
-// The links Amara actually sends. A product gets its own real photo URL
-// here if the owner pasted one in when adding/editing it on the dashboard;
-// otherwise it falls back to the self-hosted placeholder above. Mutated
-// in place by loadCatalogFromRedis and the /api/catalog routes, same
-// pattern as PRODUCT_PRICES/PRODUCT_NAMES above.
-let PRODUCT_IMAGES = {
+// The links Amara actually sends for the original demo catalog. Same
+// "DEFAULT_ = seed data for seller1 only" pattern as the other DEFAULT_*
+// constants above -- a new seller's catalog never uses these.
+const DEFAULT_PRODUCT_IMAGES = {
   tee: `${BASE_URL}/images/tee.png`,
   hoodie: `${BASE_URL}/images/hoodie.png`,
   jacket: `${BASE_URL}/images/jacket.png`,
@@ -206,82 +327,98 @@ let PRODUCT_IMAGES = {
 };
 
 // ---------- CATALOG PERSISTENCE (Redis-backed, editable from the dashboard) ----------
-// PRODUCT_PRICES / PRODUCT_NAMES / PRODUCT_IMAGES above are the live,
-// in-memory catalog everything else in this file reads from. These
+// Each seller's own PRODUCT_PRICES / PRODUCT_NAMES / PRODUCT_IMAGES (see
+// sellerCatalogs / ensureCatalogEntry above) is the live, in-memory
+// catalog everything else in this file reads from. These
 // functions are what keep that in sync with Redis, so an owner's edits
 // from the dashboard survive a restart or redeploy instead of quietly
 // reverting to the demo data hardcoded above.
-async function loadCatalogFromRedis() {
+async function loadCatalogFromRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
   try {
-    const rawProducts = await redisCommand(["GET", "catalog:products"]);
+    const rawProducts = await redisCommand(["GET", nsKey(sellerId, "catalog:products")]);
     if (rawProducts) {
       const products = JSON.parse(rawProducts);
       // Replace the in-memory catalog wholesale with what's actually
       // stored, so a product removed on a previous edit doesn't come
-      // back from these hardcoded defaults after a restart.
-      for (const key of Object.keys(PRODUCT_PRICES)) delete PRODUCT_PRICES[key];
-      for (const key of Object.keys(PRODUCT_NAMES)) delete PRODUCT_NAMES[key];
-      for (const key of Object.keys(PRODUCT_IMAGES)) delete PRODUCT_IMAGES[key];
+      // back from stale in-memory defaults after a restart.
+      for (const key of Object.keys(catalog.PRODUCT_PRICES)) delete catalog.PRODUCT_PRICES[key];
+      for (const key of Object.keys(catalog.PRODUCT_NAMES)) delete catalog.PRODUCT_NAMES[key];
+      for (const key of Object.keys(catalog.PRODUCT_IMAGES)) delete catalog.PRODUCT_IMAGES[key];
       for (const [key, p] of Object.entries(products)) {
-        PRODUCT_PRICES[key] = p.price;
-        PRODUCT_NAMES[key] = p.name;
-        PRODUCT_IMAGES[key] = p.imageUrl || `${BASE_URL}/images/${key}.png`;
+        catalog.PRODUCT_PRICES[key] = p.price;
+        catalog.PRODUCT_NAMES[key] = p.name;
+        catalog.PRODUCT_IMAGES[key] = p.imageUrl || `${BASE_URL}/images/${key}.png`;
       }
-      console.log(`Catalog loaded from Redis: ${Object.keys(PRODUCT_PRICES).length} product(s).`);
-    } else {
-      // First run ever: nothing saved yet, so persist today's hardcoded
-      // demo catalog as the real starting point from now on.
-      await saveCatalogToRedis();
-      console.log("No catalog in Redis yet, saved the built-in demo catalog as the starting point.");
+      console.log(`Catalog loaded from Redis for ${sellerId}: ${Object.keys(catalog.PRODUCT_PRICES).length} product(s).`);
+    } else if (sellerId === SELLER1_ID) {
+      // First run ever for the original shop: nothing saved yet, so seed
+      // with the built-in demo catalog and persist it as the real
+      // starting point from now on. A brand new seller who signs up
+      // later does NOT hit this branch -- see below -- they start with a
+      // genuinely empty catalog of their own, never this demo data.
+      Object.assign(catalog.PRODUCT_PRICES, DEFAULT_PRODUCT_PRICES);
+      Object.assign(catalog.PRODUCT_NAMES, DEFAULT_PRODUCT_NAMES);
+      Object.assign(catalog.PRODUCT_IMAGES, DEFAULT_PRODUCT_IMAGES);
+      await saveCatalogToRedis(sellerId);
+      console.log("No catalog in Redis yet for seller1, saved the built-in demo catalog as the starting point.");
     }
+    // else: a brand new seller with nothing saved yet just starts empty --
+    // ensureCatalogEntry already gave them {}, nothing more to do here.
 
-    const rawFees = await redisCommand(["GET", "catalog:delivery_fees"]);
+    const rawFees = await redisCommand(["GET", nsKey(sellerId, "catalog:delivery_fees")]);
     if (rawFees) {
       const fees = JSON.parse(rawFees);
-      if (typeof fees.lagos === "number") DELIVERY_FEES.lagos = fees.lagos;
-      if (typeof fees.outside === "number") DELIVERY_FEES.outside = fees.outside;
-    } else {
-      await saveDeliveryFeesToRedis();
+      if (typeof fees.lagos === "number") catalog.DELIVERY_FEES.lagos = fees.lagos;
+      if (typeof fees.outside === "number") catalog.DELIVERY_FEES.outside = fees.outside;
+    } else if (sellerId === SELLER1_ID) {
+      Object.assign(catalog.DELIVERY_FEES, DEFAULT_DELIVERY_FEES);
+      await saveDeliveryFeesToRedis(sellerId);
     }
 
-    const rawBankDetails = await redisCommand(["GET", "shop:bank_details"]);
+    const rawBankDetails = await redisCommand(["GET", nsKey(sellerId, "shop:bank_details")]);
     if (rawBankDetails) {
       const bd = JSON.parse(rawBankDetails);
-      if (bd.bankName) BANK_DETAILS.bankName = bd.bankName;
-      if (bd.accountNumber) BANK_DETAILS.accountNumber = bd.accountNumber;
-      if (bd.accountName) BANK_DETAILS.accountName = bd.accountName;
-    } else {
-      await saveBankDetailsToRedis();
+      if (bd.bankName) catalog.BANK_DETAILS.bankName = bd.bankName;
+      if (bd.accountNumber) catalog.BANK_DETAILS.accountNumber = bd.accountNumber;
+      if (bd.accountName) catalog.BANK_DETAILS.accountName = bd.accountName;
+    } else if (sellerId === SELLER1_ID) {
+      Object.assign(catalog.BANK_DETAILS, DEFAULT_BANK_DETAILS);
+      await saveBankDetailsToRedis(sellerId);
     }
   } catch (err) {
-    // If Redis is unreachable at startup, keep running on the hardcoded
-    // demo catalog rather than crashing the whole server over this.
-    console.error("loadCatalogFromRedis failed, starting on hardcoded demo catalog instead:", err.message);
+    // If Redis is unreachable, keep running on whatever's already in
+    // memory (the demo catalog for seller1, or empty for a new seller)
+    // rather than crashing the whole server over this.
+    console.error(`loadCatalogFromRedis failed for ${sellerId}, continuing on in-memory catalog:`, err.message);
   }
 }
 
-async function saveCatalogToRedis() {
+async function saveCatalogToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
   const products = {};
-  for (const key of Object.keys(PRODUCT_PRICES)) {
+  for (const key of Object.keys(catalog.PRODUCT_PRICES)) {
     const selfHostedUrl = `${BASE_URL}/images/${key}.png`;
     products[key] = {
-      name: PRODUCT_NAMES[key],
-      price: PRODUCT_PRICES[key],
+      name: catalog.PRODUCT_NAMES[key],
+      price: catalog.PRODUCT_PRICES[key],
       // Only persist an imageUrl when it's a real external photo the
       // owner supplied -- a self-hosted placeholder link is regenerated
       // from the key on every load, no need to store it explicitly.
-      imageUrl: PRODUCT_IMAGES[key] && PRODUCT_IMAGES[key] !== selfHostedUrl ? PRODUCT_IMAGES[key] : undefined,
+      imageUrl: catalog.PRODUCT_IMAGES[key] && catalog.PRODUCT_IMAGES[key] !== selfHostedUrl ? catalog.PRODUCT_IMAGES[key] : undefined,
     };
   }
-  await redisCommand(["SET", "catalog:products", JSON.stringify(products)]);
+  await redisCommand(["SET", nsKey(sellerId, "catalog:products"), JSON.stringify(products)]);
 }
 
-async function saveDeliveryFeesToRedis() {
-  await redisCommand(["SET", "catalog:delivery_fees", JSON.stringify(DELIVERY_FEES)]);
+async function saveDeliveryFeesToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "catalog:delivery_fees"), JSON.stringify(catalog.DELIVERY_FEES)]);
 }
 
-async function saveBankDetailsToRedis() {
-  await redisCommand(["SET", "shop:bank_details", JSON.stringify(BANK_DETAILS)]);
+async function saveBankDetailsToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "shop:bank_details"), JSON.stringify(catalog.BANK_DETAILS)]);
 }
 
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
@@ -293,13 +430,21 @@ async function saveBankDetailsToRedis() {
 // — otherwise an owner could correct a price on the dashboard and Amara
 // would keep quoting the old one from a stale, baked-in copy. Everything
 // else about the prompt is unchanged.
-function buildShopProfile() {
-  const catalogLines = Object.keys(PRODUCT_NAMES)
-    .map((key, i) => `${i + 1}. ${PRODUCT_NAMES[key]} — N${PRODUCT_PRICES[key].toLocaleString()} (key: ${key})`)
+function buildShopProfile(seller) {
+  const catalog = seller.catalog;
+  // seller1 (the original, live shop) keeps this exact literal name, byte
+  // for byte, so its prompt text -- and therefore Amara's behavior for the
+  // real customers already talking to it -- doesn't shift at all just
+  // because the engine underneath is now multi-tenant. Any other seller
+  // gets Amara introduced as their own business instead, since she can't
+  // be "KP Collections" for every shop on the platform.
+  const shopName = seller.sellerId === SELLER1_ID ? "KP Collections" : (seller.businessName || "the shop");
+  const catalogLines = Object.keys(catalog.PRODUCT_NAMES)
+    .map((key, i) => `${i + 1}. ${catalog.PRODUCT_NAMES[key]} — N${catalog.PRODUCT_PRICES[key].toLocaleString()} (key: ${key})`)
     .join("\n");
 
   return `
-You are "Amara", the sales assistant for KP Collections, a small Nigerian
+You are "Amara", the sales assistant for ${shopName}, a small Nigerian
 online store that sells on WhatsApp. You text like a real Nigerian shop
 girl chatting with a customer, not like an assistant or a chatbot. Never
 use em dashes.
@@ -410,11 +555,11 @@ NEGOTIATION AND PRICE INTEGRITY (read this carefully):
 RULES:
 - Quote prices EXACTLY as listed (never change or guess a price), even
   when writing them the casual "18k" way.
-- Delivery: Lagos N${DELIVERY_FEES.lagos.toLocaleString()} (1-2 days), outside Lagos N${DELIVERY_FEES.outside.toLocaleString()} (2-4 days).
+- Delivery: Lagos N${catalog.DELIVERY_FEES.lagos.toLocaleString()} (1-2 days), outside Lagos N${catalog.DELIVERY_FEES.outside.toLocaleString()} (2-4 days).
 - Payment: the automatic payment link (see SENDING A PAYMENT LINK below)
   is the preferred way, use it once an order is confirmed. If a customer
   specifically asks to pay by direct bank transfer instead, that's fine
-  too: bank transfer to ${BANK_DETAILS.accountName}, ${BANK_DETAILS.bankName} ${BANK_DETAILS.accountNumber}.
+  too: bank transfer to ${catalog.BANK_DETAILS.accountName}, ${catalog.BANK_DETAILS.bankName} ${catalog.BANK_DETAILS.accountNumber}.
   Ask them to send a screenshot after transferring, and say the owner
   will confirm it shortly. Don't bring up bank transfer yourself
   unprompted, only offer it if the customer asks for it.
@@ -490,14 +635,14 @@ async function redisCommand(commandArray) {
   return data.result;
 }
 
-async function getConversation(from) {
+async function getConversation(sellerId, from) {
   // Try twice before giving up. A single transient network hiccup (most
   // likely right as the free server wakes from a nap) shouldn't make a
   // real returning customer look like a stranger. If both attempts fail,
   // we still fall back safely to an empty history rather than crashing.
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const raw = await redisCommand(["GET", `conv:${from}`]);
+      const raw = await redisCommand(["GET", nsKey(sellerId, `conv:${from}`)]);
       if (!raw) return [];
       return JSON.parse(raw);
     } catch (err) {
@@ -511,10 +656,10 @@ async function getConversation(from) {
   }
 }
 
-async function saveConversation(from, history) {
+async function saveConversation(sellerId, from, history) {
   try {
     // EX 2592000 = expire after 30 days of no new messages
-    await redisCommand(["SET", `conv:${from}`, JSON.stringify(history), "EX", "2592000"]);
+    await redisCommand(["SET", nsKey(sellerId, `conv:${from}`), JSON.stringify(history), "EX", "2592000"]);
   } catch (err) {
     console.error("saveConversation failed:", err);
   }
@@ -527,31 +672,31 @@ async function saveConversation(from, history) {
 // a customer forever.
 const PAUSE_DURATION_SECONDS = 6 * 60 * 60; // 6 hours
 
-async function pauseCustomer(phone) {
+async function pauseCustomer(sellerId, phone) {
   try {
-    await redisCommand(["SET", `paused:${phone}`, "1", "EX", String(PAUSE_DURATION_SECONDS)]);
+    await redisCommand(["SET", nsKey(sellerId, `paused:${phone}`), "1", "EX", String(PAUSE_DURATION_SECONDS)]);
     // Reset the "already told them someone's coming" flag so the one-time
     // holding note fires fresh for this new pause, not skipped from last time.
-    await redisCommand(["DEL", `paused_notified:${phone}`]);
-    await upsertCustomer(phone, { paused: "yes" });
+    await redisCommand(["DEL", nsKey(sellerId, `paused_notified:${phone}`)]);
+    await upsertCustomer(sellerId, phone, { paused: "yes" });
   } catch (err) {
     console.error("pauseCustomer failed:", err.message);
   }
 }
 
-async function resumeCustomer(phone) {
+async function resumeCustomer(sellerId, phone) {
   try {
-    await redisCommand(["DEL", `paused:${phone}`]);
-    await redisCommand(["DEL", `paused_notified:${phone}`]);
-    await upsertCustomer(phone, { paused: "no" });
+    await redisCommand(["DEL", nsKey(sellerId, `paused:${phone}`)]);
+    await redisCommand(["DEL", nsKey(sellerId, `paused_notified:${phone}`)]);
+    await upsertCustomer(sellerId, phone, { paused: "no" });
   } catch (err) {
     console.error("resumeCustomer failed:", err.message);
   }
 }
 
-async function isCustomerPaused(phone) {
+async function isCustomerPaused(sellerId, phone) {
   try {
-    const result = await redisCommand(["GET", `paused:${phone}`]);
+    const result = await redisCommand(["GET", nsKey(sellerId, `paused:${phone}`)]);
     return !!result;
   } catch (err) {
     // Fail OPEN: if Redis hiccups, Amara should keep helping the customer,
@@ -561,34 +706,34 @@ async function isCustomerPaused(phone) {
   }
 }
 
-async function hasNotifiedPaused(phone) {
+async function hasNotifiedPaused(sellerId, phone) {
   try {
-    const result = await redisCommand(["GET", `paused_notified:${phone}`]);
+    const result = await redisCommand(["GET", nsKey(sellerId, `paused_notified:${phone}`)]);
     return !!result;
   } catch (err) {
     return true; // fail toward NOT repeating the note, safer than spamming
   }
 }
 
-async function markNotifiedPaused(phone) {
+async function markNotifiedPaused(sellerId, phone) {
   try {
-    await redisCommand(["SET", `paused_notified:${phone}`, "1", "EX", String(PAUSE_DURATION_SECONDS)]);
+    await redisCommand(["SET", nsKey(sellerId, `paused_notified:${phone}`), "1", "EX", String(PAUSE_DURATION_SECONDS)]);
   } catch (err) {
     console.error("markNotifiedPaused failed:", err.message);
   }
 }
 
-async function setLastEscalatedCustomer(phone) {
+async function setLastEscalatedCustomer(sellerId, phone) {
   try {
-    await redisCommand(["SET", "last_escalated_customer", phone, "EX", "86400"]); // 24h
+    await redisCommand(["SET", nsKey(sellerId, "last_escalated_customer"), phone, "EX", "86400"]); // 24h
   } catch (err) {
     console.error("setLastEscalatedCustomer failed:", err.message);
   }
 }
 
-async function getLastEscalatedCustomer() {
+async function getLastEscalatedCustomer(sellerId) {
   try {
-    return await redisCommand(["GET", "last_escalated_customer"]);
+    return await redisCommand(["GET", nsKey(sellerId, "last_escalated_customer")]);
   } catch (err) {
     console.error("getLastEscalatedCustomer failed:", err.message);
     return null;
@@ -603,22 +748,22 @@ async function getLastEscalatedCustomer() {
 // the same data a future dashboard app would read from, so nothing here
 // gets thrown away once that exists.
 
-async function upsertCustomer(phone, fields) {
+async function upsertCustomer(sellerId, phone, fields) {
   try {
     const flatFields = [];
     for (const [key, value] of Object.entries(fields)) {
       flatFields.push(key, String(value));
     }
-    await redisCommand(["HSET", `customer:${phone}`, ...flatFields]);
-    await redisCommand(["SADD", "all_customers", phone]);
+    await redisCommand(["HSET", nsKey(sellerId, `customer:${phone}`), ...flatFields]);
+    await redisCommand(["SADD", nsKey(sellerId, "all_customers"), phone]);
   } catch (err) {
     console.error(`upsertCustomer failed for ${phone}:`, err.message);
   }
 }
 
-async function getCustomer(phone) {
+async function getCustomer(sellerId, phone) {
   try {
-    const raw = await redisCommand(["HGETALL", `customer:${phone}`]);
+    const raw = await redisCommand(["HGETALL", nsKey(sellerId, `customer:${phone}`)]);
     // Upstash returns HGETALL as a flat [key, value, key, value, ...] array
     if (!raw || raw.length === 0) return null;
     const record = { phone };
@@ -632,11 +777,11 @@ async function getCustomer(phone) {
   }
 }
 
-async function listAllCustomers() {
+async function listAllCustomers(sellerId) {
   try {
-    const phones = await redisCommand(["SMEMBERS", "all_customers"]);
+    const phones = await redisCommand(["SMEMBERS", nsKey(sellerId, "all_customers")]);
     if (!phones || phones.length === 0) return [];
-    const records = await Promise.all(phones.map((phone) => getCustomer(phone)));
+    const records = await Promise.all(phones.map((phone) => getCustomer(sellerId, phone)));
     return records.filter(Boolean);
   } catch (err) {
     console.error("listAllCustomers failed:", err.message);
@@ -646,10 +791,10 @@ async function listAllCustomers() {
 
 // Called on every incoming customer message: keeps first/last contact
 // time and message count up to date without needing any separate step.
-async function recordCustomerContact(phone) {
-  const existing = await getCustomer(phone);
+async function recordCustomerContact(sellerId, phone) {
+  const existing = await getCustomer(sellerId, phone);
   const now = new Date().toISOString();
-  await upsertCustomer(phone, {
+  await upsertCustomer(sellerId, phone, {
     phone,
     first_contact: existing?.first_contact || now,
     last_contact: now,
@@ -659,13 +804,12 @@ async function recordCustomerContact(phone) {
 
 // ---------- SELLER ACCOUNTS (multi-tenant foundation) ----------
 // Phase A of the self-serve onboarding plan: a real account + login layer,
-// so sellers register themselves instead of being added by hand. This is
-// deliberately scoped NOT to touch the live message-handling engine below
-// (webhook, catalog, conversations, orders, analytics all still serve the
-// one current shop) — wiring incoming WhatsApp traffic to route per-seller
-// is Phase C, a separate, careful pass of its own, so nothing about the
-// system a real customer is talking to right now changes underneath it.
-// See the build log for the full phased plan.
+// so sellers register themselves instead of being added by hand.
+//
+// Phase C (below, see PER-SELLER STATE near the top of this file, and the
+// message-handling engine further down) is what actually wires incoming
+// WhatsApp traffic to route per-seller instead of serving one shop. See
+// the build log for the full phased plan.
 
 // Server-side HTML escaping for the signup/login/seller pages below —
 // distinct from the client-side escapeHtml() inside dashboardHtml()'s
@@ -754,24 +898,70 @@ async function requireSellerAuth(req, res, next) {
   next();
 }
 
+// ---------- Bootstrapping seller1 (the original shop) as a real seller ----------
+// Runs once at startup. Creates seller1's own `seller:seller1` Redis record
+// if it doesn't already exist (so it shows up in admin tooling like every
+// other seller), and registers its real phone_number_id (from the
+// PHONE_NUMBER_ID env var) in the routing index right away, so the very
+// first webhook call after a restart routes correctly without waiting on
+// a lazy load. Deliberately does NOT write phoneNumberId/whatsappToken/
+// ownerPhoneNumber into Redis for seller1 -- those stay absent so
+// loadSellerCreds() keeps falling back to the env vars, exactly as today,
+// unless an admin explicitly reconnects seller1 via the same manual
+// WhatsApp-connect route every other seller uses.
+async function ensureSeller1() {
+  try {
+    const existing = await getSellerById(SELLER1_ID);
+    if (!existing) {
+      await redisCommand([
+        "HSET", `seller:${SELLER1_ID}`,
+        "sellerId", SELLER1_ID,
+        "businessName", "KP Collections",
+        "status", "active",
+        "createdAt", new Date().toISOString(),
+      ]);
+      await redisCommand(["SADD", "all_sellers", SELLER1_ID]);
+      console.log("Bootstrapped seller1 (the original shop) as a real seller record.");
+    }
+  } catch (err) {
+    console.error("ensureSeller1 failed (non-fatal, seller1 still works via env vars as fallback):", err.message);
+  }
+  if (PHONE_NUMBER_ID) registerSellerPhoneNumberId(SELLER1_ID, PHONE_NUMBER_ID);
+}
+
+// Warms the phone_number_id -> sellerId routing index for every seller
+// who already has a connected number, so a restart never causes a brief
+// window of misrouted webhook traffic while it lazy-loads.
+async function warmPhoneNumberIdIndex() {
+  try {
+    const ids = (await redisCommand(["SMEMBERS", "all_sellers"])) || [];
+    const sellers = await Promise.all(ids.map((id) => getSellerById(id)));
+    for (const s of sellers) {
+      if (s?.phoneNumberId) registerSellerPhoneNumberId(s.sellerId, s.phoneNumberId);
+    }
+  } catch (err) {
+    console.error("warmPhoneNumberIdIndex failed (non-fatal):", err.message);
+  }
+}
+
 // ---------- Durable "photo already sent" tracking ----------
 // This used to live only as a note buried in the last-10-message chat
 // history, which meant a busy conversation (escalations, pauses, small
 // talk) could push it out and cause an accidental resend. Tracking it
 // here instead, permanently, per customer, means it can never be
 // forgotten no matter how long or chaotic the conversation gets.
-async function markPhotoSent(phone, photoKey) {
+async function markPhotoSent(sellerId, phone, photoKey) {
   try {
-    await redisCommand(["SADD", `photos_sent:${phone}`, photoKey]);
-    await redisCommand(["EXPIRE", `photos_sent:${phone}`, "2592000"]); // 30 days
+    await redisCommand(["SADD", nsKey(sellerId, `photos_sent:${phone}`), photoKey]);
+    await redisCommand(["EXPIRE", nsKey(sellerId, `photos_sent:${phone}`), "2592000"]); // 30 days
   } catch (err) {
     console.error(`markPhotoSent failed for ${phone}:`, err.message);
   }
 }
 
-async function getPhotosSent(phone) {
+async function getPhotosSent(sellerId, phone) {
   try {
-    return await redisCommand(["SMEMBERS", `photos_sent:${phone}`]);
+    return await redisCommand(["SMEMBERS", nsKey(sellerId, `photos_sent:${phone}`)]);
   } catch (err) {
     console.error(`getPhotosSent failed for ${phone}:`, err.message);
     return [];
@@ -783,9 +973,9 @@ async function getPhotosSent(phone) {
 // us later via a separate "failed" status event, not the original API
 // response. Without this, a photo we marked "sent" could have actually
 // never reached the customer, with nothing correcting that record.
-async function unmarkPhotoSent(phone, photoKey) {
+async function unmarkPhotoSent(sellerId, phone, photoKey) {
   try {
-    await redisCommand(["SREM", `photos_sent:${phone}`, photoKey]);
+    await redisCommand(["SREM", nsKey(sellerId, `photos_sent:${phone}`), photoKey]);
   } catch (err) {
     console.error(`unmarkPhotoSent failed for ${phone}:`, err.message);
   }
@@ -799,11 +989,11 @@ async function unmarkPhotoSent(phone, photoKey) {
 // the real failure later as a status event with nothing tying it back to
 // a customer or photo. Keyed by WhatsApp's own message id, short-lived
 // (failures are reported within minutes, not days).
-async function trackPendingPhotoSend(messageId, phone, photoKey) {
+async function trackPendingPhotoSend(sellerId, messageId, phone, photoKey) {
   try {
     await redisCommand([
       "SET",
-      `pending_photo:${messageId}`,
+      nsKey(sellerId, `pending_photo:${messageId}`),
       JSON.stringify({ phone, photoKey }),
       "EX",
       "86400",
@@ -813,9 +1003,9 @@ async function trackPendingPhotoSend(messageId, phone, photoKey) {
   }
 }
 
-async function getPendingPhotoSend(messageId) {
+async function getPendingPhotoSend(sellerId, messageId) {
   try {
-    const raw = await redisCommand(["GET", `pending_photo:${messageId}`]);
+    const raw = await redisCommand(["GET", nsKey(sellerId, `pending_photo:${messageId}`)]);
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
     console.error(`getPendingPhotoSend failed for ${messageId}:`, err.message);
@@ -823,9 +1013,9 @@ async function getPendingPhotoSend(messageId) {
   }
 }
 
-async function clearPendingPhotoSend(messageId) {
+async function clearPendingPhotoSend(sellerId, messageId) {
   try {
-    await redisCommand(["DEL", `pending_photo:${messageId}`]);
+    await redisCommand(["DEL", nsKey(sellerId, `pending_photo:${messageId}`)]);
   } catch (err) {
     console.error(`clearPendingPhotoSend failed for ${messageId}:`, err.message);
   }
@@ -892,6 +1082,14 @@ async function getPendingOrder(reference) {
   }
 }
 
+// NOTE (Phase C): order:<reference> stays a GLOBAL, unprefixed key
+// deliberately, unlike everything else in this file. Paystack's webhook
+// hands back only a bare reference string with no way to know which
+// seller it belongs to -- so instead of trying to namespace this key by
+// seller (impossible before we've even looked it up), the seller is
+// stored INSIDE the order record itself (see processBufferedTurn, which
+// sets order.sellerId when creating it), and the paystack-webhook handler
+// reads it back out of there to resolve the right seller context.
 async function markOrderPaid(reference, order) {
   try {
     await redisCommand([
@@ -914,26 +1112,26 @@ async function markOrderPaid(reference, order) {
 // derived view), and paid orders themselves expire after 30 days. These
 // counters are separate, dedicated, and never expire, so trends and
 // best-sellers stay correct regardless of either of those.
-async function recordOrderAnalytics(order) {
+async function recordOrderAnalytics(sellerId, order) {
   try {
     const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    await redisCommand(["INCRBYFLOAT", `analytics:day:${dateStr}:revenue`, String(order.totalNaira)]);
-    await redisCommand(["INCR", `analytics:day:${dateStr}:orders`]);
-    await redisCommand(["INCR", `analytics:product:${order.productKey}:sold`]);
-    await redisCommand(["INCRBYFLOAT", `analytics:product:${order.productKey}:revenue`, String(order.totalNaira)]);
+    await redisCommand(["INCRBYFLOAT", nsKey(sellerId, `analytics:day:${dateStr}:revenue`), String(order.totalNaira)]);
+    await redisCommand(["INCR", nsKey(sellerId, `analytics:day:${dateStr}:orders`)]);
+    await redisCommand(["INCR", nsKey(sellerId, `analytics:product:${order.productKey}:sold`)]);
+    await redisCommand(["INCRBYFLOAT", nsKey(sellerId, `analytics:product:${order.productKey}:revenue`), String(order.totalNaira)]);
     // Tracked in its own set (same pattern as all_customers) so a product
     // removed from the catalog later doesn't lose its sales history from
     // the best-sellers list, and so we never need a slow Redis KEYS scan
     // to find out which products have ever sold anything.
-    await redisCommand(["SADD", "analytics:products_sold", order.productKey]);
+    await redisCommand(["SADD", nsKey(sellerId, "analytics:products_sold"), order.productKey]);
     // Unique paying customers, for the chat-to-order conversion stat.
-    await redisCommand(["SADD", "analytics:paid_customers", order.phone]);
+    await redisCommand(["SADD", nsKey(sellerId, "analytics:paid_customers"), order.phone]);
   } catch (err) {
     console.error("recordOrderAnalytics failed:", err.message);
   }
 }
 
-async function getAnalyticsSummary(customers) {
+async function getAnalyticsSummary(sellerId, customers, catalog) {
   // Last 14 days of revenue + order count, oldest to newest. Always
   // generates the full 14-day range and lets a missing key read as 0,
   // rather than needing a separate index of "which days have data" —
@@ -950,8 +1148,8 @@ async function getAnalyticsSummary(customers) {
     let orders = 0;
     try {
       const [revenueRaw, ordersRaw] = await Promise.all([
-        redisCommand(["GET", `analytics:day:${dateStr}:revenue`]),
-        redisCommand(["GET", `analytics:day:${dateStr}:orders`]),
+        redisCommand(["GET", nsKey(sellerId, `analytics:day:${dateStr}:revenue`)]),
+        redisCommand(["GET", nsKey(sellerId, `analytics:day:${dateStr}:orders`)]),
       ]);
       revenue = Number(revenueRaw) || 0;
       orders = Number(ordersRaw) || 0;
@@ -964,16 +1162,16 @@ async function getAnalyticsSummary(customers) {
   // Best sellers, sorted by units sold.
   let bestSellers = [];
   try {
-    const soldKeys = (await redisCommand(["SMEMBERS", "analytics:products_sold"])) || [];
+    const soldKeys = (await redisCommand(["SMEMBERS", nsKey(sellerId, "analytics:products_sold")])) || [];
     const rows = await Promise.all(
       soldKeys.map(async (key) => {
         const [soldRaw, revenueRaw] = await Promise.all([
-          redisCommand(["GET", `analytics:product:${key}:sold`]),
-          redisCommand(["GET", `analytics:product:${key}:revenue`]),
+          redisCommand(["GET", nsKey(sellerId, `analytics:product:${key}:sold`)]),
+          redisCommand(["GET", nsKey(sellerId, `analytics:product:${key}:revenue`)]),
         ]);
         return {
           key,
-          name: PRODUCT_NAMES[key] || key, // falls back to the raw key if the product was since removed from the catalog
+          name: (catalog && catalog.PRODUCT_NAMES[key]) || key, // falls back to the raw key if the product was since removed from the catalog
           sold: Number(soldRaw) || 0,
           revenue: Number(revenueRaw) || 0,
         };
@@ -989,7 +1187,7 @@ async function getAnalyticsSummary(customers) {
   // low a daily conversion rate would be too noisy to mean anything yet.
   let paidCustomerCount = 0;
   try {
-    const paidPhones = (await redisCommand(["SMEMBERS", "analytics:paid_customers"])) || [];
+    const paidPhones = (await redisCommand(["SMEMBERS", nsKey(sellerId, "analytics:paid_customers")])) || [];
     paidCustomerCount = paidPhones.length;
   } catch (err) {
     console.error("getAnalyticsSummary: paid-customers lookup failed:", err.message);
@@ -1011,7 +1209,13 @@ async function getAnalyticsSummary(customers) {
 // before the customer has finished. Instead, we wait a short window to
 // see if more messages are coming, then combine them into one turn.
 const BUFFER_WAIT_MS = 4000; // 4 seconds of quiet before we reply
-const pendingBuffers = new Map(); // from -> { texts: [], lastMessageId, timer }
+const pendingBuffers = new Map(); // "<sellerId>:<from>" -> { texts: [], lastMessageId, timer }
+// Same real customer phone number could, in principle, be messaging two
+// different sellers' shops -- keying by sellerId+phone (not just phone)
+// keeps their buffers, and everything downstream, fully separate.
+function bufferKey(sellerId, from) {
+  return `${sellerId}:${from}`;
+}
 
 // ---------- 1) WEBHOOK VERIFICATION (Meta knocks, we answer) ----------
 app.get("/webhook", (req, res) => {
@@ -1032,6 +1236,27 @@ app.post("/webhook", async (req, res) => {
 
   try {
     const value = req.body?.entry?.[0]?.changes?.[0]?.value;
+
+    // ---------- Route this call to the right seller ----------
+    // Meta's own phone_number_id tells us which seller's WhatsApp number
+    // this call is actually about -- the only thing that does, since every
+    // seller's number calls this exact same shared URL. Falls back to
+    // seller1 if it's missing or unrecognized (shouldn't happen with real
+    // Meta traffic, but seller1 is the one existing, working shop, so
+    // that's the safe default rather than silently dropping a message).
+    const incomingPhoneNumberId = value?.metadata?.phone_number_id;
+    let sellerId = incomingPhoneNumberId ? phoneNumberIdToSellerId[incomingPhoneNumberId] : null;
+    if (!sellerId) {
+      if (incomingPhoneNumberId) {
+        console.error(`Webhook: unrecognized phone_number_id "${incomingPhoneNumberId}", falling back to seller1.`);
+      }
+      sellerId = SELLER1_ID;
+    }
+    const seller = await getSellerContext(sellerId);
+    if (!seller) {
+      console.error(`Webhook: resolved sellerId "${sellerId}" has no context, dropping this call.`);
+      return;
+    }
 
     // Meta sends delivery status updates (sent/delivered/read/FAILED) as a
     // separate event from actual incoming messages. We were ignoring these
@@ -1055,23 +1280,25 @@ app.post("/webhook", async (req, res) => {
           // would brush them off instead of retrying. Fixed here, in
           // code, rather than relying on the AI to notice on some later
           // turn, which is exactly what let this go unnoticed twice.
-          const pending = await getPendingPhotoSend(status.id);
+          const pending = await getPendingPhotoSend(seller.sellerId, status.id);
           if (pending) {
-            await clearPendingPhotoSend(status.id);
-            await unmarkPhotoSent(pending.phone, pending.photoKey);
+            await clearPendingPhotoSend(seller.sellerId, status.id);
+            await unmarkPhotoSent(seller.sellerId, pending.phone, pending.photoKey);
 
             await sendWhatsApp(
+              seller,
               pending.phone,
               "Ah, that photo didn't actually go through on my end, sending it again now, one sec."
             );
             const retry = await sendWhatsAppImage(
+              seller,
               pending.phone,
-              PRODUCT_IMAGES[pending.photoKey]
+              seller.catalog.PRODUCT_IMAGES[pending.photoKey]
             );
             if (retry.success) {
-              await markPhotoSent(pending.phone, pending.photoKey);
+              await markPhotoSent(seller.sellerId, pending.phone, pending.photoKey);
               if (retry.messageId) {
-                await trackPendingPhotoSend(retry.messageId, pending.phone, pending.photoKey);
+                await trackPendingPhotoSend(seller.sellerId, retry.messageId, pending.phone, pending.photoKey);
               }
             }
 
@@ -1080,6 +1307,7 @@ app.post("/webhook", async (req, res) => {
             // fixed it, and this alert fires from code, not from the AI
             // choosing to mention it, so it can't get missed again.
             await sendOwnerAlert(
+              seller,
               pending.phone,
               `Photo delivery failed for ${pending.photoKey} (WhatsApp couldn't deliver it)` +
                 (retry.success ? ", auto-retried and it went through" : ", retry also failed"),
@@ -1097,51 +1325,52 @@ app.post("/webhook", async (req, res) => {
     const from = message.from;             // sender's number
     const text = message.text.body;        // what they said
 
-    // If this message is from the owner's own number, treat it as a
-    // control command (pause/resume), not a customer conversation.
-    // Handled immediately, no buffering delay, since the owner wants
-    // an instant confirmation, especially in an urgent moment.
-    if (OWNER_PHONE_NUMBER && from === OWNER_PHONE_NUMBER) {
-      console.log(`Owner ${from}: ${text}`);
-      await handleOwnerCommand(text);
+    // If this message is from THIS SELLER's own owner number, treat it as
+    // a control command (pause/resume), not a customer conversation.
+    // Handled immediately, no buffering delay, since the owner wants an
+    // instant confirmation, especially in an urgent moment.
+    if (seller.ownerPhoneNumber && from === seller.ownerPhoneNumber) {
+      console.log(`Owner (${seller.sellerId}) ${from}: ${text}`);
+      await handleOwnerCommand(seller, text);
       return;
     }
 
-    console.log(`Customer ${from}: ${text}`);
+    console.log(`Customer (${seller.sellerId}) ${from}: ${text}`);
 
     // Keep the customer database up to date: when we first heard from
     // them, when we last did, and how many messages total.
-    await recordCustomerContact(from);
+    await recordCustomerContact(seller.sellerId, from);
 
     // If the owner has paused this customer, handle it separately and
     // stop here. This must happen BEFORE we show any typing indicator,
     // otherwise the customer sees "typing..." for a reply that may
     // never come, which is misleading.
-    const paused = await isCustomerPaused(from);
+    const paused = await isCustomerPaused(seller.sellerId, from);
     if (paused) {
-      await handlePausedCustomerMessage(from, text, message.id);
+      await handlePausedCustomerMessage(seller, from, text, message.id);
       return;
     }
 
     // Mark the message as read and show the "typing..." bubble right away,
     // so the customer sees a response is coming even while we wait to see
     // if more messages are on the way.
-    await markReadAndShowTyping(message.id);
+    await markReadAndShowTyping(seller, message.id);
 
     // Add this message to the customer's pending buffer. If they send
     // another message within the wait window, we cancel the old timer and
     // start a fresh one, so we only reply once they've paused.
-    let buffer = pendingBuffers.get(from);
+    const key = bufferKey(seller.sellerId, from);
+    let buffer = pendingBuffers.get(key);
     if (!buffer) {
       buffer = { texts: [], lastMessageId: null };
-      pendingBuffers.set(from, buffer);
+      pendingBuffers.set(key, buffer);
     }
     buffer.texts.push(text);
     buffer.lastMessageId = message.id;
 
     if (buffer.timer) clearTimeout(buffer.timer);
     buffer.timer = setTimeout(() => {
-      processBufferedTurn(from).catch((err) =>
+      processBufferedTurn(seller, from).catch((err) =>
         console.error("processBufferedTurn crashed:", err)
       );
     }, BUFFER_WAIT_MS);
@@ -1155,23 +1384,23 @@ app.post("/webhook", async (req, res) => {
 // Bypasses the normal buffer/typing flow entirely, since we already know
 // whether Amara is going to say anything. Only shows typing when she's
 // actually about to send the one-time holding note.
-async function handlePausedCustomerMessage(from, text, messageId) {
-  const alreadyNotified = await hasNotifiedPaused(from);
+async function handlePausedCustomerMessage(seller, from, text, messageId) {
+  const alreadyNotified = await hasNotifiedPaused(seller.sellerId, from);
 
   if (!alreadyNotified) {
     // First message since the pause started: this is a real conversation
     // turn, save it along with the holding note, same as any normal reply.
-    let history = await getConversation(from);
+    let history = await getConversation(seller.sellerId, from);
     history.push({ role: "user", content: text });
 
-    await markReadAndShowTyping(messageId);
+    await markReadAndShowTyping(seller, messageId);
     const holdingNote = "Just a moment, the owner's handling this personally right now.";
     await humanPause(holdingNote);
-    await sendWhatsApp(from, holdingNote);
-    await markNotifiedPaused(from);
+    await sendWhatsApp(seller, from, holdingNote);
+    await markNotifiedPaused(seller.sellerId, from);
     history.push({ role: "assistant", content: holdingNote });
     history = history.slice(-10);
-    await saveConversation(from, history);
+    await saveConversation(seller.sellerId, from, history);
     console.log(`Amara -> ${from}: [paused, sent one-time holding note]`);
   } else {
     // Already told them once, staying quiet. Deliberately NOT saved to
@@ -1180,16 +1409,17 @@ async function handlePausedCustomerMessage(from, text, messageId) {
     // consume a slot in the last-10-message window pushes the real,
     // meaningful conversation out before the owner even resumes. Just
     // mark it read and keep count in the customer database instead.
-    await markReadOnly(messageId);
+    await markReadOnly(seller, messageId);
     console.log(`Customer ${from} is paused, staying quiet (already notified): "${text}"`);
   }
 }
 
 
-async function processBufferedTurn(from) {
-  const buffer = pendingBuffers.get(from);
+async function processBufferedTurn(seller, from) {
+  const key = bufferKey(seller.sellerId, from);
+  const buffer = pendingBuffers.get(key);
   if (!buffer) return; // safety, shouldn't happen
-  pendingBuffers.delete(from);
+  pendingBuffers.delete(key);
 
   // Combine everything they sent in this burst into one turn, so Amara
   // replies to the whole thought instead of just the first fragment.
@@ -1198,7 +1428,7 @@ async function processBufferedTurn(from) {
 
   try {
     // Load this customer's history from persistent memory
-    let history = await getConversation(from);
+    let history = await getConversation(seller.sellerId, from);
     history.push({ role: "user", content: combinedText });
     // keep only last 10 turns to stay light
     history = history.slice(-10);
@@ -1208,21 +1438,21 @@ async function processBufferedTurn(from) {
     // Still save the customer's message to history for continuity, and
     // send one quiet note the first time this happens per pause, not
     // on every message, so it doesn't feel repetitive or robotic.
-    const paused = await isCustomerPaused(from);
+    const paused = await isCustomerPaused(seller.sellerId, from);
     if (paused) {
       let holdingNote = null;
-      const alreadyNotified = await hasNotifiedPaused(from);
+      const alreadyNotified = await hasNotifiedPaused(seller.sellerId, from);
       if (!alreadyNotified) {
         holdingNote = "Just a moment, the owner's handling this personally right now.";
         await humanPause(holdingNote);
-        await sendWhatsApp(from, holdingNote);
-        await markNotifiedPaused(from);
+        await sendWhatsApp(seller, from, holdingNote);
+        await markNotifiedPaused(seller.sellerId, from);
         console.log(`Amara -> ${from}: [paused, sent one-time holding note]`);
       } else {
         console.log(`Customer ${from} is paused, staying quiet (already notified).`);
       }
       history.push({ role: "assistant", content: holdingNote || "[paused: owner is handling this personally]" });
-      await saveConversation(from, history);
+      await saveConversation(seller.sellerId, from, history);
       return;
     }
 
@@ -1231,12 +1461,12 @@ async function processBufferedTurn(from) {
     // durable storage (not chat history, which can get pushed out by a
     // busy conversation), and remind her fresh every single call so this
     // can never be forgotten no matter how the conversation has gone.
-    const photosAlreadySent = await getPhotosSent(from);
+    const photosAlreadySent = await getPhotosSent(seller.sellerId, from);
     const photoReminder =
       photosAlreadySent.length > 0
         ? `You have ALREADY sent these product photos to this customer in this chat: ${photosAlreadySent.join(", ")}. Do not resend any of these unless the customer explicitly asks to see it again.`
         : "";
-    const rawReply = await askAI(history, photoReminder);
+    const rawReply = await askAI(seller, history, photoReminder);
 
     // Pull out the invisible [PHOTO: key] tag, if she included one, and
     // clean it out of the text so the customer never sees the tag itself.
@@ -1270,17 +1500,17 @@ async function processBufferedTurn(from) {
     // durable storage (see above), not as a note buried in this text.
     const memoryBody = bubbles.join("\n");
     history.push({ role: "assistant", content: memoryBody });
-    await saveConversation(from, history);
+    await saveConversation(seller.sellerId, from, history);
 
     // ---------- 4) REPLY on WhatsApp, one bubble at a time ----------
     for (let i = 0; i < bubbles.length; i++) {
       // Re-show the typing bubble before each message after the first,
       // so multi-part replies feel like separate thoughts, not a dump.
       if (i > 0 && messageId) {
-        await markReadAndShowTyping(messageId);
+        await markReadAndShowTyping(seller, messageId);
       }
       await humanPause(bubbles[i]);
-      await sendWhatsApp(from, bubbles[i]);
+      await sendWhatsApp(seller, from, bubbles[i]);
       console.log(`Amara -> ${from}: ${bubbles[i]}`);
     }
 
@@ -1306,7 +1536,7 @@ async function processBufferedTurn(from) {
     // or saying nothing.
     const PHOTO_REQUEST_PATTERN =
       /\b(see|show|send|share)\b[^.!?]{0,25}\b(pic|pics|picture|pictures|photo|photos|image|images)\b|\bresend\b|\bonce more\b|\bone more time\b|\bagain\b/i;
-    if (photoKey && PRODUCT_IMAGES[photoKey]) {
+    if (photoKey && seller.catalog.PRODUCT_IMAGES[photoKey]) {
       const alreadySentThisPhoto = photosAlreadySent.includes(photoKey);
       const explicitlyRequested = PHOTO_REQUEST_PATTERN.test(combinedText);
 
@@ -1320,22 +1550,22 @@ async function processBufferedTurn(from) {
           `Photo resend SUPPRESSED (already sent, no explicit request): ${photoKey} for ${from}`
         );
         const clarifyText = "Already sent that one above, let me know if you want me to send it again!";
-        await sendWhatsApp(from, clarifyText);
-        let clarifyHistory = await getConversation(from);
+        await sendWhatsApp(seller, from, clarifyText);
+        let clarifyHistory = await getConversation(seller.sellerId, from);
         clarifyHistory.push({ role: "assistant", content: clarifyText });
         clarifyHistory = clarifyHistory.slice(-10);
-        await saveConversation(from, clarifyHistory);
+        await saveConversation(seller.sellerId, from, clarifyHistory);
       } else {
         await new Promise((resolve) => setTimeout(resolve, 900));
-        const imageResult = await sendWhatsAppImage(from, PRODUCT_IMAGES[photoKey]);
+        const imageResult = await sendWhatsAppImage(seller, from, seller.catalog.PRODUCT_IMAGES[photoKey]);
         if (imageResult.success) {
           console.log(`Amara -> ${from}: [sent photo: ${photoKey}]`);
-          await markPhotoSent(from, photoKey); // durable, survives everything
+          await markPhotoSent(seller.sellerId, from, photoKey); // durable, survives everything
           if (imageResult.messageId) {
             // Meta accepting the call isn't proof it actually reached the
             // customer -- see the /webhook "failed" status handling below,
             // which is what catches it if this one silently doesn't land.
-            await trackPendingPhotoSend(imageResult.messageId, from, photoKey);
+            await trackPendingPhotoSend(seller.sellerId, imageResult.messageId, from, photoKey);
           }
         } else {
           // A hard, immediate rejection from the API (bad token, bad
@@ -1344,10 +1574,12 @@ async function processBufferedTurn(from) {
           // away rather than hoping a future AI turn notices and tags it.
           console.error(`Photo send FAILED for ${photoKey}, customer got no image.`);
           await sendWhatsApp(
+            seller,
             from,
             "Hmm, that photo isn't sending from my side right now, let me flag this and sort it out."
           );
           await sendOwnerAlert(
+            seller,
             from,
             `Photo send failed immediately (${photoKey}) -- WhatsApp API rejected it`,
             combinedText
@@ -1365,8 +1597,8 @@ async function processBufferedTurn(from) {
     // else in this file, just applied to the one place a slip actually
     // costs real naira.
     if (paymentKey && paymentZone) {
-      const productPrice = PRODUCT_PRICES[paymentKey];
-      const deliveryFee = DELIVERY_FEES[paymentZone];
+      const productPrice = seller.catalog.PRODUCT_PRICES[paymentKey];
+      const deliveryFee = seller.catalog.DELIVERY_FEES[paymentZone];
 
       if (!PAYSTACK_SECRET_KEY) {
         console.error("Payment tag fired but PAYSTACK_SECRET_KEY isn't set, no link sent.");
@@ -1376,12 +1608,21 @@ async function processBufferedTurn(from) {
         );
       } else {
         const totalNaira = productPrice + deliveryFee;
-        const reference = `KP-${from}-${Date.now()}`;
+        // seller1 keeps its exact original reference prefix, so nothing
+        // about existing order-reference formatting shifts for the live
+        // shop; any other seller gets its own short, still-recognizable
+        // prefix instead.
+        const refPrefix = seller.sellerId === SELLER1_ID ? "KP" : seller.sellerId.slice(0, 8).toUpperCase();
+        const reference = `${refPrefix}-${from}-${Date.now()}`;
         // WhatsApp customers rarely have an email on hand mid-chat, and
         // Paystack requires one to initialize a transaction. A stable
         // placeholder per phone number is the standard workaround; it
-        // never has to be real for the payment itself to work.
-        const placeholderEmail = `${from}@customer.kpcollections.ng`;
+        // never has to be real for the payment itself to work. seller1
+        // keeps its original literal domain unchanged.
+        const placeholderEmail =
+          seller.sellerId === SELLER1_ID
+            ? `${from}@customer.kpcollections.ng`
+            : `${from}@customer.${seller.sellerId}.staflyai.ng`;
 
         const transaction = await initializePaystackTransaction(
           placeholderEmail,
@@ -1393,6 +1634,7 @@ async function processBufferedTurn(from) {
         if (transaction?.authorization_url) {
           await createPendingOrder(reference, {
             phone: from,
+            sellerId: seller.sellerId,
             productKey: paymentKey,
             zone: paymentZone,
             totalNaira,
@@ -1404,13 +1646,13 @@ async function processBufferedTurn(from) {
             `Pay here to lock in your order: ${transaction.authorization_url}`;
 
           await new Promise((resolve) => setTimeout(resolve, 900));
-          await sendWhatsApp(from, linkMessage);
+          await sendWhatsApp(seller, from, linkMessage);
           console.log(`Amara -> ${from}: [sent payment link] ${reference}`);
 
-          let paymentHistory = await getConversation(from);
+          let paymentHistory = await getConversation(seller.sellerId, from);
           paymentHistory.push({ role: "assistant", content: linkMessage });
           paymentHistory = paymentHistory.slice(-10);
-          await saveConversation(from, paymentHistory);
+          await saveConversation(seller.sellerId, from, paymentHistory);
         } else {
           console.error(`Paystack link generation FAILED for ${from}, order ${reference}.`);
         }
@@ -1438,7 +1680,7 @@ async function processBufferedTurn(from) {
         `Escalation SUPPRESSED (bare greeting, likely over-eager): "${combinedText}" | reason was: ${escalationReason}`
       );
     } else if (escalationReason) {
-      await sendOwnerAlert(from, escalationReason, combinedText);
+      await sendOwnerAlert(seller, from, escalationReason, combinedText);
       console.log(`Owner alerted: ${escalationReason}`);
     }
   } catch (err) {
@@ -1450,6 +1692,7 @@ async function processBufferedTurn(from) {
     // fails, we've at least logged it clearly above.
     try {
       await sendWhatsApp(
+        seller,
         from,
         "Sorry, small network wahala my side. Still here, please try that again."
       );
@@ -1460,7 +1703,7 @@ async function processBufferedTurn(from) {
 }
 
 // ---------- The AI call ----------
-async function askAI(history, dynamicReminder = "") {
+async function askAI(seller, history, dynamicReminder = "") {
   try {
     // Safety cap: never let this hang forever if Anthropic's API is slow
     // or unreachable. 20 seconds is generous but bounded.
@@ -1471,7 +1714,7 @@ async function askAI(history, dynamicReminder = "") {
     // out) get appended fresh to the system prompt on every single call,
     // rather than relying on them surviving inside the rolling chat
     // history, which can get pushed out during a long or busy conversation.
-    const shopProfile = buildShopProfile();
+    const shopProfile = buildShopProfile(seller);
     const systemPrompt = dynamicReminder ? `${shopProfile}\n\n${dynamicReminder}` : shopProfile;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1504,15 +1747,16 @@ async function askAI(history, dynamicReminder = "") {
 }
 
 // ---------- Show "typing..." on the customer's phone while we think ----------
-async function markReadAndShowTyping(messageId) {
+async function markReadAndShowTyping(seller, messageId) {
+  if (!seller.phoneNumberId || !seller.whatsappToken) return; // not connected yet, nothing to do
   try {
     const response = await fetch(
-      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v21.0/${seller.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${seller.whatsappToken}`,
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
@@ -1533,15 +1777,16 @@ async function markReadAndShowTyping(messageId) {
 // Used when we already know Amara isn't going to reply (e.g. a paused
 // customer who's already been told someone will be with them). Showing
 // "typing..." when nothing is actually coming is misleading.
-async function markReadOnly(messageId) {
+async function markReadOnly(seller, messageId) {
+  if (!seller.phoneNumberId || !seller.whatsappToken) return; // not connected yet, nothing to do
   try {
     const response = await fetch(
-      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v21.0/${seller.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${seller.whatsappToken}`,
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
@@ -1631,15 +1876,19 @@ function stripSelfCorrection(text) {
 }
 
 // ---------- Send a product photo on WhatsApp ----------
-async function sendWhatsAppImage(to, imageUrl) {
+async function sendWhatsAppImage(seller, to, imageUrl) {
+  if (!seller.phoneNumberId || !seller.whatsappToken) {
+    console.error(`sendWhatsAppImage: seller ${seller.sellerId} has no WhatsApp number connected yet.`);
+    return { success: false, messageId: null };
+  }
   try {
     const response = await fetch(
-      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v21.0/${seller.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${seller.whatsappToken}`,
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
@@ -1673,15 +1922,19 @@ async function sendWhatsAppImage(to, imageUrl) {
 }
 
 // ---------- The WhatsApp send ----------
-async function sendWhatsApp(to, text) {
+async function sendWhatsApp(seller, to, text) {
+  if (!seller.phoneNumberId || !seller.whatsappToken) {
+    console.error(`sendWhatsApp: seller ${seller.sellerId} has no WhatsApp number connected yet, message not sent.`);
+    return false;
+  }
   try {
     const response = await fetch(
-      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v21.0/${seller.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${seller.whatsappToken}`,
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
@@ -1714,15 +1967,19 @@ async function sendWhatsApp(to, text) {
 const OWNER_ALERT_TEMPLATE_NAME = "owner_alert_v1";
 const OWNER_ALERT_TEMPLATE_LANGUAGE = "en_US";
 
-async function sendWhatsAppTemplate(to, templateName, languageCode, parameters) {
+async function sendWhatsAppTemplate(seller, to, templateName, languageCode, parameters) {
+  if (!seller.phoneNumberId || !seller.whatsappToken) {
+    console.error(`sendWhatsAppTemplate: seller ${seller.sellerId} has no WhatsApp number connected yet.`);
+    return false;
+  }
   try {
     const response = await fetch(
-      `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+      `https://graph.facebook.com/v21.0/${seller.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${seller.whatsappToken}`,
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
@@ -1783,8 +2040,8 @@ function parseOwnerCommand(text) {
 // ---------- Let the owner ask real questions, not just pause/resume ----------
 // Gathers an honest snapshot of what's actually happening, so Amara can
 // answer using real numbers instead of guessing or giving a static menu.
-async function buildOwnerBusinessSummary() {
-  const customers = await listAllCustomers();
+async function buildOwnerBusinessSummary(sellerId) {
+  const customers = await listAllCustomers(sellerId);
   const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   const activeToday = customers.filter(
@@ -1834,7 +2091,7 @@ async function buildOwnerBusinessSummary() {
   return lines.join("\n");
 }
 
-async function answerOwnerQuestion(ownerText, businessSummary) {
+async function answerOwnerQuestion(seller, ownerText, businessSummary) {
   const fallback =
     "Hey, having a bit of trouble pulling that up right now, mind trying again in a moment?";
   try {
@@ -1854,7 +2111,7 @@ async function answerOwnerQuestion(ownerText, businessSummary) {
       `nothing else, no drafts, no narrating your own corrections, no ` +
       `"let me redo that", just the finished text ready to send.]\n\n` +
       `Owner's message: "${ownerText}"`;
-    const reply = await askAI([{ role: "user", content: instruction }]);
+    const reply = await askAI(seller, [{ role: "user", content: instruction }]);
     const { cleanText: step1 } = extractPhotoTag(reply);
     const { cleanText: step2 } = extractEscalationTag(step1);
     const finalText = stripBannedEmojis(stripSelfCorrection(step2)).trim();
@@ -1866,7 +2123,7 @@ async function answerOwnerQuestion(ownerText, businessSummary) {
 }
 
 
-async function generateResumeFollowUp(reason, ownerMessage) {
+async function generateResumeFollowUp(seller, reason, ownerMessage) {
   const genericFallback =
     "Hey, I'm back! The owner just finished handling things on their end. Let me know if you still need anything.";
 
@@ -1893,7 +2150,7 @@ async function generateResumeFollowUp(reason, ownerMessage) {
       `message itself, nothing else, no drafts, no narrating your own ` +
       `corrections, no "let me redo that", just the finished text ready ` +
       `to send.]`;
-    const reply = await askAI([{ role: "user", content: instruction }]);
+    const reply = await askAI(seller, [{ role: "user", content: instruction }]);
     const { cleanText: step1 } = extractPhotoTag(reply);
     const { cleanText: step2 } = extractEscalationTag(step1);
     const finalText = stripBannedEmojis(stripSelfCorrection(step2)).trim();
@@ -1947,7 +2204,7 @@ async function interpretOwnerIntent(text) {
   }
 }
 
-async function handleOwnerCommand(text) {
+async function handleOwnerCommand(seller, text) {
   let command = parseOwnerCommand(text);
 
   if (!command) {
@@ -1961,14 +2218,14 @@ async function handleOwnerCommand(text) {
     if (isShortAffirmative) {
       let awaitingPauseConfirmation = false;
       try {
-        awaitingPauseConfirmation = !!(await redisCommand(["GET", "awaiting_pause_confirmation"]));
+        awaitingPauseConfirmation = !!(await redisCommand(["GET", nsKey(seller.sellerId, "awaiting_pause_confirmation")]));
       } catch (err) {
         console.error("Could not check awaiting_pause_confirmation flag:", err.message);
       }
       if (awaitingPauseConfirmation) {
         command = { action: "pause", target: "last" };
         try {
-          await redisCommand(["DEL", "awaiting_pause_confirmation"]);
+          await redisCommand(["DEL", nsKey(seller.sellerId, "awaiting_pause_confirmation")]);
         } catch (err) {
           console.error("Could not clear awaiting_pause_confirmation flag:", err.message);
         }
@@ -1988,18 +2245,19 @@ async function handleOwnerCommand(text) {
     // Not a pause/resume command, exact or natural-language. Rather than a
     // static help menu, let her actually answer, using real business data,
     // the same way a normal conversation would work.
-    const businessSummary = await buildOwnerBusinessSummary();
-    const answer = await answerOwnerQuestion(text, businessSummary);
-    await sendWhatsApp(OWNER_PHONE_NUMBER, answer);
+    const businessSummary = await buildOwnerBusinessSummary(seller.sellerId);
+    const answer = await answerOwnerQuestion(seller, text, businessSummary);
+    await sendWhatsApp(seller, seller.ownerPhoneNumber, answer);
     return;
   }
 
   let target = command.target;
   if (target === "last") {
-    target = await getLastEscalatedCustomer();
+    target = await getLastEscalatedCustomer(seller.sellerId);
     if (!target) {
       await sendWhatsApp(
-        OWNER_PHONE_NUMBER,
+        seller,
+        seller.ownerPhoneNumber,
         `No recent customer to ${command.action}. Try "${command.action} <their number>" instead.`
       );
       return;
@@ -2007,27 +2265,28 @@ async function handleOwnerCommand(text) {
   }
 
   if (command.action === "pause") {
-    await pauseCustomer(target);
+    await pauseCustomer(seller.sellerId, target);
     await sendWhatsApp(
-      OWNER_PHONE_NUMBER,
+      seller,
+      seller.ownerPhoneNumber,
       `Got it, I'll step back for ${target}. Text "resume ${target}" (or just tell me naturally) when you're done, or I'll pick back up automatically in 6 hours.`
     );
   } else {
-    await resumeCustomer(target);
-    await sendWhatsApp(OWNER_PHONE_NUMBER, `Back on it for ${target}.`);
+    await resumeCustomer(seller.sellerId, target);
+    await sendWhatsApp(seller, seller.ownerPhoneNumber, `Back on it for ${target}.`);
 
     // Proactively let the customer know, rather than leaving them to
     // wonder, or risking Amara improvising a stale "still waiting" reply
     // if they happen to message again before anyone's told her otherwise.
     // What she actually says reflects what they needed, not a generic line.
-    const customerRecord = await getCustomer(target);
-    const followUp = await generateResumeFollowUp(customerRecord?.last_escalation_reason, text);
-    const notified = await sendWhatsApp(target, followUp);
+    const customerRecord = await getCustomer(seller.sellerId, target);
+    const followUp = await generateResumeFollowUp(seller, customerRecord?.last_escalation_reason, text);
+    const notified = await sendWhatsApp(seller, target, followUp);
     if (notified) {
-      let customerHistory = await getConversation(target);
+      let customerHistory = await getConversation(seller.sellerId, target);
       customerHistory.push({ role: "assistant", content: followUp });
       customerHistory = customerHistory.slice(-10);
-      await saveConversation(target, customerHistory);
+      await saveConversation(seller.sellerId, target, customerHistory);
       console.log(`Amara -> ${target}: [proactive resume notification] ${followUp}`);
     } else {
       // Most likely cause: more than 24 hours since the customer last
@@ -2041,10 +2300,10 @@ async function handleOwnerCommand(text) {
 }
 
 
-async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
-  if (!OWNER_PHONE_NUMBER) {
+async function sendOwnerAlert(seller, customerNumber, reason, lastCustomerMessage) {
+  if (!seller.ownerPhoneNumber) {
     console.error(
-      "ESCALATION happened but OWNER_PHONE_NUMBER isn't set, no alert sent. Reason:",
+      `ESCALATION happened for seller ${seller.sellerId} but no owner phone number is set, no alert sent. Reason:`,
       reason
     );
     return;
@@ -2052,7 +2311,7 @@ async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
 
   // Remember who this was about, so "pause last" / "resume last" work
   // without the owner needing to type or copy a phone number under pressure.
-  await setLastEscalatedCustomer(customerNumber);
+  await setLastEscalatedCustomer(seller.sellerId, customerNumber);
 
   // Template parameters can't contain newlines, keep them single-line.
   const cleanReason = reason.replace(/\s+/g, " ").trim();
@@ -2060,7 +2319,7 @@ async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
 
   // Keep this on the customer's own record too, so it's visible at a
   // glance in the customer list, not just buried in a WhatsApp alert.
-  await upsertCustomer(customerNumber, {
+  await upsertCustomer(seller.sellerId, customerNumber, {
     last_escalation_reason: cleanReason,
     last_escalation_at: new Date().toISOString(),
   });
@@ -2081,17 +2340,18 @@ async function sendOwnerAlert(customerNumber, reason, lastCustomerMessage) {
   // "Sure" or "Yes" right after this can be understood as agreement,
   // instead of being ambiguous out of context.
   try {
-    await redisCommand(["SET", "awaiting_pause_confirmation", "1", "EX", "600"]); // 10 min window
+    await redisCommand(["SET", nsKey(seller.sellerId, "awaiting_pause_confirmation"), "1", "EX", "600"]); // 10 min window
   } catch (err) {
     console.error("Could not set awaiting_pause_confirmation flag:", err.message);
   }
 
-  const freeFormSucceeded = await sendWhatsApp(OWNER_PHONE_NUMBER, alertText);
+  const freeFormSucceeded = await sendWhatsApp(seller, seller.ownerPhoneNumber, alertText);
   if (freeFormSucceeded) return;
 
   console.log("Free-form owner alert failed, falling back to template message.");
   const templateSucceeded = await sendWhatsAppTemplate(
-    OWNER_PHONE_NUMBER,
+    seller,
+    seller.ownerPhoneNumber,
     OWNER_ALERT_TEMPLATE_NAME,
     OWNER_ALERT_TEMPLATE_LANGUAGE,
     [customerNumber, cleanReason, cleanLastMessage]
@@ -2292,6 +2552,10 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
     seller.status === "active"
       ? "Your WhatsApp number is connected and Amara is live."
       : "WhatsApp connection: pending — this part isn't self-serve yet, we'll reach out personally to get your number connected.";
+  const dashboardLink =
+    seller.status === "active"
+      ? '<div style="margin-top:14px;"><a href="/dashboard">Open your live conversation dashboard →</a></div>'
+      : "";
   res.send(`
     <html>
     <head>
@@ -2319,6 +2583,7 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
           <h2>Welcome, ${escapeHtmlServer(seller.businessName)}</h2>
           <div>${escapeHtmlServer(seller.email)}</div>
           <div class="status">${escapeHtmlServer(statusLine)}</div>
+          ${dashboardLink}
         </div>
       </div>
     </body>
@@ -2327,11 +2592,12 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
 });
 
 app.get("/customers", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
+  const seller = await resolveActingSeller(req);
+  if (!seller) {
+    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL, or log in as a seller.");
   }
 
-  const customers = await listAllCustomers();
+  const customers = await listAllCustomers(seller.sellerId);
   // Most recently contacted first, so the busiest/newest conversations are on top.
   customers.sort((a, b) => new Date(b.last_contact || 0) - new Date(a.last_contact || 0));
 
@@ -2372,7 +2638,7 @@ app.get("/customers", async (req, res) => {
       </style>
     </head>
     <body>
-      <h1>Customers (${customers.length}) — <a href="/dashboard?key=${ADMIN_KEY}" style="font-size:14px;">Open live dashboard →</a></h1>
+      <h1>Customers (${customers.length}) — <a href="/dashboard${req.query.key ? "?key=" + encodeURIComponent(req.query.key) : ""}" style="font-size:14px;">Open live dashboard →</a></h1>
       <table>
         <tr>
           <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
@@ -3030,19 +3296,19 @@ function dashboardHtml(key) {
   `;
 }
 
-app.get("/dashboard", (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
+app.get("/dashboard", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) {
+    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL, or log in as a seller.");
   }
-  res.send(dashboardHtml(req.query.key));
+  res.send(dashboardHtml(req.query.key || ""));
 });
 
 app.get("/api/dashboard-data", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   try {
-    const customers = await listAllCustomers();
+    const customers = await listAllCustomers(seller.sellerId);
     customers.sort((a, b) => new Date(b.last_contact || 0) - new Date(a.last_contact || 0));
     const stats = await getDashboardStats(customers);
     res.json({ stats, customers });
@@ -3053,14 +3319,13 @@ app.get("/api/dashboard-data", async (req, res) => {
 });
 
 app.get("/api/conversation", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const phone = req.query.phone;
   if (!phone) return res.status(400).json({ error: "missing phone" });
   try {
-    const history = await getConversation(phone);
-    const customer = await getCustomer(phone);
+    const history = await getConversation(seller.sellerId, phone);
+    const customer = await getCustomer(seller.sellerId, phone);
     res.json({ history, customer });
   } catch (err) {
     console.error("api/conversation failed:", err.message);
@@ -3069,16 +3334,15 @@ app.get("/api/conversation", async (req, res) => {
 });
 
 app.post("/api/takeover", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const phone = req.body?.phone;
   if (!phone) return res.status(400).json({ error: "missing phone" });
   try {
     // Same pauseCustomer() the owner already triggers via "pause last" on
     // WhatsApp — the dashboard button is just a second door into the
     // identical, already-tested mechanism, not a separate code path.
-    await pauseCustomer(phone);
+    await pauseCustomer(seller.sellerId, phone);
     console.log(`Dashboard takeover: owner took over ${phone} from the web dashboard.`);
     res.json({ ok: true });
   } catch (err) {
@@ -3088,29 +3352,29 @@ app.post("/api/takeover", async (req, res) => {
 });
 
 app.post("/api/handback", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const phone = req.body?.phone;
   if (!phone) return res.status(400).json({ error: "missing phone" });
   try {
-    await resumeCustomer(phone);
+    await resumeCustomer(seller.sellerId, phone);
 
     // Same proactive, context-aware notification the customer already
     // gets when the owner resumes via WhatsApp text — the dashboard is
     // just a different door into the same handback, so the customer
     // experience should be identical either way, not a lesser version.
-    const customerRecord = await getCustomer(phone);
+    const customerRecord = await getCustomer(seller.sellerId, phone);
     const followUp = await generateResumeFollowUp(
+      seller,
       customerRecord?.last_escalation_reason,
       "Handled directly, resumed from the owner dashboard."
     );
-    const notified = await sendWhatsApp(phone, followUp);
+    const notified = await sendWhatsApp(seller, phone, followUp);
     if (notified) {
-      let history = await getConversation(phone);
+      let history = await getConversation(seller.sellerId, phone);
       history.push({ role: "assistant", content: followUp });
       history = history.slice(-10);
-      await saveConversation(phone, history);
+      await saveConversation(seller.sellerId, phone, history);
     }
     console.log(`Dashboard handback: owner resumed ${phone} from the web dashboard.`);
     res.json({ ok: true });
@@ -3121,12 +3385,11 @@ app.post("/api/handback", async (req, res) => {
 });
 
 app.get("/api/analytics", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   try {
-    const customers = await listAllCustomers();
-    const summary = await getAnalyticsSummary(customers);
+    const customers = await listAllCustomers(seller.sellerId);
+    const summary = await getAnalyticsSummary(seller.sellerId, customers, seller.catalog);
     res.json(summary);
   } catch (err) {
     console.error("api/analytics failed:", err.message);
@@ -3135,9 +3398,8 @@ app.get("/api/analytics", async (req, res) => {
 });
 
 app.post("/api/send-message", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const phone = req.body?.phone;
   const text = (req.body?.message || "").trim();
   if (!phone || !text) return res.status(400).json({ error: "missing phone or message" });
@@ -3145,13 +3407,13 @@ app.post("/api/send-message", async (req, res) => {
     // Sending a message directly from the dashboard means the owner is now
     // personally in this thread — auto-pause so Amara doesn't also reply
     // on top of the owner, same protection as clicking "Take over".
-    await pauseCustomer(phone);
-    const sent = await sendWhatsApp(phone, text);
+    await pauseCustomer(seller.sellerId, phone);
+    const sent = await sendWhatsApp(seller, phone, text);
     if (!sent) return res.status(502).json({ error: "WhatsApp rejected the message, please try again" });
-    let history = await getConversation(phone);
+    let history = await getConversation(seller.sellerId, phone);
     history.push({ role: "assistant", content: text });
     history = history.slice(-10);
-    await saveConversation(phone, history);
+    await saveConversation(seller.sellerId, phone, history);
     console.log(`Dashboard manual message: owner messaged ${phone} directly from the dashboard.`);
     res.json({ ok: true });
   } catch (err) {
@@ -3161,9 +3423,8 @@ app.post("/api/send-message", async (req, res) => {
 });
 
 app.post("/api/note", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const phone = req.body?.phone;
   const note = req.body?.note ?? "";
   if (!phone) return res.status(400).json({ error: "missing phone" });
@@ -3171,7 +3432,7 @@ app.post("/api/note", async (req, res) => {
     // Owner-only scratch space per customer — stored on the same customer
     // hash as everything else, never read by Amara's prompt or shown to
     // the customer, purely a memory aid for the owner.
-    await upsertCustomer(phone, { note: String(note).slice(0, 2000) });
+    await upsertCustomer(seller.sellerId, phone, { note: String(note).slice(0, 2000) });
     res.json({ ok: true });
   } catch (err) {
     console.error("api/note failed:", err.message);
@@ -3189,25 +3450,23 @@ app.post("/api/note", async (req, res) => {
 // customer message, no restart needed, and is also persisted to Redis so
 // it survives one.
 
-app.get("/api/catalog", (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+app.get("/api/catalog", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const products = {};
-  for (const key of Object.keys(PRODUCT_PRICES)) {
+  for (const key of Object.keys(seller.catalog.PRODUCT_PRICES)) {
     products[key] = {
-      name: PRODUCT_NAMES[key],
-      price: PRODUCT_PRICES[key],
-      imageUrl: PRODUCT_IMAGES[key],
+      name: seller.catalog.PRODUCT_NAMES[key],
+      price: seller.catalog.PRODUCT_PRICES[key],
+      imageUrl: seller.catalog.PRODUCT_IMAGES[key],
     };
   }
-  res.json({ products, deliveryFees: DELIVERY_FEES, bankDetails: BANK_DETAILS });
+  res.json({ products, deliveryFees: seller.catalog.DELIVERY_FEES, bankDetails: seller.catalog.BANK_DETAILS });
 });
 
 app.post("/api/catalog/bank-details", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const bankName = String(req.body?.bankName || "").trim();
   const accountNumber = String(req.body?.accountNumber || "").trim();
   const accountName = String(req.body?.accountName || "").trim();
@@ -3222,13 +3481,13 @@ app.post("/api/catalog/bank-details", async (req, res) => {
   // Same pattern as products/delivery fees: update the live value Amara's
   // prompt reads from first (so it's correct on the very next reply
   // regardless of what happens next), then persist to Redis.
-  BANK_DETAILS.bankName = bankName;
-  BANK_DETAILS.accountNumber = accountNumber;
-  BANK_DETAILS.accountName = accountName;
-  console.log(`Catalog: bank details updated from the dashboard (${bankName}, ${accountName}).`);
+  seller.catalog.BANK_DETAILS.bankName = bankName;
+  seller.catalog.BANK_DETAILS.accountNumber = accountNumber;
+  seller.catalog.BANK_DETAILS.accountName = accountName;
+  console.log(`Catalog: bank details updated from the dashboard (${bankName}, ${accountName}) for ${seller.sellerId}.`);
 
   try {
-    await saveBankDetailsToRedis();
+    await saveBankDetailsToRedis(seller.sellerId);
     res.json({ ok: true });
   } catch (err) {
     console.error("api/catalog/bank-details: live update succeeded but Redis persistence failed:", err.message);
@@ -3240,9 +3499,8 @@ app.post("/api/catalog/bank-details", async (req, res) => {
 });
 
 app.post("/api/catalog/product", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const { key, name, price, imageUrl } = req.body || {};
 
   // Same "code is the guarantee" rule as everywhere else money-adjacent
@@ -3273,13 +3531,13 @@ app.post("/api/catalog/product", async (req, res) => {
   // one part fails (a transient Upstash hiccup), say so honestly rather
   // than silently, but don't report the whole save as failed when the
   // live behavior change already succeeded.
-  PRODUCT_NAMES[cleanKey] = cleanName;
-  PRODUCT_PRICES[cleanKey] = cleanPrice;
-  PRODUCT_IMAGES[cleanKey] = cleanImageUrl || `${BASE_URL}/images/${cleanKey}.png`;
-  console.log(`Catalog: product "${cleanKey}" saved (${cleanName}, N${cleanPrice}) from the dashboard.`);
+  seller.catalog.PRODUCT_NAMES[cleanKey] = cleanName;
+  seller.catalog.PRODUCT_PRICES[cleanKey] = cleanPrice;
+  seller.catalog.PRODUCT_IMAGES[cleanKey] = cleanImageUrl || `${BASE_URL}/images/${cleanKey}.png`;
+  console.log(`Catalog: product "${cleanKey}" saved (${cleanName}, N${cleanPrice}) from the dashboard for ${seller.sellerId}.`);
 
   try {
-    await saveCatalogToRedis();
+    await saveCatalogToRedis(seller.sellerId);
     res.json({ ok: true, key: cleanKey });
   } catch (err) {
     console.error("api/catalog/product: live update succeeded but Redis persistence failed:", err.message);
@@ -3292,20 +3550,19 @@ app.post("/api/catalog/product", async (req, res) => {
 });
 
 app.delete("/api/catalog/product/:key", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const key = req.params.key;
-  if (!PRODUCT_PRICES[key]) {
+  if (!seller.catalog.PRODUCT_PRICES[key]) {
     return res.status(404).json({ error: "no such product" });
   }
-  delete PRODUCT_PRICES[key];
-  delete PRODUCT_NAMES[key];
-  delete PRODUCT_IMAGES[key];
-  console.log(`Catalog: product "${key}" removed from the dashboard.`);
+  delete seller.catalog.PRODUCT_PRICES[key];
+  delete seller.catalog.PRODUCT_NAMES[key];
+  delete seller.catalog.PRODUCT_IMAGES[key];
+  console.log(`Catalog: product "${key}" removed from the dashboard for ${seller.sellerId}.`);
 
   try {
-    await saveCatalogToRedis();
+    await saveCatalogToRedis(seller.sellerId);
     res.json({ ok: true });
   } catch (err) {
     console.error("api/catalog/product delete: live removal succeeded but Redis persistence failed:", err.message);
@@ -3317,20 +3574,19 @@ app.delete("/api/catalog/product/:key", async (req, res) => {
 });
 
 app.post("/api/catalog/delivery-fees", async (req, res) => {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
-    return res.status(403).json({ error: "unauthorized" });
-  }
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
   const lagos = Number(req.body?.lagos);
   const outside = Number(req.body?.outside);
   if (!Number.isFinite(lagos) || lagos < 0 || !Number.isFinite(outside) || outside < 0) {
     return res.status(400).json({ error: "Both delivery fees must be numbers, 0 or higher." });
   }
-  DELIVERY_FEES.lagos = lagos;
-  DELIVERY_FEES.outside = outside;
-  console.log(`Catalog: delivery fees updated from the dashboard (lagos=${lagos}, outside=${outside}).`);
+  seller.catalog.DELIVERY_FEES.lagos = lagos;
+  seller.catalog.DELIVERY_FEES.outside = outside;
+  console.log(`Catalog: delivery fees updated from the dashboard (lagos=${lagos}, outside=${outside}) for ${seller.sellerId}.`);
 
   try {
-    await saveDeliveryFeesToRedis();
+    await saveDeliveryFeesToRedis(seller.sellerId);
     res.json({ ok: true });
   } catch (err) {
     console.error("api/catalog/delivery-fees: live update succeeded but Redis persistence failed:", err.message);
@@ -3338,6 +3594,83 @@ app.post("/api/catalog/delivery-fees", async (req, res) => {
       ok: true,
       warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
     });
+  }
+});
+
+// ---------- MANUAL SELLER WHATSAPP CONNECT (stopgap until Embedded Signup / Phase B) ----------
+// Embedded Signup (Phase B) isn't built yet, so until then this is how a
+// seller's WhatsApp number actually gets connected: the platform owner
+// looks up the seller's phone_number_id + permanent access token in Meta's
+// WhatsApp Manager (the same place seller1's own PHONE_NUMBER_ID /
+// WHATSAPP_TOKEN env vars came from) and enters them here by hand. Gated
+// by the same master ADMIN_KEY as the rest of the owner-only dashboard,
+// not a seller's own session -- a seller cannot connect their own number
+// through this route, only the platform owner can, on their behalf, for
+// now. Note this is a separate step from Meta itself: the seller's WABA
+// still has to be subscribed to this app to actually receive webhook
+// events (same one-time step /subscribe above does for the original WABA).
+app.post("/api/admin/connect-seller-whatsapp", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const sellerId = String(req.body?.sellerId || "").trim();
+  const phoneNumberId = String(req.body?.phoneNumberId || "").trim();
+  const whatsappToken = String(req.body?.whatsappToken || "").trim();
+  const ownerPhoneNumber = String(req.body?.ownerPhoneNumber || "").trim();
+
+  if (!sellerId) return res.status(400).json({ error: "sellerId is required." });
+  if (!phoneNumberId) return res.status(400).json({ error: "phoneNumberId is required." });
+  if (!whatsappToken) return res.status(400).json({ error: "whatsappToken is required." });
+
+  const seller = await getSellerById(sellerId);
+  if (!seller) return res.status(404).json({ error: "No seller with that sellerId." });
+
+  const existingOwner = phoneNumberIdToSellerId[phoneNumberId];
+  if (existingOwner && existingOwner !== sellerId) {
+    return res.status(409).json({ error: `That phone_number_id is already connected to a different seller (${existingOwner}).` });
+  }
+
+  try {
+    await redisCommand([
+      "HSET", `seller:${sellerId}`,
+      "phoneNumberId", phoneNumberId,
+      "whatsappToken", whatsappToken,
+      "ownerPhoneNumber", ownerPhoneNumber,
+      "status", "active",
+    ]);
+    registerSellerPhoneNumberId(sellerId, phoneNumberId);
+    invalidateSellerContextCache(sellerId);
+    console.log(`Seller ${sellerId} manually connected to WhatsApp number ${phoneNumberId} by admin.`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("connect-seller-whatsapp failed:", err.message);
+    res.status(500).json({ error: "Failed to save. Please try again." });
+  }
+});
+
+// A tiny read-only companion so the admin doesn't need direct Redis access
+// just to see which sellers exist and their sellerId (needed to call the
+// connect route above).
+app.get("/api/admin/sellers", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  try {
+    const ids = (await redisCommand(["SMEMBERS", "all_sellers"])) || [];
+    const sellers = await Promise.all(ids.map((id) => getSellerById(id)));
+    res.json({
+      sellers: sellers.filter(Boolean).map((s) => ({
+        sellerId: s.sellerId,
+        businessName: s.businessName,
+        email: s.email,
+        status: s.status,
+        phoneNumberId: s.phoneNumberId || null,
+        createdAt: s.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error("api/admin/sellers failed:", err.message);
+    res.status(500).json({ error: "failed to list sellers" });
   }
 });
 
@@ -3389,9 +3722,23 @@ app.post("/paystack-webhook", async (req, res) => {
     }
 
     await markOrderPaid(reference, order);
-    await recordOrderAnalytics(order);
 
-    const productName = PRODUCT_NAMES[order.productKey] || order.productKey;
+    // Paystack's webhook hands back only a bare reference string, with no
+    // way on its own to know which seller this was for -- that's why
+    // sellerId got stored INSIDE the order record when it was created
+    // (see processBufferedTurn). Falls back to seller1 for any order that
+    // was already in flight at the moment this multi-tenant rewrite
+    // deployed, so a payment mid-flight during the deploy still resolves
+    // to the one shop that was live before today.
+    const seller = await getSellerContext(order.sellerId || SELLER1_ID);
+    if (!seller) {
+      console.error(`Paystack webhook: order ${reference} references unknown seller "${order.sellerId}", cannot confirm.`);
+      return;
+    }
+
+    await recordOrderAnalytics(seller.sellerId, order);
+
+    const productName = seller.catalog.PRODUCT_NAMES[order.productKey] || order.productKey;
 
     // Deterministic confirmation text, NOT AI-generated: this is a real
     // money confirmation reaching a real customer, not a place to risk
@@ -3399,27 +3746,27 @@ app.post("/paystack-webhook", async (req, res) => {
     const confirmationText =
       `Payment received! ✅ Your ${productName} (N${order.totalNaira.toLocaleString()}) is confirmed, ` +
       `we'll get it sorted for delivery. Thank you!`;
-    await sendWhatsApp(order.phone, confirmationText);
+    await sendWhatsApp(seller, order.phone, confirmationText);
 
-    let history = await getConversation(order.phone);
+    let history = await getConversation(seller.sellerId, order.phone);
     history.push({ role: "assistant", content: confirmationText });
     history = history.slice(-10);
-    await saveConversation(order.phone, history);
+    await saveConversation(seller.sellerId, order.phone, history);
 
-    await upsertCustomer(order.phone, {
+    await upsertCustomer(seller.sellerId, order.phone, {
       last_payment_reference: reference,
       last_payment_amount: order.totalNaira,
       last_payment_at: new Date().toISOString(),
     });
 
-    if (OWNER_PHONE_NUMBER) {
+    if (seller.ownerPhoneNumber) {
       const ownerNote =
         `💰 Payment received\n\n` +
         `Customer: ${order.phone}\n` +
         `Item: ${productName}\n` +
         `Amount: N${order.totalNaira.toLocaleString()}\n` +
         `Ref: ${reference}`;
-      const notified = await sendWhatsApp(OWNER_PHONE_NUMBER, ownerNote);
+      const notified = await sendWhatsApp(seller, seller.ownerPhoneNumber, ownerNote);
       if (!notified) {
         // Most likely cause: more than 24h since the owner last messaged
         // Amara, so a free-form message isn't allowed. Unlike escalation
@@ -3445,10 +3792,17 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-// Load the real catalog from Redis (or persist the demo one as the
-// starting point, if this is the very first run) before accepting any
-// traffic, so the first webhook or dashboard request never sees stale
-// hardcoded data instead of an owner's actual saved edits.
-loadCatalogFromRedis().finally(() => {
+// Before accepting any traffic: bootstrap seller1's own seller record,
+// warm the phone_number_id -> sellerId routing index for every seller who
+// already has a connected number, and load seller1's real catalog from
+// Redis (or persist the demo one as the starting point, if this is the
+// very first run ever) -- so the first webhook or dashboard request never
+// sees stale hardcoded data instead of an owner's actual saved edits, and
+// never gets misrouted while something lazy-loads.
+(async () => {
+  await ensureSeller1();
+  await warmPhoneNumberIdIndex();
+  await loadCatalogFromRedis(SELLER1_ID);
+})().finally(() => {
   app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 });
