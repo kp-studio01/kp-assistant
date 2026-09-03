@@ -6,7 +6,10 @@
 const express = require("express");
 const zlib = require("zlib");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const cookieParser = require("cookie-parser");
 const app = express();
+app.use(cookieParser());
 // The `verify` hook stashes the raw request bytes on req.rawBody. We need
 // those, untouched, to check Paystack's webhook signature later — HMACing
 // the re-serialized JSON object instead of the original bytes would give
@@ -18,6 +21,9 @@ app.use(
     },
   })
 );
+// Needed for the signup/login HTML forms below (plain <form method="POST">
+// submissions arrive as x-www-form-urlencoded, not JSON).
+app.use(express.urlencoded({ extended: true }));
 
 // ---------- SETTINGS (come from environment variables) ----------
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
@@ -48,6 +54,12 @@ const ADMIN_KEY = process.env.ADMIN_KEY;
 // Paystack secret key, used both to create payment links and to verify
 // that a webhook claiming "payment succeeded" really came from Paystack.
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+// Signs seller login session cookies (see SELLER ACCOUNTS below). Set a
+// real random value in Render — the fallback here only exists so local
+// boot-testing doesn't crash, and is deliberately obvious/unsafe so nobody
+// mistakes it for production-ready.
+const SESSION_SECRET = process.env.SESSION_SECRET || "dev-only-insecure-secret-change-me";
 
 // ---------- PRODUCT PRICES & DELIVERY FEES (server-side source of truth) ----------
 // Amara's prompt states these same numbers so she can talk about them
@@ -643,6 +655,103 @@ async function recordCustomerContact(phone) {
     last_contact: now,
     message_count: existing?.message_count ? Number(existing.message_count) + 1 : 1,
   });
+}
+
+// ---------- SELLER ACCOUNTS (multi-tenant foundation) ----------
+// Phase A of the self-serve onboarding plan: a real account + login layer,
+// so sellers register themselves instead of being added by hand. This is
+// deliberately scoped NOT to touch the live message-handling engine below
+// (webhook, catalog, conversations, orders, analytics all still serve the
+// one current shop) — wiring incoming WhatsApp traffic to route per-seller
+// is Phase C, a separate, careful pass of its own, so nothing about the
+// system a real customer is talking to right now changes underneath it.
+// See the build log for the full phased plan.
+
+// Server-side HTML escaping for the signup/login/seller pages below —
+// distinct from the client-side escapeHtml() inside dashboardHtml()'s
+// <script>, which only runs in the browser. Needed here because business
+// name and email are arbitrary text a seller typed in, then echoed back
+// into a real HTML response (e.g. a failed-login page).
+function escapeHtmlServer(str) {
+  return String(str || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function makeSellerId() {
+  return crypto.randomBytes(12).toString("hex");
+}
+
+async function createSeller({ businessName, email, passwordHash }) {
+  const sellerId = makeSellerId();
+  await redisCommand([
+    "HSET",
+    `seller:${sellerId}`,
+    "sellerId", sellerId,
+    "businessName", businessName,
+    "email", email.toLowerCase(),
+    "passwordHash", passwordHash,
+    "status", "pending_whatsapp_connection",
+    "createdAt", new Date().toISOString(),
+  ]);
+  await redisCommand(["SADD", "all_sellers", sellerId]);
+  await redisCommand(["SET", `seller_by_email:${email.toLowerCase()}`, sellerId]);
+  return sellerId;
+}
+
+async function getSellerById(sellerId) {
+  try {
+    const raw = await redisCommand(["HGETALL", `seller:${sellerId}`]);
+    if (!raw || raw.length === 0) return null;
+    const record = {};
+    for (let i = 0; i < raw.length; i += 2) record[raw[i]] = raw[i + 1];
+    return record;
+  } catch (err) {
+    console.error(`getSellerById failed for ${sellerId}:`, err.message);
+    return null;
+  }
+}
+
+async function getSellerByEmail(email) {
+  try {
+    const sellerId = await redisCommand(["GET", `seller_by_email:${email.toLowerCase()}`]);
+    if (!sellerId) return null;
+    return await getSellerById(sellerId);
+  } catch (err) {
+    console.error(`getSellerByEmail failed for ${email}:`, err.message);
+    return null;
+  }
+}
+
+// Signed, stateless session token (sellerId + expiry + HMAC signature) in
+// an httpOnly cookie — no session store needed, consistent with keeping
+// this a single self-contained file. A constant-time comparison on the
+// signature avoids a timing side-channel.
+function signSession(sellerId) {
+  const expires = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
+  const payload = `${sellerId}.${expires}`;
+  const sig = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+function verifySession(token) {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [sellerId, expires, sig] = parts;
+  const expectedSig = crypto.createHmac("sha256", SESSION_SECRET).update(`${sellerId}.${expires}`).digest("hex");
+  const sigBuf = Buffer.from(sig, "hex");
+  const expectedBuf = Buffer.from(expectedSig, "hex");
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
+  if (Date.now() > Number(expires)) return null;
+  return sellerId;
+}
+
+async function requireSellerAuth(req, res, next) {
+  const sellerId = verifySession(req.cookies?.session);
+  if (!sellerId) return res.redirect("/login");
+  const seller = await getSellerById(sellerId);
+  if (!seller) return res.redirect("/login");
+  req.seller = seller;
+  next();
 }
 
 // ---------- Durable "photo already sent" tracking ----------
@@ -2014,6 +2123,209 @@ app.get("/subscribe", async (req, res) => {
 // Visit /customers?key=YOUR_ADMIN_KEY in any browser to see every customer
 // Amara has ever talked to, in one place. Kept around as a plain,
 // zero-JS fallback view of the same data the dashboard below uses.
+// ---------- SELLER SIGNUP / LOGIN PAGES ----------
+function authPageHtml({ title, heading, formHtml, error }) {
+  return `
+    <html>
+    <head>
+      <title>${title} — Stafly.AI</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:#f8fafc; color:#1e293b; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        .auth-card { background:white; padding:32px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); width:100%; max-width:360px; }
+        .auth-card h1 { font-size:18px; margin:0 0 4px; }
+        .auth-card .brand { font-size:12px; color:#64748b; margin-bottom:20px; }
+        .auth-card label { font-size:12px; color:#64748b; display:block; margin:14px 0 4px; }
+        .auth-card input { width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; box-sizing:border-box; }
+        .auth-card button { width:100%; margin-top:20px; padding:10px; background:#1e293b; color:white; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; }
+        .auth-error { background:#fef2f2; color:#dc2626; padding:8px 10px; border-radius:6px; font-size:13px; margin-top:14px; }
+        .auth-footer { text-align:center; font-size:13px; color:#64748b; margin-top:16px; }
+        .auth-footer a { color:#1e293b; font-weight:600; text-decoration:none; }
+      </style>
+    </head>
+    <body>
+      <div class="auth-card">
+        <h1>${escapeHtmlServer(heading)}</h1>
+        <div class="brand">Stafly.AI</div>
+        <form method="POST">
+          ${formHtml}
+          <button type="submit">${escapeHtmlServer(title)}</button>
+        </form>
+        ${error ? `<div class="auth-error">${escapeHtmlServer(error)}</div>` : ""}
+        ${
+          title === "Sign up"
+            ? '<div class="auth-footer">Already have an account? <a href="/login">Log in</a></div>'
+            : '<div class="auth-footer">New seller? <a href="/signup">Create an account</a></div>'
+        }
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+app.get("/signup", (req, res) => {
+  res.send(
+    authPageHtml({
+      title: "Sign up",
+      heading: "Create your seller account",
+      formHtml: `
+        <label>Business name</label>
+        <input name="businessName" required maxlength="120">
+        <label>Email</label>
+        <input type="email" name="email" required maxlength="200">
+        <label>Password</label>
+        <input type="password" name="password" required minlength="8" maxlength="200">
+      `,
+    })
+  );
+});
+
+app.post("/signup", async (req, res) => {
+  const businessName = (req.body?.businessName || "").trim();
+  const email = (req.body?.email || "").trim().toLowerCase();
+  const password = req.body?.password || "";
+
+  const fail = (msg) =>
+    res.status(400).send(
+      authPageHtml({
+        title: "Sign up",
+        heading: "Create your seller account",
+        error: msg,
+        formHtml: `
+          <label>Business name</label>
+          <input name="businessName" required maxlength="120" value="${escapeHtmlServer(businessName)}">
+          <label>Email</label>
+          <input type="email" name="email" required maxlength="200" value="${escapeHtmlServer(email)}">
+          <label>Password</label>
+          <input type="password" name="password" required minlength="8" maxlength="200">
+        `,
+      })
+    );
+
+  if (!businessName) return fail("Business name is required.");
+  if (!email || !email.includes("@")) return fail("Please enter a valid email.");
+  if (!password || password.length < 8) return fail("Password must be at least 8 characters.");
+
+  try {
+    const existing = await getSellerByEmail(email);
+    if (existing) return fail("An account with that email already exists — try logging in instead.");
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const sellerId = await createSeller({ businessName, email, passwordHash });
+
+    res.cookie("session", signSession(sellerId), {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    res.redirect("/seller/dashboard");
+  } catch (err) {
+    console.error("signup failed:", err.message);
+    fail("Something went wrong, please try again.");
+  }
+});
+
+app.get("/login", (req, res) => {
+  res.send(
+    authPageHtml({
+      title: "Log in",
+      heading: "Log in to Stafly.AI",
+      formHtml: `
+        <label>Email</label>
+        <input type="email" name="email" required maxlength="200">
+        <label>Password</label>
+        <input type="password" name="password" required maxlength="200">
+      `,
+    })
+  );
+});
+
+app.post("/login", async (req, res) => {
+  const email = (req.body?.email || "").trim().toLowerCase();
+  const password = req.body?.password || "";
+
+  const fail = (msg) =>
+    res.status(401).send(
+      authPageHtml({
+        title: "Log in",
+        heading: "Log in to Stafly.AI",
+        error: msg,
+        formHtml: `
+          <label>Email</label>
+          <input type="email" name="email" required maxlength="200" value="${escapeHtmlServer(email)}">
+          <label>Password</label>
+          <input type="password" name="password" required maxlength="200">
+        `,
+      })
+    );
+
+  try {
+    const seller = await getSellerByEmail(email);
+    // Same generic message either way — don't reveal whether the email
+    // exists at all, standard practice for a real login page.
+    if (!seller) return fail("Incorrect email or password.");
+    const matches = await bcrypt.compare(password, seller.passwordHash || "");
+    if (!matches) return fail("Incorrect email or password.");
+
+    res.cookie("session", signSession(seller.sellerId), {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    res.redirect("/seller/dashboard");
+  } catch (err) {
+    console.error("login failed:", err.message);
+    fail("Something went wrong, please try again.");
+  }
+});
+
+app.post("/logout", (req, res) => {
+  res.clearCookie("session");
+  res.redirect("/login");
+});
+
+app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
+  const seller = req.seller;
+  const statusLine =
+    seller.status === "active"
+      ? "Your WhatsApp number is connected and Amara is live."
+      : "WhatsApp connection: pending — this part isn't self-serve yet, we'll reach out personally to get your number connected.";
+  res.send(`
+    <html>
+    <head>
+      <title>Seller dashboard — Stafly.AI</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:#f8fafc; color:#1e293b; }
+        header { background:#1e293b; color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+        header h1 { font-size:16px; margin:0; }
+        header form { margin:0; }
+        header button { background:transparent; border:1px solid rgba(255,255,255,0.3); color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
+        .wrap { max-width:640px; margin:32px auto; padding:0 24px; }
+        .card { background:white; border-radius:8px; padding:24px; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+        .card h2 { font-size:16px; margin:0 0 6px; }
+        .status { font-size:14px; color:#475569; margin-top:8px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0; }
+      </style>
+    </head>
+    <body>
+      <header>
+        <h1>Stafly.AI</h1>
+        <form method="POST" action="/logout"><button type="submit">Log out</button></form>
+      </header>
+      <div class="wrap">
+        <div class="card">
+          <h2>Welcome, ${escapeHtmlServer(seller.businessName)}</h2>
+          <div>${escapeHtmlServer(seller.email)}</div>
+          <div class="status">${escapeHtmlServer(statusLine)}</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 app.get("/customers", async (req, res) => {
   if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
     return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
