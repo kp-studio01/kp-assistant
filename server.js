@@ -991,10 +991,21 @@ function buildBookableShopProfile(seller) {
   const catalog = seller.catalog;
   const shopName = seller.businessName || "the business";
 
+  const DELIVERY_MODE_LABELS = {
+    online: "Online only (video/call, no physical location)",
+    in_person: "In-person only, no online option",
+    either: "Either -- online or in-person, customer's choice",
+  };
   const offeringLines = Object.keys(catalog.OFFERINGS)
     .map((key, i) => {
       const o = catalog.OFFERINGS[key];
-      const line = `${i + 1}. ${o.name} — N${o.price.toLocaleString()}, ${o.durationMinutes} minutes (key: ${key})`;
+      let line = `${i + 1}. ${o.name} — N${o.price.toLocaleString()}, ${o.durationMinutes} minutes (key: ${key})`;
+      // Real, seller-set field -- not a guess, not something to infer from
+      // the service name. Whether it's online, in-person, or either is one
+      // of the most common questions a customer asks before booking, so
+      // this is answered directly from here, never escalated to the owner
+      // unless it's genuinely blank below.
+      line += `\n   Delivery: ${DELIVERY_MODE_LABELS[o.deliveryMode] || "Not set yet -- if asked, use [ESCALATE] to check with the owner rather than guessing"}`;
       return o.description ? `${line}\n   Details: ${o.description}` : line;
     })
     .join("\n");
@@ -1108,6 +1119,15 @@ HOW YOU TEXT (this matters as much as what you say):
   greets you, jokes with you, or goes off-topic, respond briefly and
   naturally, the way someone coordinating a real booking would. You do
   not have to steer every message back to booking.
+
+IS IT ONLINE OR IN-PERSON:
+- Each service above has its own "Delivery" line, set by the business
+  owner -- that is the real, current answer, never a guess based on the
+  service's name or what seems likely. Answer directly and confidently
+  from it whenever a customer asks.
+- Only escalate an online-vs-in-person question when that service's
+  Delivery line actually says "Not set yet" -- if it already says Online
+  only, In-person only, or Either, just answer, don't escalate.
 
 ALERTING THE OWNER:
 - Whenever you tell a customer the owner will reply shortly, also alert
@@ -1245,6 +1265,49 @@ async function getLastEscalatedCustomer(sellerId) {
   } catch (err) {
     console.error("getLastEscalatedCustomer failed:", err.message);
     return null;
+  }
+}
+
+// ---------- Tracking a still-open escalation the owner hasn't answered yet ----------
+// So a free-text reply from the owner ("It's online, but he can come in
+// person if he wants") can be recognized as actually ANSWERING this
+// specific open customer question, and relayed to them for real -- instead
+// of just being treated as a generic question TO Amara herself, which is
+// what let the customer's actual question go unanswered before (Amara told
+// the owner "I'll let him know" and then never did, because nothing in
+// code actually sent anything to the customer). One at a time per seller,
+// same scope as last_escalated_customer above -- this whole
+// pause/resume/answer system already assumes one thing being actively
+// handled at a time, not several concurrent threads tracked independently.
+async function setPendingEscalationAnswer(sellerId, phone, reason) {
+  try {
+    await redisCommand([
+      "SET",
+      nsKey(sellerId, "pending_escalation_answer"),
+      JSON.stringify({ phone, reason }),
+      "EX",
+      "1800", // 30 minutes -- enough time for the owner to actually think it through
+    ]);
+  } catch (err) {
+    console.error("setPendingEscalationAnswer failed:", err.message);
+  }
+}
+
+async function getPendingEscalationAnswer(sellerId) {
+  try {
+    const raw = await redisCommand(["GET", nsKey(sellerId, "pending_escalation_answer")]);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error("getPendingEscalationAnswer failed:", err.message);
+    return null;
+  }
+}
+
+async function clearPendingEscalationAnswer(sellerId) {
+  try {
+    await redisCommand(["DEL", nsKey(sellerId, "pending_escalation_answer")]);
+  } catch (err) {
+    console.error("clearPendingEscalationAnswer failed:", err.message);
   }
 }
 
@@ -1519,6 +1582,35 @@ async function getPendingPhotoSend(sellerId, messageId) {
   } catch (err) {
     console.error(`getPendingPhotoSend failed for ${messageId}:`, err.message);
     return null;
+  }
+}
+
+// ---------- Deduplicating incoming webhook messages ----------
+// WhatsApp's Cloud API is documented "at least once" delivery: Meta can and
+// does redeliver the exact same message (same id) more than once, and this
+// server had nothing guarding against handling it twice. That's exactly
+// what produced two full, independent replies to one customer message a
+// minute or so apart -- not a code bug in how a single turn is composed,
+// but a missing safeguard against the same turn running more than once.
+// SET ... NX claims the id atomically: only the delivery that gets "OK"
+// back is the real, first one; anything that gets null back for the same
+// id is a redelivery of a message already answered, and gets dropped.
+async function claimIncomingMessageId(sellerId, messageId) {
+  try {
+    const result = await redisCommand([
+      "SET",
+      nsKey(sellerId, `seen_msg:${messageId}`),
+      "1",
+      "NX",
+      "EX",
+      "86400",
+    ]);
+    return result !== "OK"; // true = someone already claimed this id = duplicate
+  } catch (err) {
+    console.error(`claimIncomingMessageId failed for ${messageId}:`, err.message);
+    // Fail open: a rare double-reply from a Redis hiccup is far better than
+    // silently dropping a real customer message because Redis blipped.
+    return false;
   }
 }
 
@@ -1834,6 +1926,15 @@ app.post("/webhook", async (req, res) => {
 
     const message = value?.messages?.[0];
     if (!message || message.type !== "text") return; // ignore statuses etc.
+
+    // Claim this message id before doing anything else with it. If Meta
+    // redelivered a message we already handled, this returns true and we
+    // stop here -- see claimIncomingMessageId above for why this exists.
+    const isDuplicateDelivery = await claimIncomingMessageId(seller.sellerId, message.id);
+    if (isDuplicateDelivery) {
+      console.log(`Webhook: duplicate delivery of message ${message.id} for ${seller.sellerId}, already handled -- ignoring.`);
+      return;
+    }
 
     const from = message.from;             // sender's number
     const text = message.text.body;        // what they said
@@ -2334,8 +2435,12 @@ async function processBufferedTurn(seller, from) {
         `Escalation SUPPRESSED (bare greeting, likely over-eager): "${combinedText}" | reason was: ${escalationReason}`
       );
     } else if (escalationReason) {
-      await sendOwnerAlert(seller, from, escalationReason, combinedText);
-      console.log(`Owner alerted: ${escalationReason}`);
+      const actuallyAlerted = await sendOwnerAlert(seller, from, escalationReason, combinedText);
+      // sendOwnerAlert can silently no-op (recent-alert cooldown, no owner
+      // number set) -- only claim the owner was alerted when it really
+      // sent something, so this log can be trusted for what actually
+      // happened rather than just that this code path ran.
+      console.log(actuallyAlerted ? `Owner alerted: ${escalationReason}` : `Owner alert NOT sent (see suppression reason above): ${escalationReason}`);
     }
   } catch (err) {
     console.error("Error handling message:", err);
@@ -2839,10 +2944,48 @@ async function generateResumeFollowUp(seller, reason, ownerMessage) {
 }
 
 
-async function interpretOwnerIntent(text) {
+async function interpretOwnerIntent(text, pendingEscalationReason) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    // When there's a specific open customer question Amara is waiting on,
+    // give the classifier that context and add a third option: the owner
+    // might just be directly answering it, rather than asking to pause or
+    // resume anything. Without ANSWER as an option, a real answer like
+    // "It's online, but he can come see me in person if he wants" had
+    // nowhere sensible to land -- it isn't pause or resume, so it fell all
+    // the way through to a generic "answer the owner's own question" reply,
+    // which is how Amara ended up telling the owner "I'll let him know"
+    // and then never actually contacting the customer at all.
+    const system = pendingEscalationReason
+      ? `The owner of a small business just texted their AI sales ` +
+        `assistant. Amara recently asked this owner for help with a ` +
+        `specific open customer question: "${pendingEscalationReason}". ` +
+        `Decide what they want:\n` +
+        `PAUSE - they want the AI to stop replying to that customer so ` +
+        `they can handle it themselves (e.g. "I'll take this one", ` +
+        `"let me handle it", "I got this", "pause, I'll deal with it")\n` +
+        `RESUME - they want the AI to start replying to that customer ` +
+        `again (e.g. "ok you can continue", "I'm done", "go ahead and ` +
+        `take back over")\n` +
+        `ANSWER - they are directly answering or resolving that specific ` +
+        `open question, giving real information or an instruction meant ` +
+        `to be passed on to the customer (e.g. explaining a detail, ` +
+        `giving a price, saying yes or no to a request)\n` +
+        `NONE - none of the above, or something unrelated, like asking ` +
+        `Amara a different question about the business itself\n\n` +
+        `Reply with ONLY one word: PAUSE, RESUME, ANSWER, or NONE.`
+      : `The owner of a small business just texted their AI sales ` +
+        `assistant. Decide what they want:\n` +
+        `PAUSE - they want the AI to stop replying to a customer so ` +
+        `they can handle it themselves (e.g. "I'll take this one", ` +
+        `"let me handle it", "I got this", "pause, I'll deal with it")\n` +
+        `RESUME - they want the AI to start replying to that customer ` +
+        `again (e.g. "ok you can continue", "I'm done", "go ahead and ` +
+        `take back over")\n` +
+        `NONE - neither, or genuinely unclear\n\n` +
+        `Reply with ONLY one word: PAUSE, RESUME, or NONE.`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -2854,17 +2997,7 @@ async function interpretOwnerIntent(text) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 10,
-        system:
-          `The owner of a small business just texted their AI sales ` +
-          `assistant. Decide what they want:\n` +
-          `PAUSE - they want the AI to stop replying to a customer so ` +
-          `they can handle it themselves (e.g. "I'll take this one", ` +
-          `"let me handle it", "I got this", "pause, I'll deal with it")\n` +
-          `RESUME - they want the AI to start replying to that customer ` +
-          `again (e.g. "ok you can continue", "I'm done", "go ahead and ` +
-          `take back over")\n` +
-          `NONE - neither, or genuinely unclear\n\n` +
-          `Reply with ONLY one word: PAUSE, RESUME, or NONE.`,
+        system,
         messages: [{ role: "user", content: text }],
       }),
       signal: controller.signal,
@@ -2874,10 +3007,72 @@ async function interpretOwnerIntent(text) {
     const data = await response.json();
     const reply = data?.content?.[0]?.text?.trim().toUpperCase();
     if (reply === "PAUSE" || reply === "RESUME") return reply;
+    if (reply === "ANSWER" && pendingEscalationReason) return reply;
     return "NONE";
   } catch (err) {
     console.error("interpretOwnerIntent failed:", err.message);
     return "NONE"; // fail safe: don't guess on a broken call, fall through to help text
+  }
+}
+
+async function relayOwnerAnswerToCustomer(seller, pending, ownerText) {
+  const { phone, reason } = pending;
+  let customerMessage = null;
+  try {
+    const instruction =
+      `[Internal note, not a real customer message: the owner just ` +
+      `answered this customer's open question ("${reason}") directly to ` +
+      `you, so you can pass it on. The owner's exact words: "${ownerText}".\n\n` +
+      `Write a short, warm, natural WhatsApp message to the customer that ` +
+      `actually answers their question, using ONLY the real information ` +
+      `the owner just gave you -- don't invent or add any detail they ` +
+      `didn't say. Don't use a [PHOTO], [ESCALATE], [BOOK], [PAY], or ` +
+      `[AVAILABILITY] tag here. Output ONLY the final message itself, ` +
+      `nothing else, no drafts, no narrating your own corrections, just ` +
+      `the finished text ready to send.]`;
+    const reply = await askAI(seller, [{ role: "user", content: instruction }]);
+    const { cleanText: step1 } = extractPhotoTag(reply);
+    const { cleanText: step2 } = extractEscalationTag(step1);
+    const finalText = stripBannedEmojis(stripSelfCorrection(step2)).trim();
+    if (finalText) customerMessage = finalText;
+  } catch (err) {
+    console.error("relayOwnerAnswerToCustomer failed to compose message:", err.message);
+  }
+  // Hard fallback so a broken AI call still gets the owner's real words to
+  // the customer, rather than silently dropping the answer entirely.
+  if (!customerMessage) customerMessage = ownerText;
+
+  const delivered = await sendWhatsApp(seller, phone, customerMessage);
+  if (delivered) {
+    let history = await getConversation(seller.sellerId, phone);
+    history.push({ role: "assistant", content: customerMessage });
+    history = history.slice(-10);
+    await saveConversation(seller.sellerId, phone, history);
+    console.log(`Amara -> ${phone}: [relayed owner's answer] ${customerMessage}`);
+    await sendWhatsApp(seller, seller.ownerPhoneNumber, `Told ${phone}: "${customerMessage}"`);
+  } else {
+    // Most likely cause: more than 24 hours since this customer last
+    // messaged, so a free-form message isn't allowed. Tell the owner
+    // plainly rather than letting them believe it went through, which is
+    // exactly the false confidence this whole fix exists to remove.
+    console.error(`Could not relay owner's answer to ${phone} (likely outside the 24h messaging window).`);
+    await sendWhatsApp(
+      seller,
+      seller.ownerPhoneNumber,
+      `Got your answer, but couldn't actually reach ${phone} right now (probably outside WhatsApp's 24-hour reply window) -- they'll need to message in again first.`
+    );
+  }
+
+  // This question is resolved either way now -- clear the pending-answer
+  // state AND the short-affirmative pause trap together, so a later,
+  // unrelated "thanks" or "alright" from the owner isn't misread as "yes,
+  // pause this customer" just because it happens to land inside that old
+  // 10-minute window.
+  await clearPendingEscalationAnswer(seller.sellerId);
+  try {
+    await redisCommand(["DEL", nsKey(seller.sellerId, "awaiting_pause_confirmation")]);
+  } catch (err) {
+    console.error("Could not clear awaiting_pause_confirmation after relay:", err.message);
   }
 }
 
@@ -2910,12 +3105,24 @@ async function handleOwnerCommand(seller, text) {
     }
   }
 
+  // If Amara is still waiting on an answer to a specific open customer
+  // question, fetch it once here -- used both to let the classifier below
+  // recognize a direct answer to it, and, if that's what this is, to know
+  // who to relay it to.
+  const pendingEscalation = await getPendingEscalationAnswer(seller.sellerId);
+
   if (!command) {
     // No exact match. Ask the AI whether this was natural-language
-    // pause/resume phrasing before giving up and showing the help menu.
-    const intent = await interpretOwnerIntent(text);
+    // pause/resume phrasing -- or, if there's a question Amara is still
+    // waiting on, whether this IS the owner's answer to it -- before
+    // giving up and showing the help menu.
+    const intent = await interpretOwnerIntent(text, pendingEscalation?.reason);
     if (intent === "PAUSE") command = { action: "pause", target: "last" };
     else if (intent === "RESUME") command = { action: "resume", target: "last" };
+    else if (intent === "ANSWER" && pendingEscalation) {
+      await relayOwnerAnswerToCustomer(seller, pendingEscalation, text);
+      return;
+    }
   }
 
   if (!command) {
@@ -2940,6 +3147,12 @@ async function handleOwnerCommand(seller, text) {
       return;
     }
   }
+
+  // Either way, the owner just made an explicit choice about this
+  // customer, so any question Amara was still holding open for a possible
+  // ANSWER is moot now -- clear it so it can't get relayed stale later, or
+  // confuse a later unrelated message.
+  await clearPendingEscalationAnswer(seller.sellerId);
 
   if (command.action === "pause") {
     await pauseCustomer(seller.sellerId, target);
@@ -2977,13 +3190,43 @@ async function handleOwnerCommand(seller, text) {
 }
 
 
+// Returns true if an alert was actually sent (or attempted via the template
+// fallback), false if it was suppressed (cooldown, no owner number) or both
+// send attempts failed -- callers use this instead of assuming a call to
+// this function always means the owner was actually notified.
 async function sendOwnerAlert(seller, customerNumber, reason, lastCustomerMessage) {
   if (!seller.ownerPhoneNumber) {
     console.error(
       `ESCALATION happened for seller ${seller.sellerId} but no owner phone number is set, no alert sent. Reason:`,
       reason
     );
-    return;
+    return false;
+  }
+
+  // If we already alerted about this exact customer within the last few
+  // minutes, don't buzz the owner again for what's very likely still the
+  // same unresolved thread. Without this, the customer's very next message
+  // (even a bare "Ok" while they wait) can make Amara re-emit the same
+  // [ESCALATE] tag, since the underlying question still isn't answered --
+  // which is how two near-identical "Amara needs you" alerts land a
+  // minute apart for one open question, not two separate issues.
+  const cooldownKey = nsKey(seller.sellerId, `recent_escalation_alert:${customerNumber}`);
+  let alreadyAlertedRecently = false;
+  try {
+    alreadyAlertedRecently = !!(await redisCommand(["GET", cooldownKey]));
+  } catch (err) {
+    console.error("Could not check recent_escalation_alert cooldown:", err.message);
+  }
+  if (alreadyAlertedRecently) {
+    console.log(
+      `Escalation SUPPRESSED (already alerted about ${customerNumber} within the last few minutes): ${reason}`
+    );
+    return false;
+  }
+  try {
+    await redisCommand(["SET", cooldownKey, "1", "EX", "180"]); // 3 minute cooldown
+  } catch (err) {
+    console.error("Could not set recent_escalation_alert cooldown:", err.message);
   }
 
   // Remember who this was about, so "pause last" / "resume last" work
@@ -3022,8 +3265,13 @@ async function sendOwnerAlert(seller, customerNumber, reason, lastCustomerMessag
     console.error("Could not set awaiting_pause_confirmation flag:", err.message);
   }
 
+  // Also remember this as a still-open question the owner might directly
+  // ANSWER (rather than pause/resume) -- see setPendingEscalationAnswer
+  // above for why this exists.
+  await setPendingEscalationAnswer(seller.sellerId, customerNumber, cleanReason);
+
   const freeFormSucceeded = await sendWhatsApp(seller, seller.ownerPhoneNumber, alertText);
-  if (freeFormSucceeded) return;
+  if (freeFormSucceeded) return true;
 
   console.log("Free-form owner alert failed, falling back to template message.");
   const templateSucceeded = await sendWhatsAppTemplate(
@@ -3039,6 +3287,7 @@ async function sendOwnerAlert(seller, customerNumber, reason, lastCustomerMessag
       cleanReason
     );
   }
+  return templateSucceeded;
 }
 
 // ---------- One-time fix: subscribe this app to the WhatsApp account ----------
@@ -3784,6 +4033,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
         .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
+        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; }
         .catalog-btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
         .catalog-btn:hover { background: var(--accent-dark); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; }
@@ -3950,7 +4200,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         <div class="catalog-card">
           <h2>Services</h2>
           <table class="catalog-table" id="offeringsTable">
-            <thead><tr><th>Name</th><th>Key</th><th>Price</th><th>Duration</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Key</th><th>Price</th><th>Duration</th><th>Delivery</th><th></th></tr></thead>
             <tbody id="offeringsTableBody"></tbody>
           </table>
           <div id="offeringEditingNote" style="display:none;font-size:12px;color:#64748b;margin-bottom:8px;">
@@ -3973,6 +4223,17 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               <label>Duration (minutes)</label>
               <input id="oDuration" type="number" min="1" max="480" placeholder="30">
             </div>
+            <div>
+              <label>Delivery (so Amara can answer "is this online?" herself)</label>
+              <select id="oDeliveryMode">
+                <option value="">Not set yet -- Amara will ask you when a customer asks</option>
+                <option value="online">Online only</option>
+                <option value="in_person">In-person only</option>
+                <option value="either">Either -- online or in-person</option>
+              </select>
+            </div>
+          </div>
+          <div class="catalog-form" style="grid-template-columns: 1fr; margin-top:10px;">
             <div>
               <label>Description (what's included, anything Amara should know)</label>
               <input id="oDescription" placeholder="e.g. A focused 30-minute strategy session">
@@ -4766,24 +5027,32 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
         }
 
+        const DELIVERY_MODE_LABELS = {
+          online: "Online only",
+          in_person: "In-person only",
+          either: "Either",
+        };
+
         function renderOfferings(offerings) {
           const body = document.getElementById("offeringsTableBody");
           const keys = Object.keys(offerings);
           body.innerHTML = keys.length > 0
             ? keys.map((k) => {
                 const o = offerings[k];
+                const deliveryLabel = DELIVERY_MODE_LABELS[o.deliveryMode] || '<span style="color:#b45309;">Not set</span>';
                 return '<tr>' +
                   '<td>' + escapeHtml(o.name) + '</td>' +
                   '<td><code>' + escapeHtml(k) + '</code></td>' +
                   '<td>N' + Number(o.price).toLocaleString() + '</td>' +
                   '<td>' + o.durationMinutes + ' min</td>' +
+                  '<td>' + deliveryLabel + '</td>' +
                   '<td>' +
                     '<button class="catalog-btn small" onclick="editOffering(\\'' + k + '\\')">Edit</button> ' +
                     '<button class="catalog-btn danger" onclick="removeOffering(\\'' + k + '\\')">Remove</button>' +
                   '</td>' +
                 '</tr>';
               }).join("")
-            : '<tr><td colspan="5" style="color:#94a3b8;">No services yet.</td></tr>';
+            : '<tr><td colspan="6" style="color:#94a3b8;">No services yet.</td></tr>';
         }
 
         function editOffering(key) {
@@ -4793,6 +5062,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           document.getElementById("oName").value = o.name;
           document.getElementById("oPrice").value = o.price;
           document.getElementById("oDuration").value = o.durationMinutes;
+          document.getElementById("oDeliveryMode").value = o.deliveryMode || "";
           document.getElementById("oDescription").value = o.description || "";
           document.getElementById("offeringEditingName").textContent = o.name;
           document.getElementById("offeringEditingNote").style.display = "block";
@@ -4805,6 +5075,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           document.getElementById("oName").value = "";
           document.getElementById("oPrice").value = "";
           document.getElementById("oDuration").value = "";
+          document.getElementById("oDeliveryMode").value = "";
           document.getElementById("oDescription").value = "";
           document.getElementById("offeringEditingNote").style.display = "none";
         }
@@ -4838,6 +5109,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             name: document.getElementById("oName").value,
             price: document.getElementById("oPrice").value,
             durationMinutes: document.getElementById("oDuration").value,
+            deliveryMode: document.getElementById("oDeliveryMode").value,
             description: document.getElementById("oDescription").value,
           };
           try {
@@ -4856,6 +5128,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             document.getElementById("oName").value = "";
             document.getElementById("oPrice").value = "";
             document.getElementById("oDuration").value = "";
+            document.getElementById("oDeliveryMode").value = "";
             document.getElementById("oDescription").value = "";
             document.getElementById("offeringEditingNote").style.display = "none";
             msg.textContent = data.warning || "Saved.";
@@ -5650,13 +5923,22 @@ app.get("/api/bookable", async (req, res) => {
 app.post("/api/bookable/offerings", async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
-  const { key, name, price, durationMinutes, description } = req.body || {};
+  const { key, name, price, durationMinutes, description, deliveryMode } = req.body || {};
 
   const cleanKey = String(key || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
   const cleanName = String(name || "").trim();
   const cleanPrice = Number(price);
   const cleanDuration = Number(durationMinutes);
   const cleanDescription = String(description || "").trim().slice(0, 600);
+  // Whether this specific service is online, in-person, or either -- kept
+  // as its own real field (like price and duration) rather than something
+  // a seller has to remember to mention in the free-text description,
+  // because "is this online?" turned out to be a genuinely common customer
+  // question that Amara had no reliable way to answer without escalating
+  // to the owner every single time. Blank means "not set yet", the only
+  // case Amara should still ask the owner about.
+  const ALLOWED_DELIVERY_MODES = ["", "online", "in_person", "either"];
+  const cleanDeliveryMode = ALLOWED_DELIVERY_MODES.includes(deliveryMode) ? deliveryMode : "";
 
   if (!cleanKey) {
     return res.status(400).json({ error: "Offering key is required (letters, numbers, - and _ only)." });
@@ -5671,7 +5953,13 @@ app.post("/api/bookable/offerings", async (req, res) => {
     return res.status(400).json({ error: "Duration must be a positive number of minutes (up to 480)." });
   }
 
-  seller.catalog.OFFERINGS[cleanKey] = { name: cleanName, price: cleanPrice, durationMinutes: cleanDuration, description: cleanDescription };
+  seller.catalog.OFFERINGS[cleanKey] = {
+    name: cleanName,
+    price: cleanPrice,
+    durationMinutes: cleanDuration,
+    description: cleanDescription,
+    deliveryMode: cleanDeliveryMode,
+  };
   console.log(`Bookable: offering "${cleanKey}" saved from the dashboard for ${seller.sellerId}.`);
 
   try {
