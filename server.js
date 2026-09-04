@@ -217,6 +217,17 @@ function ensureCatalogEntry(sellerId) {
       // Stays empty (bankName: "") until a seller explicitly adds it from
       // the dashboard; Amara only ever mentions it if it's actually set.
       BANK_DETAILS_2: { bankName: "", accountNumber: "", accountName: "" },
+
+      // ---- Bookable-seller fields (businessType "bookable") ----
+      // Sit empty and unused for a goods seller, same cache-aside pattern
+      // as everything above. See the Stage 2 services architecture plan
+      // for the reasoning: one shared calendar per seller (a single
+      // resource), the seller owns every fact here, nothing is ever
+      // decided by the AI.
+      OFFERINGS: {}, // key -> { name, price, durationMinutes, description }
+      WEEKLY_AVAILABILITY: [], // [{ id, day (0=Sun..6=Sat), startTime "HH:MM", endTime "HH:MM" }]
+      BLOCKED_DATES: [], // ["YYYY-MM-DD", ...] -- specific exception days
+      BOOKINGS: [], // [{ id, offeringKey, date, time, phone, reference, status, createdAt }]
     };
   }
   return sellerCatalogs[sellerId];
@@ -267,6 +278,13 @@ async function getSellerContext(sellerId) {
     sellerId,
     businessName: record?.businessName || (sellerId === SELLER1_ID ? "KP Collections" : "Your shop"),
     status: record?.status || (sellerId === SELLER1_ID ? "active" : "pending_whatsapp_connection"),
+    // "goods" (physical products, delivery, the original shop model) or
+    // "bookable" (appointment-style services -- consultations and similar,
+    // see the Stage 2 services architecture plan). Missing/unrecognized
+    // always falls back to "goods", so every seller that existed before
+    // this field was introduced (including seller1) keeps behaving exactly
+    // as it always has, with zero migration needed.
+    businessType: record?.businessType === "bookable" ? "bookable" : "goods",
     phoneNumberId: creds.phoneNumberId,
     whatsappToken: creds.whatsappToken,
     ownerPhoneNumber: creds.ownerPhoneNumber,
@@ -532,6 +550,21 @@ async function loadCatalogFromRedis(sellerId) {
     }
     // No seller1 default seeding here -- a second account only ever exists
     // once a seller explicitly adds one from the dashboard.
+
+    // ---- Bookable-seller data. Empty/no-op for a goods seller (nothing
+    // ever gets saved under these keys for one, so these all just stay []
+    // / {} as initialized). ----
+    const rawOfferings = await redisCommand(["GET", nsKey(sellerId, "catalog:offerings")]);
+    if (rawOfferings) Object.assign(catalog.OFFERINGS, JSON.parse(rawOfferings));
+
+    const rawAvailability = await redisCommand(["GET", nsKey(sellerId, "catalog:weekly_availability")]);
+    if (rawAvailability) catalog.WEEKLY_AVAILABILITY = JSON.parse(rawAvailability);
+
+    const rawBlockedDates = await redisCommand(["GET", nsKey(sellerId, "catalog:blocked_dates")]);
+    if (rawBlockedDates) catalog.BLOCKED_DATES = JSON.parse(rawBlockedDates);
+
+    const rawBookings = await redisCommand(["GET", nsKey(sellerId, "catalog:bookings")]);
+    if (rawBookings) catalog.BOOKINGS = JSON.parse(rawBookings);
   } catch (err) {
     // If Redis is unreachable, keep running on whatever's already in
     // memory (the demo catalog for seller1, or empty for a new seller)
@@ -577,6 +610,125 @@ async function saveBankDetails2ToRedis(sellerId) {
   await redisCommand(["SET", nsKey(sellerId, "shop:bank_details_2"), JSON.stringify(catalog.BANK_DETAILS_2)]);
 }
 
+// ---------- BOOKABLE SELLERS: PERSISTENCE ----------
+async function saveOfferingsToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "catalog:offerings"), JSON.stringify(catalog.OFFERINGS)]);
+}
+
+async function saveWeeklyAvailabilityToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "catalog:weekly_availability"), JSON.stringify(catalog.WEEKLY_AVAILABILITY)]);
+}
+
+async function saveBlockedDatesToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "catalog:blocked_dates"), JSON.stringify(catalog.BLOCKED_DATES)]);
+}
+
+async function saveBookingsToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "catalog:bookings"), JSON.stringify(catalog.BOOKINGS)]);
+}
+
+// ---------- BOOKABLE SELLERS: THE AVAILABILITY ENGINE ----------
+// The bookable-seller equivalent of the PRODUCT_PRICES / DELIVERY_STATES
+// hard backstop. The real open slots for a given offering on a given date
+// are ALWAYS computed here, fresh, from the seller's actual weekly
+// availability windows minus actual existing bookings and blocked dates --
+// never trusted from anything the AI said or remembered earlier in the
+// chat. Same "the prompt is a suggestion, the code is the guarantee"
+// principle as prices and delivery, just applied to time, where a mistake
+// (double-booking a real person's real slot) is if anything harder to
+// undo gracefully than a wrong price.
+//
+// One shared calendar per seller (a single resource, e.g. one consultant),
+// matching the Stage 2 plan: a booking for ANY offering blocks that time
+// range for every OTHER offering too, since two different services can't
+// both claim the same slice of the same person's day.
+
+function timeToMinutes(hhmm) {
+  const [h, m] = String(hhmm).split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+function minutesToTime(mins) {
+  const h = Math.floor(mins / 60).toString().padStart(2, "0");
+  const m = (mins % 60).toString().padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+// Returns the real open slots (array of "HH:MM" strings, in order) for one
+// offering on one date ("YYYY-MM-DD") for a given seller. This is what
+// Amara's [AVAILABILITY] tag reads from, and what [BOOK] re-checks against
+// right before actually writing a booking.
+function getAvailableSlots(seller, offeringKey, dateStr) {
+  const catalog = seller.catalog;
+  const offering = catalog.OFFERINGS[offeringKey];
+  if (!offering || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return [];
+  if (catalog.BLOCKED_DATES.includes(dateStr)) return [];
+
+  // Parsed as a plain date-only value via Date.UTC, deliberately not
+  // `new Date(dateStr)` (which some environments interpret with an
+  // implicit local timezone) -- this file assumes a single timezone,
+  // Africa/Lagos, throughout, so the day-of-week must never drift with
+  // wherever the server process happens to be running.
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun..6=Sat
+
+  const windowsForDay = catalog.WEEKLY_AVAILABILITY.filter((w) => w.day === dayOfWeek);
+  if (windowsForDay.length === 0) return [];
+
+  const duration = offering.durationMinutes;
+
+  const occupiedRanges = catalog.BOOKINGS.filter((b) => b.date === dateStr && b.status !== "cancelled").map((b) => {
+    const bookedOffering = catalog.OFFERINGS[b.offeringKey];
+    const bookedDuration = bookedOffering ? bookedOffering.durationMinutes : duration;
+    const start = timeToMinutes(b.time);
+    return [start, start + bookedDuration];
+  });
+  const overlapsExisting = (start, end) => occupiedRanges.some(([os, oe]) => start < oe && end > os);
+
+  const slots = [];
+  for (const window of windowsForDay) {
+    const start = timeToMinutes(window.startTime);
+    const end = timeToMinutes(window.endTime);
+    for (let t = start; t + duration <= end; t += duration) {
+      if (!overlapsExisting(t, t + duration)) slots.push(minutesToTime(t));
+    }
+  }
+  return slots;
+}
+
+// Creates a booking IF the slot is still genuinely open right now --
+// re-checked here, not trusted from whatever was true a message or two
+// ago. There's no `await` between this check and writing it into
+// catalog.BOOKINGS below, so the check-and-write is atomic with respect
+// to any other concurrent request on this same seller (Node never
+// context-switches in the middle of synchronous code), closing the race
+// where two customers could otherwise grab the same slot seconds apart.
+// Persisting to Redis happens after, same "live change takes effect
+// immediately, Redis is what makes it survive a restart" pattern as
+// everywhere else.
+async function createBookingIfAvailable(seller, offeringKey, dateStr, time, phone, reference) {
+  const catalog = seller.catalog;
+  const stillOpen = getAvailableSlots(seller, offeringKey, dateStr).includes(time);
+  if (!stillOpen) return { ok: false };
+
+  const booking = {
+    id: crypto.randomBytes(6).toString("hex"),
+    offeringKey,
+    date: dateStr,
+    time,
+    phone,
+    reference,
+    status: "confirmed",
+    createdAt: new Date().toISOString(),
+  };
+  catalog.BOOKINGS.push(booking);
+  await saveBookingsToRedis(seller.sellerId);
+  return { ok: true, booking };
+}
+
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
 // This used to be one static template literal with the catalog and
 // delivery fees typed directly into the prompt text. Now that both are
@@ -587,6 +739,18 @@ async function saveBankDetails2ToRedis(sellerId) {
 // would keep quoting the old one from a stale, baked-in copy. Everything
 // else about the prompt is unchanged.
 function buildShopProfile(seller) {
+  // The one fork point in the whole prompt-building pipeline: a bookable
+  // seller gets an entirely different prompt (offerings + availability
+  // instead of a catalog + delivery), built by its own function below,
+  // rather than threading businessType checks through this function line
+  // by line. A goods seller (every seller that existed before this field
+  // existed, including seller1) is completely unaffected -- this branch
+  // is simply never taken for them.
+  if (seller.businessType === "bookable") return buildBookableShopProfile(seller);
+  return buildGoodsShopProfile(seller);
+}
+
+function buildGoodsShopProfile(seller) {
   const catalog = seller.catalog;
   // seller1 (the original, live shop) keeps this exact literal name, byte
   // for byte, so its prompt text -- and therefore Amara's behavior for the
@@ -808,6 +972,153 @@ ALERTING THE OWNER:
 `;
 }
 
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// The bookable-seller prompt: offerings + real-time availability checks
+// instead of a product catalog + delivery zones. Shares the same Amara
+// voice and escalation behavior as the goods prompt, but the actual
+// selling mechanics are different enough (time, not stock) that this is
+// its own self-contained template rather than a patchwork of businessType
+// checks inside buildGoodsShopProfile above. See the Stage 2 services
+// architecture plan for the full reasoning.
+function buildBookableShopProfile(seller) {
+  const catalog = seller.catalog;
+  const shopName = seller.businessName || "the business";
+
+  const offeringLines = Object.keys(catalog.OFFERINGS)
+    .map((key, i) => {
+      const o = catalog.OFFERINGS[key];
+      const line = `${i + 1}. ${o.name} — N${o.price.toLocaleString()}, ${o.durationMinutes} minutes (key: ${key})`;
+      return o.description ? `${line}\n   Details: ${o.description}` : line;
+    })
+    .join("\n");
+
+  // General weekly pattern, for Amara's own orientation only -- NEVER the
+  // source of truth for whether a specific time is actually free. That
+  // guarantee only ever comes from a real [AVAILABILITY] check, same
+  // "prompt is a suggestion, code is the guarantee" principle as prices,
+  // just applied to time.
+  const availabilityLines = catalog.WEEKLY_AVAILABILITY.length > 0
+    ? catalog.WEEKLY_AVAILABILITY
+        .slice()
+        .sort((a, b) => a.day - b.day || a.startTime.localeCompare(b.startTime))
+        .map((w) => `${DAY_NAMES[w.day]}: ${w.startTime}-${w.endTime}`)
+        .join(", ")
+    : "no weekly availability set yet";
+
+  const todayStr = new Date().toISOString().slice(0, 10); // Africa/Lagos-assumed, YYYY-MM-DD
+
+  return `
+You are "Amara", the booking assistant for ${shopName}, a Nigerian service
+business that takes appointments on WhatsApp. You text like a real person
+helping someone book a slot, not like an assistant or a chatbot. Never use
+em dashes.
+
+Today's date is ${todayStr}. When a customer says a day in words ("tomorrow",
+"next Tuesday", "this Friday"), work out the actual YYYY-MM-DD yourself
+from today's date before using it in any tag below.
+
+THE SERVICES (the ONLY services that exist — never invent others):
+${offeringLines || "no services set up yet"}
+
+GENERAL WEEKLY AVAILABILITY (for your own orientation ONLY — never promise
+or rule out a specific time from this alone, always run a real
+[AVAILABILITY] check first, exact openings can differ from this general
+pattern because of existing bookings):
+${availabilityLines}
+
+CHECKING AVAILABILITY:
+- When a customer asks about booking a service, or asks what's free on a
+  given day, add an invisible tag at the very end of your message, on its
+  own, in this exact format: [AVAILABILITY: key, date] using the service
+  key from the list above and date as an exact YYYY-MM-DD. This tag is
+  invisible to the customer, it triggers a real check of what's actually
+  still open right now, and the real open times are handed back to you as
+  a system note right after, for you to relay in your NEXT reply.
+- Never state a specific available time to a customer without having
+  actually run this check first in this conversation. You have no way of
+  knowing what's really free otherwise, don't guess or estimate from the
+  general weekly pattern above.
+- If nothing comes back free for a date the customer asked about, say so
+  plainly and offer to check a different day, don't invent a time anyway.
+- Only one [AVAILABILITY: key, date] tag per message.
+
+CONFIRMING A BOOKING:
+- Once a customer has picked one of the times you actually offered them
+  moments ago (from a real availability check, never a guess or something
+  from earlier in memory), add an invisible tag at the very end of your
+  message, on its own, in this exact format: [BOOK: key, date, time]
+  using the service key, the date (YYYY-MM-DD), and the time (HH:MM,
+  24-hour) exactly as it was offered. This tag is invisible to the
+  customer, it triggers one final real check and actually writes the
+  booking, so never mention the tag itself.
+- Do not declare the booking done in your own words before this tag has a
+  chance to fire ("let me lock that in for you" is safe, "you're all
+  booked" is not) -- the system's own confirmation message right after
+  yours is what actually means it's booked. On the rare chance someone
+  else took that exact slot a moment earlier, you'll be told so right
+  after and should apologize and offer to check fresh availability, not
+  pretend it went through.
+- Only one [BOOK: key, date, time] tag per message, and only for a
+  key/date/time combination that was genuinely offered from a real
+  [AVAILABILITY] check earlier in this same conversation.
+
+RULES:
+- Quote prices EXACTLY as listed (never change or guess a price), even
+  when writing them the casual "15k" way.
+- Prices are fixed, same as any firm quote -- if a customer pushes for a
+  discount, stay warm but don't cave or use agreement-shaped language
+  ("okay okay", "no wahala") in response to a price push, even jokingly.
+- Payment happens directly at the time of the appointment, not through
+  this chat -- there is no payment link to send for a booking. Once a
+  booking is confirmed, simply let the customer know payment is handled
+  at the session itself.
+- If you are not sure about something (a custom request, rescheduling
+  something already booked, a complaint, anything outside the services
+  listed), do NOT guess. Say the owner will reply shortly, and keep it
+  warm.
+- Never promise anything not listed here.
+
+SPLITTING INTO SEPARATE MESSAGES:
+- Real people on WhatsApp rarely send one long message with everything in
+  it, they send a few short separate bubbles, one thought at a time. You
+  can do this too. When a reply naturally has two or three distinct
+  beats, mark the break with |||  on its own with a space on each side,
+  between the two parts. This is invisible to the customer, it gets
+  turned into separate message bubbles sent one after another.
+- Use this sparingly, only when it feels like how a real person would
+  naturally pause between thoughts. Never use more than one ||| per
+  reply, and never split a single sentence in half.
+
+HOW YOU TEXT (this matters as much as what you say):
+- Short bursts. Most replies are 1-2 sentences. Rarely go past 3.
+- Emojis are rare, not a habit. Aim for most messages to have no emoji at
+  all. Never stack more than one emoji in a single message.
+- Do not end every message with a question. A real person often just
+  answers and lets the other person decide what to say next.
+- Mirror the customer's energy and register, but let it build over the
+  conversation rather than assuming it from message one.
+- You are allowed to just be a normal person in the chat. If a customer
+  greets you, jokes with you, or goes off-topic, respond briefly and
+  naturally, the way someone coordinating a real booking would. You do
+  not have to steer every message back to booking.
+
+ALERTING THE OWNER:
+- Whenever you tell a customer the owner will reply shortly, also alert
+  the owner for real. Add an invisible tag at the very end of your
+  message, on its own, in this exact format: [ESCALATE: short reason]
+  using a few plain words for the reason. This tag is invisible to the
+  customer, it triggers a real WhatsApp alert to the owner, so never
+  mention the tag itself.
+- Also use this tag if a customer seems genuinely upset or frustrated,
+  not just confused, even if you're still able to answer their question.
+- Do not use this for routine back-and-forth, that's expected and you
+  handle it fine on your own. This is for genuine "a human needs to step
+  in" moments only, and never twice in a row for a bare greeting.
+- Only ever one [ESCALATE: reason] tag per message.
+`;
+}
+
 // ---------- PERSISTENT MEMORY (Upstash Redis via REST) ----------
 // Each customer's conversation is stored under key "conv:<phone_number>"
 // as a JSON string, with a 30-day expiry so old chats don't pile up forever.
@@ -1015,7 +1326,7 @@ function makeSellerId() {
   return crypto.randomBytes(12).toString("hex");
 }
 
-async function createSeller({ businessName, email, passwordHash }) {
+async function createSeller({ businessName, email, passwordHash, businessType }) {
   const sellerId = makeSellerId();
   await redisCommand([
     "HSET",
@@ -1025,6 +1336,7 @@ async function createSeller({ businessName, email, passwordHash }) {
     "email", email.toLowerCase(),
     "passwordHash", passwordHash,
     "status", "pending_whatsapp_connection",
+    "businessType", businessType === "bookable" ? "bookable" : "goods",
     "createdAt", new Date().toISOString(),
   ]);
   await redisCommand(["SADD", "all_sellers", sellerId]);
@@ -1657,7 +1969,35 @@ async function processBufferedTurn(seller, from) {
       photosAlreadySent.length > 0
         ? `You have ALREADY sent these product photos to this customer in this chat: ${photosAlreadySent.join(", ")}. Do not resend any of these unless the customer explicitly asks to see it again.`
         : "";
-    const rawReply = await askAI(seller, history, photoReminder);
+    let rawReply = await askAI(seller, history, photoReminder);
+
+    // Bookable sellers only: if she asked for a real availability check,
+    // resolve it right now, before anything gets sent to the customer,
+    // and let her write her ACTUAL reply from the real numbers -- same
+    // "the prompt is a suggestion, the code is the guarantee" discipline
+    // as prices, just applied to time. Whatever text came with the first
+    // pass (e.g. "let me check for you") is kept and sent as its own
+    // bubble, the follow-up reply arrives right after as a second one,
+    // the same natural two-part texting rhythm the ||| splitter already
+    // supports. Only resolved once per incoming customer message -- her
+    // follow-up reply is explicitly told not to use the tag again, and if
+    // it somehow does anyway, that second tag is just stripped as clutter
+    // further down rather than looping.
+    if (seller.businessType === "bookable") {
+      const { cleanText: availStripped, availabilityKey, availabilityDate } = extractAvailabilityTag(rawReply);
+      if (availabilityKey && availabilityDate) {
+        const offering = seller.catalog.OFFERINGS[availabilityKey];
+        const slots = offering ? getAvailableSlots(seller, availabilityKey, availabilityDate) : [];
+        const slotsNote = !offering
+          ? `The [AVAILABILITY] tag referenced an unrecognized service key ("${availabilityKey}"). Only use keys from the services list above.`
+          : slots.length > 0
+            ? `Real availability check for "${offering.name}" on ${availabilityDate}: ${slots.join(", ")}. Write your reply to the customer now, using ONLY these real times if you mention any specific time.`
+            : `Real availability check for "${offering.name}" on ${availabilityDate}: nothing is open that day. Tell the customer plainly and offer to check a different day.`;
+        const followUpReply = await askAI(seller, history, slotsNote);
+        rawReply = availStripped ? `${availStripped} ||| ${followUpReply}` : followUpReply;
+        console.log(`Bookable: resolved [AVAILABILITY: ${availabilityKey}, ${availabilityDate}] -> ${slots.length} real slot(s) for ${seller.sellerId}.`);
+      }
+    }
 
     // Pull out the invisible [PHOTO: key] tag, if she included one, and
     // clean it out of the text so the customer never sees the tag itself.
@@ -1667,10 +2007,15 @@ async function processBufferedTurn(seller, from) {
     // confirmed order. Also cleaned out before the customer ever sees it.
     const { cleanText: paymentStripped, paymentKey, paymentZone } = extractPaymentTag(photoStripped);
 
+    // Bookable sellers only: pull out the invisible [BOOK: key, date, time]
+    // tag, if she flagged a confirmed booking. Also cleaned out before the
+    // customer ever sees it.
+    const { cleanText: bookingStripped, bookingKey, bookingDate, bookingTime } = extractBookingTag(paymentStripped);
+
     // Pull out the invisible [ESCALATE: reason] tag, if she flagged that
     // the owner needs to step in. Also cleaned out before the customer
     // ever sees it.
-    const { cleanText: taggedClean, escalationReason } = extractEscalationTag(paymentStripped);
+    const { cleanText: taggedClean, escalationReason } = extractEscalationTag(bookingStripped);
 
     // Mechanically remove any banned emoji that slipped through despite
     // the prompt instruction. Belt and suspenders: the instruction handles
@@ -1851,6 +2196,66 @@ async function processBufferedTurn(seller, from) {
           await saveConversation(seller.sellerId, from, paymentHistory);
         } else {
           console.error(`Paystack link generation FAILED for ${from}, order ${reference}.`);
+        }
+      }
+    }
+
+    // Bookable sellers only: if she flagged a confirmed booking, this is
+    // the hard backstop for time, mirroring the payment backstop above --
+    // the booking is only ever actually written after one final real
+    // check right here, never trusted from her own words a message
+    // earlier claiming a slot was free.
+    if (bookingKey && bookingDate && bookingTime) {
+      const offering = seller.catalog.OFFERINGS[bookingKey];
+      if (!offering) {
+        console.error(`Booking tag had an unrecognized service key (${bookingKey}), no booking created.`);
+      } else {
+        const refPrefix = seller.sellerId === SELLER1_ID ? "KP" : seller.sellerId.slice(0, 8).toUpperCase();
+        const reference = `${refPrefix}-BOOK-${from}-${Date.now()}`;
+        const result = await createBookingIfAvailable(seller, bookingKey, bookingDate, bookingTime, from, reference);
+
+        if (result.ok) {
+          const confirmMessage =
+            `Booked: ${offering.name} on ${bookingDate} at ${bookingTime}. ` +
+            `N${offering.price.toLocaleString()}, payable at the time of your session. Reference: ${reference}`;
+
+          await new Promise((resolve) => setTimeout(resolve, 900));
+          await sendWhatsApp(seller, from, confirmMessage);
+          console.log(`Amara -> ${from}: [booking confirmed] ${reference}`);
+
+          let bookingHistory = await getConversation(seller.sellerId, from);
+          bookingHistory.push({ role: "assistant", content: confirmMessage });
+          bookingHistory = bookingHistory.slice(-10);
+          await saveConversation(seller.sellerId, from, bookingHistory);
+        } else {
+          // The slot got taken (by someone else, or the AI misremembered
+          // what was actually offered) between Amara offering it and the
+          // customer confirming. Tell her so for real and let HER
+          // apologize and offer fresh times in her own voice, rather than
+          // the system staying silent while her own text already implied
+          // it was locked in. Deliberately told not to use any tags in
+          // this one reply -- it's a narrow, single-purpose follow-up, not
+          // a full new turn, so re-running the entire tag pipeline on it
+          // would be more machinery than the situation needs.
+          const freshSlots = getAvailableSlots(seller, bookingKey, bookingDate);
+          const failNote =
+            `That exact time (${bookingTime} on ${bookingDate} for "${offering.name}") just got taken ` +
+            `by someone else a moment ago. Apologize briefly and ${
+              freshSlots.length > 0
+                ? `offer these other real times still open that day: ${freshSlots.join(", ")}`
+                : "let them know that day is now full, offer to check a different day"
+            }. Do not use any tags in this reply, just the plain customer-facing message.`;
+          const apologyReply = await askAI(seller, history, failNote);
+          const apologyClean = stripBannedEmojis(stripSelfCorrection(apologyReply.trim()));
+
+          await new Promise((resolve) => setTimeout(resolve, 900));
+          await sendWhatsApp(seller, from, apologyClean);
+          console.log(`Amara -> ${from}: [booking conflict, sent apology] ${bookingKey}/${bookingDate}/${bookingTime}`);
+
+          let apologyHistory = await getConversation(seller.sellerId, from);
+          apologyHistory.push({ role: "assistant", content: apologyClean });
+          apologyHistory = apologyHistory.slice(-10);
+          await saveConversation(seller.sellerId, from, apologyHistory);
         }
       }
     }
@@ -2038,6 +2443,29 @@ function extractPaymentTag(text) {
   const paymentZone = match[2].toLowerCase();
   const cleanText = text.replace(match[0], "").trim();
   return { cleanText, paymentKey, paymentZone };
+}
+
+// ---------- Bookable sellers only: pull the invisible [AVAILABILITY: key, date] tag ----------
+function extractAvailabilityTag(text) {
+  const match = text.match(/\[AVAILABILITY:\s*(\w+)\s*,\s*(\d{4}-\d{2}-\d{2})\]/i);
+  if (!match) return { cleanText: text.trim(), availabilityKey: null, availabilityDate: null };
+
+  const availabilityKey = match[1].toLowerCase();
+  const availabilityDate = match[2];
+  const cleanText = text.replace(match[0], "").trim();
+  return { cleanText, availabilityKey, availabilityDate };
+}
+
+// ---------- Bookable sellers only: pull the invisible [BOOK: key, date, time] tag ----------
+function extractBookingTag(text) {
+  const match = text.match(/\[BOOK:\s*(\w+)\s*,\s*(\d{4}-\d{2}-\d{2})\s*,\s*([01]\d|2[0-3]):([0-5]\d)\]/i);
+  if (!match) return { cleanText: text.trim(), bookingKey: null, bookingDate: null, bookingTime: null };
+
+  const bookingKey = match[1].toLowerCase();
+  const bookingDate = match[2];
+  const bookingTime = `${match[3]}:${match[4]}`;
+  const cleanText = text.replace(match[0], "").trim();
+  return { cleanText, bookingKey, bookingDate, bookingTime };
 }
 
 // ---------- Guaranteed backstop: strip the banned "reflex" emoji ----------
@@ -2655,6 +3083,9 @@ function authPageHtml({ title, heading, formHtml, error }) {
         .auth-error { background:var(--danger-bg); color:var(--danger); padding:8px 10px; border-radius:6px; font-size:13px; margin-top:14px; }
         .auth-footer { text-align:center; font-size:13px; color:var(--muted); margin-top:16px; }
         .auth-footer a { color:var(--accent); font-weight:600; text-decoration:none; }
+        .business-type-choice { display:flex; flex-direction:column; gap:8px; }
+        .business-type-option { display:flex; align-items:center; gap:8px; font-size:13px; color:#1e293b; font-weight:400; margin:0; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; }
+        .business-type-option input { width:auto; }
       </style>
     </head>
     <body>
@@ -2677,6 +3108,28 @@ function authPageHtml({ title, heading, formHtml, error }) {
   `;
 }
 
+// The business-type choice on signup, shared between the GET form and the
+// POST failure re-render so a validation error doesn't lose the seller's
+// pick. Kept selected="" via a plain string match against whatever was
+// last submitted (empty string on first load defaults to "goods").
+function businessTypeFieldHtml(selected) {
+  const goodsChecked = selected !== "bookable" ? "checked" : "";
+  const bookableChecked = selected === "bookable" ? "checked" : "";
+  return `
+        <label>What are you selling?</label>
+        <div class="business-type-choice">
+          <label class="business-type-option">
+            <input type="radio" name="businessType" value="goods" ${goodsChecked}>
+            Physical products (with delivery)
+          </label>
+          <label class="business-type-option">
+            <input type="radio" name="businessType" value="bookable" ${bookableChecked}>
+            Bookable services (appointments, consultations)
+          </label>
+        </div>
+  `;
+}
+
 app.get("/signup", (req, res) => {
   res.send(
     authPageHtml({
@@ -2689,6 +3142,7 @@ app.get("/signup", (req, res) => {
         <input type="email" name="email" required maxlength="200">
         <label>Password</label>
         <input type="password" name="password" required minlength="8" maxlength="200">
+        ${businessTypeFieldHtml("")}
       `,
     })
   );
@@ -2698,6 +3152,7 @@ app.post("/signup", async (req, res) => {
   const businessName = (req.body?.businessName || "").trim();
   const email = (req.body?.email || "").trim().toLowerCase();
   const password = req.body?.password || "";
+  const businessType = req.body?.businessType === "bookable" ? "bookable" : "goods";
 
   const fail = (msg) =>
     res.status(400).send(
@@ -2712,6 +3167,7 @@ app.post("/signup", async (req, res) => {
           <input type="email" name="email" required maxlength="200" value="${escapeHtmlServer(email)}">
           <label>Password</label>
           <input type="password" name="password" required minlength="8" maxlength="200">
+          ${businessTypeFieldHtml(businessType)}
         `,
       })
     );
@@ -2725,7 +3181,7 @@ app.post("/signup", async (req, res) => {
     if (existing) return fail("An account with that email already exists — try logging in instead.");
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const sellerId = await createSeller({ businessName, email, passwordHash });
+    const sellerId = await createSeller({ businessName, email, passwordHash, businessType });
 
     res.cookie("session", signSession(sellerId), {
       httpOnly: true,
@@ -3116,7 +3572,8 @@ async function getDashboardStats(customers) {
   };
 }
 
-function dashboardHtml(key, sellerId, businessName) {
+function dashboardHtml(key, sellerId, businessName, businessType) {
+  const isBookable = businessType === "bookable";
   // The admin key (and, when viewing a seller other than seller1, that
   // seller's id) gets embedded into the page's own JS so its fetch calls
   // can authenticate, same trust boundary as the ?key= on the page itself
@@ -3204,7 +3661,12 @@ function dashboardHtml(key, sellerId, businessName) {
         <h1>${brandMark({ dark: true, size: "small" })}<span class="sep">— Live Dashboard${businessName ? " &middot; " + businessName : ""}</span> <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">plain table view</a>${key ? ` &nbsp; <a href="/admin?key=${key}">all sellers →</a>` : ""}</h1>
         <nav class="tabs">
           <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
-          <button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>
+          ${
+            isBookable
+              ? `<button id="tabServices" onclick="switchTab('services')">Services</button>
+          <button id="tabBookings" onclick="switchTab('bookings')">Bookings</button>`
+              : `<button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>`
+          }
           <button id="tabAnalytics" onclick="switchTab('analytics')">Analytics</button>
         </nav>
         <div class="stats" id="stats"></div>
@@ -3331,6 +3793,100 @@ function dashboardHtml(key, sellerId, businessName) {
             <button class="catalog-btn small" style="background:transparent;color:#dc2626;padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
             <div class="catalog-msg" id="bank2Msg"></div>
           </div>
+        </div>
+      </div>
+      <div class="catalog-view" id="servicesView" style="display:none;">
+        <div class="catalog-card">
+          <h2>Services</h2>
+          <table class="catalog-table" id="offeringsTable">
+            <thead><tr><th>Name</th><th>Key</th><th>Price</th><th>Duration</th><th></th></tr></thead>
+            <tbody id="offeringsTableBody"></tbody>
+          </table>
+          <div class="catalog-form">
+            <div>
+              <label>Key</label>
+              <input id="oKey" placeholder="e.g. strategycall">
+            </div>
+            <div>
+              <label>Name</label>
+              <input id="oName" placeholder="e.g. Strategy Call (30 min)">
+            </div>
+            <div>
+              <label>Price (N)</label>
+              <input id="oPrice" type="number" min="1" placeholder="15000">
+            </div>
+            <button class="catalog-btn" onclick="saveOffering()">Save service</button>
+          </div>
+          <div class="catalog-form" style="grid-template-columns: 1fr 1fr; margin-top:10px;">
+            <div>
+              <label>Duration (minutes)</label>
+              <input id="oDuration" type="number" min="1" max="480" placeholder="30">
+            </div>
+            <div>
+              <label>Description (what's included, anything Amara should know)</label>
+              <input id="oDescription" placeholder="e.g. A focused 30-minute strategy session">
+            </div>
+          </div>
+          <div class="catalog-msg" id="offeringsMsg"></div>
+        </div>
+        <div class="catalog-card">
+          <h2>Weekly availability</h2>
+          <div style="font-size:12px;color:#64748b;margin-bottom:12px;">
+            Set the days and hours you're generally open. This stays live with no daily
+            upkeep -- add a blocked date below only when something specific comes up.
+          </div>
+          <table class="catalog-table" style="margin-bottom:14px;">
+            <thead><tr><th>Day</th><th>Hours</th><th></th></tr></thead>
+            <tbody id="availabilityTableBody"></tbody>
+          </table>
+          <div class="fees-row">
+            <div>
+              <label>Day</label>
+              <select id="windowDay">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
+              </select>
+            </div>
+            <div>
+              <label>Start time</label>
+              <input id="windowStart" type="time" value="09:00">
+            </div>
+            <div>
+              <label>End time</label>
+              <input id="windowEnd" type="time" value="17:00">
+            </div>
+            <button class="catalog-btn" onclick="addAvailabilityWindow()">Add window</button>
+          </div>
+          <div class="catalog-msg" id="availabilityMsg"></div>
+          <div style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px;">
+            <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Block a specific date (holiday, personal day) without touching the weekly schedule.</div>
+            <table class="catalog-table" style="margin-bottom:14px;">
+              <thead><tr><th>Blocked date</th><th></th></tr></thead>
+              <tbody id="blockedDatesTableBody"></tbody>
+            </table>
+            <div class="fees-row">
+              <div>
+                <label>Date to block</label>
+                <input id="blockDate" type="date">
+              </div>
+              <button class="catalog-btn" onclick="addBlockedDate()">Block date</button>
+            </div>
+            <div class="catalog-msg" id="blockedDatesMsg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="catalog-view" id="bookingsView" style="display:none;">
+        <div class="catalog-card">
+          <h2>Upcoming bookings</h2>
+          <table class="catalog-table" id="bookingsTable">
+            <thead><tr><th>Date</th><th>Time</th><th>Service</th><th>Customer</th><th>Reference</th><th></th></tr></thead>
+            <tbody id="bookingsTableBody"></tbody>
+          </table>
         </div>
       </div>
       <div class="catalog-view" id="analyticsView" style="display:none;">
@@ -3571,13 +4127,23 @@ function dashboardHtml(key, sellerId, businessName) {
         }
 
         function switchTab(tab) {
-          document.getElementById("conversationsView").style.display = tab === "conversations" ? "flex" : "none";
-          document.getElementById("catalogView").style.display = tab === "catalog" ? "block" : "none";
-          document.getElementById("analyticsView").style.display = tab === "analytics" ? "block" : "none";
-          document.getElementById("tabConversations").className = tab === "conversations" ? "active-tab" : "";
-          document.getElementById("tabCatalog").className = tab === "catalog" ? "active-tab" : "";
-          document.getElementById("tabAnalytics").className = tab === "analytics" ? "active-tab" : "";
+          // Not every element below exists on every seller's dashboard --
+          // a goods seller never gets tabServices/tabBookings, a bookable
+          // seller never gets tabCatalog. Guarded with optional chaining
+          // so this one function works for either businessType without
+          // needing its own fork.
+          const views = { conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView" };
+          for (const t in views) {
+            const el = document.getElementById(views[t]);
+            if (el) el.style.display = t === tab ? (t === "conversations" ? "flex" : "block") : "none";
+          }
+          const tabs = { conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics" };
+          for (const t in tabs) {
+            const el = document.getElementById(tabs[t]);
+            if (el) el.className = t === tab ? "active-tab" : "";
+          }
           if (tab === "catalog") loadCatalog();
+          if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
         }
 
@@ -3963,6 +4529,225 @@ function dashboardHtml(key, sellerId, businessName) {
           }
         }
 
+        // ---------- Bookable sellers: Services + Bookings tabs ----------
+        const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+        async function loadBookable() {
+          try {
+            const res = await fetch("/api/bookable?" + ADMIN_QS);
+            const data = await res.json();
+            if (data.error) return;
+            window.offeringsCache = data.offerings || {};
+            renderOfferings(data.offerings || {});
+            renderAvailability(data.weeklyAvailability || []);
+            renderBlockedDates(data.blockedDates || []);
+            renderBookings(data.bookings || []);
+          } catch (err) {
+            console.error("bookable load failed", err);
+          }
+        }
+
+        function renderOfferings(offerings) {
+          const body = document.getElementById("offeringsTableBody");
+          const keys = Object.keys(offerings);
+          body.innerHTML = keys.length > 0
+            ? keys.map((k) => {
+                const o = offerings[k];
+                return '<tr>' +
+                  '<td>' + escapeHtml(o.name) + '</td>' +
+                  '<td><code>' + escapeHtml(k) + '</code></td>' +
+                  '<td>N' + Number(o.price).toLocaleString() + '</td>' +
+                  '<td>' + o.durationMinutes + ' min</td>' +
+                  '<td><button class="catalog-btn danger" onclick="removeOffering(\\'' + k + '\\')">Remove</button></td>' +
+                '</tr>';
+              }).join("")
+            : '<tr><td colspan="5" style="color:#94a3b8;">No services yet.</td></tr>';
+        }
+
+        async function saveOffering() {
+          const msg = document.getElementById("offeringsMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const body = {
+            key: document.getElementById("oKey").value,
+            name: document.getElementById("oName").value,
+            price: document.getElementById("oPrice").value,
+            durationMinutes: document.getElementById("oDuration").value,
+            description: document.getElementById("oDescription").value,
+          };
+          try {
+            const res = await fetch("/api/bookable/offerings?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not save service.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            document.getElementById("oKey").value = "";
+            document.getElementById("oName").value = "";
+            document.getElementById("oPrice").value = "";
+            document.getElementById("oDuration").value = "";
+            document.getElementById("oDescription").value = "";
+            msg.textContent = data.warning || "Saved.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+            loadBookable();
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function removeOffering(key) {
+          if (!confirm('Remove "' + key + '" from your services? Amara will no longer be able to book it.')) return;
+          try {
+            await fetch("/api/bookable/offerings/" + encodeURIComponent(key) + "?" + ADMIN_QS, { method: "DELETE" });
+            loadBookable();
+          } catch (err) {
+            console.error("remove offering failed", err);
+          }
+        }
+
+        function renderAvailability(windows) {
+          const body = document.getElementById("availabilityTableBody");
+          body.innerHTML = windows.length > 0
+            ? windows
+                .slice()
+                .sort((a, b) => a.day - b.day || a.startTime.localeCompare(b.startTime))
+                .map((w) =>
+                  '<tr>' +
+                    '<td>' + DAY_LABELS[w.day] + '</td>' +
+                    '<td>' + w.startTime + '-' + w.endTime + '</td>' +
+                    '<td><button class="catalog-btn danger" onclick="removeAvailabilityWindow(\\'' + w.id + '\\')">Remove</button></td>' +
+                  '</tr>'
+                ).join("")
+            : '<tr><td colspan="3" style="color:#94a3b8;">No weekly availability set yet.</td></tr>';
+        }
+
+        async function addAvailabilityWindow() {
+          const msg = document.getElementById("availabilityMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const body = {
+            day: document.getElementById("windowDay").value,
+            startTime: document.getElementById("windowStart").value,
+            endTime: document.getElementById("windowEnd").value,
+          };
+          try {
+            const res = await fetch("/api/bookable/availability-windows?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not add that window.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            msg.textContent = data.warning || "Added.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+            loadBookable();
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function removeAvailabilityWindow(id) {
+          try {
+            await fetch("/api/bookable/availability-windows/" + encodeURIComponent(id) + "?" + ADMIN_QS, { method: "DELETE" });
+            loadBookable();
+          } catch (err) {
+            console.error("remove availability window failed", err);
+          }
+        }
+
+        function renderBlockedDates(dates) {
+          const body = document.getElementById("blockedDatesTableBody");
+          body.innerHTML = dates.length > 0
+            ? dates
+                .slice()
+                .sort()
+                .map((d) =>
+                  '<tr><td>' + d + '</td><td><button class="catalog-btn danger" onclick="removeBlockedDate(\\'' + d + '\\')">Unblock</button></td></tr>'
+                ).join("")
+            : '<tr><td colspan="2" style="color:#94a3b8;">No blocked dates.</td></tr>';
+        }
+
+        async function addBlockedDate() {
+          const msg = document.getElementById("blockedDatesMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const date = document.getElementById("blockDate").value;
+          if (!date) {
+            msg.textContent = "Pick a date first.";
+            msg.className = "catalog-msg error";
+            return;
+          }
+          try {
+            const res = await fetch("/api/bookable/blocked-dates?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ date }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not block that date.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            document.getElementById("blockDate").value = "";
+            msg.textContent = data.warning || "Blocked.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+            loadBookable();
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function removeBlockedDate(date) {
+          try {
+            await fetch("/api/bookable/blocked-dates/" + encodeURIComponent(date) + "?" + ADMIN_QS, { method: "DELETE" });
+            loadBookable();
+          } catch (err) {
+            console.error("remove blocked date failed", err);
+          }
+        }
+
+        function renderBookings(bookings) {
+          const body = document.getElementById("bookingsTableBody");
+          const offerings = window.offeringsCache || {};
+          body.innerHTML = bookings.length > 0
+            ? bookings.map((b) => {
+                const offering = offerings[b.offeringKey];
+                const serviceName = offering ? offering.name : b.offeringKey;
+                return '<tr>' +
+                  '<td>' + b.date + '</td>' +
+                  '<td>' + b.time + '</td>' +
+                  '<td>' + escapeHtml(serviceName) + '</td>' +
+                  '<td>' + escapeHtml(b.phone) + '</td>' +
+                  '<td><code>' + escapeHtml(b.reference) + '</code></td>' +
+                  '<td><button class="catalog-btn danger" onclick="cancelBooking(\\'' + b.id + '\\')">Cancel</button></td>' +
+                '</tr>';
+              }).join("")
+            : '<tr><td colspan="6" style="color:#94a3b8;">No upcoming bookings.</td></tr>';
+        }
+
+        async function cancelBooking(id) {
+          if (!confirm("Cancel this booking? The slot will open back up for other customers.")) return;
+          try {
+            await fetch("/api/bookable/bookings/" + encodeURIComponent(id) + "/cancel?" + ADMIN_QS, { method: "POST" });
+            loadBookable();
+          } catch (err) {
+            console.error("cancel booking failed", err);
+          }
+        }
+
         loadDashboard();
         setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
       </script>
@@ -3976,7 +4761,7 @@ app.get("/dashboard", async (req, res) => {
   if (!seller) {
     return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL, or log in as a seller.");
   }
-  res.send(dashboardHtml(req.query.key || "", req.query.sellerId || "", seller.businessName));
+  res.send(dashboardHtml(req.query.key || "", req.query.sellerId || "", seller.businessName, seller.businessType));
 });
 
 app.get("/api/dashboard-data", async (req, res) => {
@@ -4431,6 +5216,198 @@ app.post("/api/catalog/delivery-default-fee", async (req, res) => {
       ok: true,
       warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
     });
+  }
+});
+
+// ---------- BOOKABLE SELLERS: DASHBOARD API ----------
+// Mirrors the goods-seller catalog API one section up: same live-update-
+// then-persist-to-Redis pattern, same "validate for real here, never
+// trust the dashboard's own JS" discipline. Works for any seller
+// (businessType isn't checked here), since these routes are meaningless
+// clutter for a goods seller but harmless -- nothing calls them unless
+// the dashboard's bookable-specific tabs are actually shown, which is
+// gated on businessType elsewhere.
+
+app.get("/api/bookable", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const upcomingBookings = seller.catalog.BOOKINGS.filter((b) => b.status !== "cancelled" && b.date >= todayStr)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  res.json({
+    offerings: seller.catalog.OFFERINGS,
+    weeklyAvailability: seller.catalog.WEEKLY_AVAILABILITY,
+    blockedDates: seller.catalog.BLOCKED_DATES,
+    bookings: upcomingBookings,
+  });
+});
+
+app.post("/api/bookable/offerings", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const { key, name, price, durationMinutes, description } = req.body || {};
+
+  const cleanKey = String(key || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const cleanName = String(name || "").trim();
+  const cleanPrice = Number(price);
+  const cleanDuration = Number(durationMinutes);
+  const cleanDescription = String(description || "").trim().slice(0, 600);
+
+  if (!cleanKey) {
+    return res.status(400).json({ error: "Offering key is required (letters, numbers, - and _ only)." });
+  }
+  if (!cleanName) {
+    return res.status(400).json({ error: "Offering name is required." });
+  }
+  if (!Number.isFinite(cleanPrice) || cleanPrice <= 0) {
+    return res.status(400).json({ error: "Price must be a positive number." });
+  }
+  if (!Number.isFinite(cleanDuration) || cleanDuration <= 0 || cleanDuration > 480) {
+    return res.status(400).json({ error: "Duration must be a positive number of minutes (up to 480)." });
+  }
+
+  seller.catalog.OFFERINGS[cleanKey] = { name: cleanName, price: cleanPrice, durationMinutes: cleanDuration, description: cleanDescription };
+  console.log(`Bookable: offering "${cleanKey}" saved from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveOfferingsToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/offerings: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again." });
+  }
+});
+
+app.delete("/api/bookable/offerings/:key", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const key = String(req.params.key || "");
+  delete seller.catalog.OFFERINGS[key];
+  console.log(`Bookable: offering "${key}" removed from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveOfferingsToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/offerings delete: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Removed and live now, but couldn't persist to storage -- it may come back if the server restarts before you try again." });
+  }
+});
+
+app.post("/api/bookable/availability-windows", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const day = Number(req.body?.day);
+  const startTime = String(req.body?.startTime || "");
+  const endTime = String(req.body?.endTime || "");
+  const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  if (!Number.isInteger(day) || day < 0 || day > 6) {
+    return res.status(400).json({ error: "Pick a valid day of the week." });
+  }
+  if (!timeRe.test(startTime) || !timeRe.test(endTime)) {
+    return res.status(400).json({ error: "Start and end time must be in HH:MM form." });
+  }
+  if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+    return res.status(400).json({ error: "Start time must be before end time." });
+  }
+
+  seller.catalog.WEEKLY_AVAILABILITY.push({ id: crypto.randomBytes(6).toString("hex"), day, startTime, endTime });
+  console.log(`Bookable: availability window added (day ${day}, ${startTime}-${endTime}) from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveWeeklyAvailabilityToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/availability-windows: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again." });
+  }
+});
+
+app.delete("/api/bookable/availability-windows/:id", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const id = String(req.params.id || "");
+  seller.catalog.WEEKLY_AVAILABILITY = seller.catalog.WEEKLY_AVAILABILITY.filter((w) => w.id !== id);
+  console.log(`Bookable: availability window ${id} removed from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveWeeklyAvailabilityToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/availability-windows delete: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Removed and live now, but couldn't persist to storage -- it may come back if the server restarts before you try again." });
+  }
+});
+
+app.post("/api/bookable/blocked-dates", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const date = String(req.body?.date || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: "Date must be in YYYY-MM-DD form." });
+  }
+  if (!seller.catalog.BLOCKED_DATES.includes(date)) seller.catalog.BLOCKED_DATES.push(date);
+  console.log(`Bookable: blocked date ${date} added from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveBlockedDatesToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/blocked-dates: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again." });
+  }
+});
+
+app.delete("/api/bookable/blocked-dates/:date", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const date = String(req.params.date || "");
+  seller.catalog.BLOCKED_DATES = seller.catalog.BLOCKED_DATES.filter((d) => d !== date);
+  console.log(`Bookable: blocked date ${date} removed from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveBlockedDatesToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/blocked-dates delete: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Removed and live now, but couldn't persist to storage -- it may come back if the server restarts before you try again." });
+  }
+});
+
+// Bare inspection endpoint for the availability engine -- no AI involved,
+// just exercises getAvailableSlots directly. Useful on its own for
+// verifying the engine is correct before it's ever wired into a real
+// WhatsApp conversation, and also usable by the dashboard later if a
+// seller ever wants to preview their own availability.
+app.get("/api/bookable/availability", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const offeringKey = String(req.query.offeringKey || "");
+  const date = String(req.query.date || "");
+  if (!offeringKey || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: "offeringKey and date (YYYY-MM-DD) are required." });
+  }
+  const slots = getAvailableSlots(seller, offeringKey, date);
+  res.json({ offeringKey, date, slots });
+});
+
+app.post("/api/bookable/bookings/:id/cancel", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const id = String(req.params.id || "");
+  const booking = seller.catalog.BOOKINGS.find((b) => b.id === id);
+  if (!booking) return res.status(404).json({ error: "Booking not found." });
+  booking.status = "cancelled";
+  console.log(`Bookable: booking ${id} cancelled from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveBookingsToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/bookings cancel: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Cancelled and live now, but couldn't persist to storage -- it may revert if the server restarts before you try again." });
   }
 });
 
