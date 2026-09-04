@@ -3426,10 +3426,23 @@ function adminPanelHtml(key, sellers) {
         `/dashboard?key=${encodeURIComponent(key)}` +
         (s.sellerId === SELLER1_ID ? "" : `&sellerId=${encodeURIComponent(s.sellerId)}`);
       const isSeller1 = s.sellerId === SELLER1_ID;
+      // sellerId is always a controlled hex string (see makeSellerId), safe
+      // to drop straight into an onclick(...) call like the existing
+      // Connect WhatsApp button already does. businessName is NOT controlled
+      // -- it's whatever the seller typed at signup, so it can contain
+      // spaces, quotes, anything. It must never be interpolated directly
+      // into an inline onclick="..." attribute (an earlier version of this
+      // did exactly that via JSON.stringify(), and a name like "ALIKA
+      // FOUNDATION" -- or any name that isn't a single bare word -- broke
+      // the attribute's quoting and corrupted the rest of the page's HTML,
+      // which is why every button on the page, not just Delete, silently
+      // stopped responding). It goes through a proper HTML-escaped
+      // data-attribute instead, read back via .dataset in the script below,
+      // so there's no string-into-HTML interpolation left to break.
       const holdDeleteButtons = isSeller1
         ? ""
         : `<button class="btn secondary" onclick="toggleSuspend('${s.sellerId}', ${s.suspended ? "false" : "true"})">${s.suspended ? "Resume" : "Suspend"}</button>
-          <button class="btn danger" onclick="deleteSeller('${s.sellerId}', ${JSON.stringify(s.businessName || "this seller")})">Delete</button>`;
+          <button class="btn danger delete-seller-btn" data-seller-id="${escapeHtmlServer(s.sellerId)}" data-business-name="${escapeHtmlServer(s.businessName || "this seller")}">Delete</button>`;
       return `<tr>
         <td>${escapeHtmlServer(s.businessName || "")}${isSeller1 ? ' <span class="you-badge">your shop</span>' : ""}</td>
         <td>${escapeHtmlServer(s.email || "")}</td>
@@ -3585,6 +3598,17 @@ function adminPanelHtml(key, sellers) {
             msg.className = "connect-msg error";
           }
         }
+        // Wired up via addEventListener + data-* attributes rather than an
+        // inline onclick="deleteSeller('id', '<business name>')" -- a
+        // business name is arbitrary seller-typed text (spaces, quotes,
+        // anything), and splicing it straight into an HTML attribute is
+        // exactly the kind of thing that silently breaks the page. Reading
+        // it back through .dataset lets the browser handle the escaping.
+        document.querySelectorAll(".delete-seller-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            deleteSeller(btn.dataset.sellerId, btn.dataset.businessName);
+          });
+        });
       </script>
     </body>
     </html>
