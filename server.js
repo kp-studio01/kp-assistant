@@ -222,6 +222,18 @@ function invalidateSellerContextCache(sellerId) {
 // with no separate frontend needed.
 async function resolveActingSeller(req) {
   if (ADMIN_KEY && req.query.key === ADMIN_KEY) {
+    // The master admin key can act as ANY seller by adding &sellerId=<id>
+    // to the URL -- the /admin panel builds these links so nobody has to
+    // type or remember a sellerId by hand. With no sellerId at all, this
+    // still resolves to seller1 exactly as it always has, so every
+    // existing bookmark and URL keeps working unchanged.
+    const requestedSellerId = String(req.query.sellerId || "").trim();
+    if (requestedSellerId) {
+      const seller = await getSellerContext(requestedSellerId);
+      if (seller) return seller;
+      // Unknown sellerId: fall through to seller1 rather than silently
+      // acting on the wrong account.
+    }
     return await getSellerContext(SELLER1_ID);
   }
   const sellerId = verifySession(req.cookies?.session);
@@ -2638,7 +2650,7 @@ app.get("/customers", async (req, res) => {
       </style>
     </head>
     <body>
-      <h1>Customers (${customers.length}) — <a href="/dashboard${req.query.key ? "?key=" + encodeURIComponent(req.query.key) : ""}" style="font-size:14px;">Open live dashboard →</a></h1>
+      <h1>Customers (${customers.length})${seller.businessName ? " &middot; " + escapeHtmlServer(seller.businessName) : ""} — <a href="/dashboard${req.query.key ? "?key=" + encodeURIComponent(req.query.key) + (req.query.sellerId ? "&sellerId=" + encodeURIComponent(req.query.sellerId) : "") : ""}" style="font-size:14px;">Open live dashboard →</a></h1>
       <table>
         <tr>
           <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
@@ -2650,6 +2662,142 @@ app.get("/customers", async (req, res) => {
     </body>
     </html>
   `);
+});
+
+// ---------- ADMIN PANEL (one place to reach every seller) ----------
+// Before this, acting as a seller other than seller1 meant hand-typing a
+// sellerId into a URL, or constructing a raw curl call to connect a
+// WhatsApp number -- workable for testing, not something to actually run
+// a growing platform on. This page is the fix: every seller in one list,
+// a click to open their live dashboard (no sellerId to type or remember),
+// and a small form instead of a raw API call to connect their number.
+// Gated by the same master ADMIN_KEY as everything else admin-only.
+function adminPanelHtml(key, sellers) {
+  const rows = sellers
+    .map((s) => {
+      const statusBadge =
+        s.status === "active"
+          ? '<span class="badge active">Active</span>'
+          : '<span class="badge pending">Pending</span>';
+      const dashboardHref =
+        `/dashboard?key=${encodeURIComponent(key)}` +
+        (s.sellerId === SELLER1_ID ? "" : `&sellerId=${encodeURIComponent(s.sellerId)}`);
+      return `<tr>
+        <td>${escapeHtmlServer(s.businessName || "")}${s.sellerId === SELLER1_ID ? ' <span class="you-badge">your shop</span>' : ""}</td>
+        <td>${escapeHtmlServer(s.email || "")}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <a class="btn" href="${dashboardHref}">Open dashboard</a>
+          <button class="btn secondary" onclick="toggleConnect('${s.sellerId}')">Connect WhatsApp</button>
+          <div class="connect-form" id="connect-${s.sellerId}">
+            <label>Phone number ID</label>
+            <input id="pni-${s.sellerId}" value="${escapeHtmlServer(s.phoneNumberId || "")}" placeholder="from Meta's WhatsApp Manager">
+            <label>WhatsApp access token</label>
+            <input id="tok-${s.sellerId}" placeholder="permanent access token">
+            <label>Owner's phone number (for escalation alerts)</label>
+            <input id="own-${s.sellerId}" value="${escapeHtmlServer(s.ownerPhoneNumber || "")}" placeholder="234...">
+            <button class="btn" style="margin-top:8px;" onclick="connectSeller('${s.sellerId}')">Save connection</button>
+            <div class="connect-msg" id="msg-${s.sellerId}"></div>
+          </div>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  return `
+    <html>
+    <head>
+      <title>Admin — Stafly.AI</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:#f8fafc; color:#1e293b; }
+        header { background:#1e293b; color:white; padding:16px 24px; }
+        header h1 { font-size:16px; margin:0; }
+        .wrap { max-width:960px; margin:32px auto; padding:0 24px; }
+        table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+        th, td { text-align:left; padding:12px 14px; border-bottom:1px solid #f1f5f9; font-size:13px; vertical-align:top; }
+        th { background:#f8fafc; color:#64748b; font-weight:600; font-size:12px; }
+        .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+        .badge.active { background:#dcfce7; color:#15803d; }
+        .badge.pending { background:#fef3c7; color:#b45309; }
+        .you-badge { font-size:11px; color:#64748b; }
+        a.btn, button.btn { display:inline-block; background:#1e293b; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; margin:2px 6px 2px 0; }
+        button.btn.secondary { background:transparent; color:#1e293b; border:1px solid #cbd5e1; }
+        .connect-form { display:none; margin-top:10px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0; max-width:340px; }
+        .connect-form.open { display:block; }
+        .connect-form label { font-size:11px; color:#64748b; display:block; margin:8px 0 3px; }
+        .connect-form input { width:100%; padding:6px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; }
+        .connect-msg { font-size:12px; margin-top:6px; min-height:14px; }
+        .connect-msg.error { color:#dc2626; }
+        .connect-msg.ok { color:#15803d; }
+        .empty-note { padding:24px; text-align:center; color:#94a3b8; font-size:13px; }
+      </style>
+    </head>
+    <body>
+      <header><h1>Stafly.AI — Admin: all sellers</h1></header>
+      <div class="wrap">
+        <table>
+          <thead><tr><th>Business</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${sellers.length === 0 ? '<div class="empty-note">No sellers yet.</div>' : ""}
+      </div>
+      <script>
+        function toggleConnect(id) {
+          document.getElementById("connect-" + id).classList.toggle("open");
+        }
+        async function connectSeller(id) {
+          const phoneNumberId = document.getElementById("pni-" + id).value.trim();
+          const whatsappToken = document.getElementById("tok-" + id).value.trim();
+          const ownerPhoneNumber = document.getElementById("own-" + id).value.trim();
+          const msg = document.getElementById("msg-" + id);
+          msg.textContent = "";
+          msg.className = "connect-msg";
+          try {
+            const res = await fetch("/api/admin/connect-seller-whatsapp?key=${encodeURIComponent(key)}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sellerId: id, phoneNumberId, whatsappToken, ownerPhoneNumber }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Failed to connect.";
+              msg.className = "connect-msg error";
+              return;
+            }
+            msg.textContent = "Connected! Reloading...";
+            msg.className = "connect-msg ok";
+            setTimeout(function () { location.reload(); }, 800);
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "connect-msg error";
+          }
+        }
+      </script>
+    </body>
+    </html>
+  `;
+}
+
+app.get("/admin", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL.");
+  }
+  try {
+    const ids = (await redisCommand(["SMEMBERS", "all_sellers"])) || [];
+    const sellers = (await Promise.all(ids.map((id) => getSellerById(id)))).filter(Boolean);
+    // seller1 (your own shop) always first, then everyone else newest first.
+    sellers.sort((a, b) => {
+      if (a.sellerId === SELLER1_ID) return -1;
+      if (b.sellerId === SELLER1_ID) return 1;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+    res.send(adminPanelHtml(req.query.key, sellers));
+  } catch (err) {
+    console.error("admin panel failed:", err.message);
+    res.status(500).send("Failed to load admin panel.");
+  }
 });
 
 // ---------- OWNER DASHBOARD (Stage 4 cockpit) ----------
@@ -2685,8 +2833,9 @@ async function getDashboardStats(customers) {
   };
 }
 
-function dashboardHtml(key) {
-  // The admin key gets embedded into the page's own JS so its fetch calls
+function dashboardHtml(key, sellerId, businessName) {
+  // The admin key (and, when viewing a seller other than seller1, that
+  // seller's id) gets embedded into the page's own JS so its fetch calls
   // can authenticate, same trust boundary as the ?key= on the page itself
   // — anyone who could load this page already has the key.
   return `
@@ -2764,7 +2913,7 @@ function dashboardHtml(key) {
     </head>
     <body>
       <header>
-        <h1>Stafly.AI — Live Dashboard &nbsp; <a href="/customers?key=${key}">plain table view</a></h1>
+        <h1>Stafly.AI — Live Dashboard${businessName ? " &middot; " + businessName : ""} &nbsp; <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">plain table view</a>${key ? ` &nbsp; <a href="/admin?key=${key}">all sellers →</a>` : ""}</h1>
         <nav class="tabs">
           <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
           <button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>
@@ -2866,6 +3015,12 @@ function dashboardHtml(key) {
       </div>
       <script>
         const KEY = ${JSON.stringify(key)};
+        const SELLER_ID = ${JSON.stringify(sellerId || "")};
+        // Every fetch call below authenticates with this same query string
+        // -- the admin key, plus which seller to act as when it's not the
+        // default (seller1). Built once here so every call site stays in
+        // sync automatically.
+        const ADMIN_QS = "key=" + encodeURIComponent(KEY) + (SELLER_ID ? "&sellerId=" + encodeURIComponent(SELLER_ID) : "");
         let selectedPhone = null;
         let customersCache = [];
         // Tracks which phone's full thread panel (header/compose/notes) is
@@ -2881,7 +3036,7 @@ function dashboardHtml(key) {
 
         async function loadDashboard() {
           try {
-            const res = await fetch("/api/dashboard-data?key=" + encodeURIComponent(KEY));
+            const res = await fetch("/api/dashboard-data?" + ADMIN_QS);
             const data = await res.json();
             if (data.error) return;
             customersCache = data.customers;
@@ -2942,7 +3097,7 @@ function dashboardHtml(key) {
           selectedPhone = phone;
           if (isClick) renderList(getFilteredCustomers()); // re-highlight the selected row immediately
           try {
-            const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&key=" + encodeURIComponent(KEY));
+            const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&" + ADMIN_QS);
             const data = await res.json();
             if (data.error) return;
             // Only rebuild the whole panel (header/compose/notes) when this
@@ -3016,7 +3171,7 @@ function dashboardHtml(key) {
           if (!text) return;
           input.disabled = true;
           try {
-            const res = await fetch("/api/send-message?key=" + encodeURIComponent(KEY), {
+            const res = await fetch("/api/send-message?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ phone: phone, message: text }),
@@ -3043,7 +3198,7 @@ function dashboardHtml(key) {
           msg.textContent = "";
           msg.className = "catalog-msg";
           try {
-            const res = await fetch("/api/note?key=" + encodeURIComponent(KEY), {
+            const res = await fetch("/api/note?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ phone: phone, note: note }),
@@ -3065,7 +3220,7 @@ function dashboardHtml(key) {
         async function toggleTakeover(phone, isPaused) {
           const endpoint = isPaused ? "/api/handback" : "/api/takeover";
           try {
-            await fetch(endpoint + "?key=" + encodeURIComponent(KEY), {
+            await fetch(endpoint + "?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ phone: phone }),
@@ -3090,7 +3245,7 @@ function dashboardHtml(key) {
 
         async function loadAnalytics() {
           try {
-            const res = await fetch("/api/analytics?key=" + encodeURIComponent(KEY));
+            const res = await fetch("/api/analytics?" + ADMIN_QS);
             const data = await res.json();
             if (data.error) return;
             renderAnalytics(data);
@@ -3129,7 +3284,7 @@ function dashboardHtml(key) {
 
         async function loadCatalog() {
           try {
-            const res = await fetch("/api/catalog?key=" + encodeURIComponent(KEY));
+            const res = await fetch("/api/catalog?" + ADMIN_QS);
             const data = await res.json();
             if (data.error) return;
             renderCatalog(data.products, data.deliveryFees, data.bankDetails);
@@ -3189,7 +3344,7 @@ function dashboardHtml(key) {
             imageUrl: document.getElementById("pImageUrl").value,
           };
           try {
-            const res = await fetch("/api/catalog/product?key=" + encodeURIComponent(KEY), {
+            const res = await fetch("/api/catalog/product?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
@@ -3216,7 +3371,7 @@ function dashboardHtml(key) {
         async function deleteProduct(key) {
           if (!confirm('Remove "' + key + '" from the catalog? Amara will no longer be able to sell it.')) return;
           try {
-            const res = await fetch("/api/catalog/product/" + encodeURIComponent(key) + "?key=" + encodeURIComponent(KEY), {
+            const res = await fetch("/api/catalog/product/" + encodeURIComponent(key) + "?" + ADMIN_QS, {
               method: "DELETE",
             });
             const data = await res.json();
@@ -3240,7 +3395,7 @@ function dashboardHtml(key) {
             outside: document.getElementById("feeOutside").value,
           };
           try {
-            const res = await fetch("/api/catalog/delivery-fees?key=" + encodeURIComponent(KEY), {
+            const res = await fetch("/api/catalog/delivery-fees?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
@@ -3269,7 +3424,7 @@ function dashboardHtml(key) {
             accountName: document.getElementById("bankAccountName").value,
           };
           try {
-            const res = await fetch("/api/catalog/bank-details?key=" + encodeURIComponent(KEY), {
+            const res = await fetch("/api/catalog/bank-details?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
@@ -3301,7 +3456,7 @@ app.get("/dashboard", async (req, res) => {
   if (!seller) {
     return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL, or log in as a seller.");
   }
-  res.send(dashboardHtml(req.query.key || ""));
+  res.send(dashboardHtml(req.query.key || "", req.query.sellerId || "", seller.businessName));
 });
 
 app.get("/api/dashboard-data", async (req, res) => {
