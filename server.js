@@ -8,6 +8,7 @@ const zlib = require("zlib");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
+const multer = require("multer");
 const app = express();
 app.use(cookieParser());
 // The `verify` hook stashes the raw request bytes on req.rawBody. We need
@@ -147,6 +148,7 @@ function ensureCatalogEntry(sellerId) {
       PRODUCT_PRICES: {},
       PRODUCT_NAMES: {},
       PRODUCT_IMAGES: {},
+      PRODUCT_DESCRIPTIONS: {},
       DELIVERY_FEES: { lagos: 0, outside: 0 },
       BANK_DETAILS: { bankName: "", accountNumber: "", accountName: "" },
     };
@@ -327,6 +329,45 @@ app.get("/images/:key.png", (req, res) => {
   res.send(getOrMakePlaceholder(req.params.key));
 });
 
+// ---------- REAL PRODUCT PHOTOS (self-hosted, still no third-party service) ----------
+// Sellers can now upload an actual photo of a product from the dashboard
+// instead of only pasting a URL to somewhere it's already hosted. Kept
+// consistent with the placeholder photos above: no S3, no Cloudinary, no
+// new account to sign up for anywhere. The uploaded image bytes go straight
+// into the same Redis instance already storing everything else, base64-
+// encoded under catalog:photo:<key>, so they survive a restart or redeploy
+// exactly like the rest of a seller's catalog -- unlike Render's own disk,
+// which is wiped on every deploy and can't be used for this. An in-memory
+// cache (same cache-aside pattern as everywhere else in this file) avoids
+// re-fetching from Redis on every single request.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1.5 * 1024 * 1024 }, // 1.5MB -- plenty for a product photo, small enough to keep Redis usage sane
+  fileFilter: (req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+});
+const sellerPhotoCache = {};
+
+app.get("/catalog-photo/:sellerId/:key", async (req, res) => {
+  const { sellerId, key } = req.params;
+  const cacheKey = `${sellerId}:${key}`;
+  let entry = sellerPhotoCache[cacheKey];
+  if (!entry) {
+    try {
+      const raw = await redisCommand(["GET", nsKey(sellerId, `catalog:photo:${key}`)]);
+      if (!raw) return res.status(404).send("Not found");
+      const parsed = JSON.parse(raw);
+      entry = { mime: parsed.mime, buffer: Buffer.from(parsed.data, "base64") };
+      sellerPhotoCache[cacheKey] = entry;
+    } catch (err) {
+      console.error("catalog-photo fetch failed:", err.message);
+      return res.status(500).send("Failed to load photo");
+    }
+  }
+  res.set("Content-Type", entry.mime || "image/jpeg");
+  res.set("Cache-Control", "public, max-age=86400");
+  res.send(entry.buffer);
+});
+
 // The links Amara actually sends for the original demo catalog. Same
 // "DEFAULT_ = seed data for seller1 only" pattern as the other DEFAULT_*
 // constants above -- a new seller's catalog never uses these.
@@ -357,10 +398,12 @@ async function loadCatalogFromRedis(sellerId) {
       for (const key of Object.keys(catalog.PRODUCT_PRICES)) delete catalog.PRODUCT_PRICES[key];
       for (const key of Object.keys(catalog.PRODUCT_NAMES)) delete catalog.PRODUCT_NAMES[key];
       for (const key of Object.keys(catalog.PRODUCT_IMAGES)) delete catalog.PRODUCT_IMAGES[key];
+      for (const key of Object.keys(catalog.PRODUCT_DESCRIPTIONS)) delete catalog.PRODUCT_DESCRIPTIONS[key];
       for (const [key, p] of Object.entries(products)) {
         catalog.PRODUCT_PRICES[key] = p.price;
         catalog.PRODUCT_NAMES[key] = p.name;
         catalog.PRODUCT_IMAGES[key] = p.imageUrl || `${BASE_URL}/images/${key}.png`;
+        catalog.PRODUCT_DESCRIPTIONS[key] = p.description || "";
       }
       console.log(`Catalog loaded from Redis for ${sellerId}: ${Object.keys(catalog.PRODUCT_PRICES).length} product(s).`);
     } else if (sellerId === SELLER1_ID) {
@@ -418,6 +461,7 @@ async function saveCatalogToRedis(sellerId) {
       // owner supplied -- a self-hosted placeholder link is regenerated
       // from the key on every load, no need to store it explicitly.
       imageUrl: catalog.PRODUCT_IMAGES[key] && catalog.PRODUCT_IMAGES[key] !== selfHostedUrl ? catalog.PRODUCT_IMAGES[key] : undefined,
+      description: catalog.PRODUCT_DESCRIPTIONS[key] || undefined,
     };
   }
   await redisCommand(["SET", nsKey(sellerId, "catalog:products"), JSON.stringify(products)]);
@@ -452,7 +496,17 @@ function buildShopProfile(seller) {
   // be "KP Collections" for every shop on the platform.
   const shopName = seller.sellerId === SELLER1_ID ? "KP Collections" : (seller.businessName || "the shop");
   const catalogLines = Object.keys(catalog.PRODUCT_NAMES)
-    .map((key, i) => `${i + 1}. ${catalog.PRODUCT_NAMES[key]} — N${catalog.PRODUCT_PRICES[key].toLocaleString()} (key: ${key})`)
+    .map((key, i) => {
+      const line = `${i + 1}. ${catalog.PRODUCT_NAMES[key]} — N${catalog.PRODUCT_PRICES[key].toLocaleString()} (key: ${key})`;
+      const description = catalog.PRODUCT_DESCRIPTIONS && catalog.PRODUCT_DESCRIPTIONS[key];
+      // Seller-supplied details (material, sizes, colors, etc.) so Amara can
+      // answer a customer's specific questions accurately instead of
+      // guessing or making something up -- "the prompt is a suggestion,
+      // the code is the guarantee" doesn't apply to product facts, so this
+      // is the one place Amara's knowledge of a product is only ever as
+      // good as what the seller actually typed in.
+      return description ? `${line}\n   Details: ${description}` : line;
+    })
     .join("\n");
 
   return `
@@ -2407,8 +2461,19 @@ app.get("/subscribe", async (req, res) => {
 // clickable actions (buttons, active tabs, links, chart bars) so those
 // stand out from the chrome around them instead of everything being the
 // same dark navy.
+// One shared web font (Sora) loaded via Google Fonts on every page, so the
+// whole product reads consistently instead of falling back to whatever
+// system font each visitor's device happens to have. Sora was picked over
+// Bricolage Grotesque for this app specifically because this is a
+// dense, data-heavy UI (tables, small badges, forms) where Sora's plainer,
+// more geometric letterforms stay easy to read at small sizes; Bricolage's
+// more distinctive/quirky character is better suited to a future marketing
+// landing page's big headlines than to a live dashboard.
+const GOOGLE_FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">`;
+
 const BRAND_TOKENS_CSS = `
   :root {
+    --font-sans: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --navy: #1e293b;
     --accent: #4f46e5;
     --accent-dark: #4338ca;
@@ -2445,9 +2510,10 @@ function authPageHtml({ title, heading, formHtml, error }) {
     <head>
       <title>${title} — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${GOOGLE_FONT_LINK}
       <style>
         ${BRAND_TOKENS_CSS}
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh; }
         .auth-card { background:white; padding:32px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); width:100%; max-width:360px; }
         .auth-card .brand-row { margin-bottom:20px; }
         .auth-card h1 { font-size:18px; margin:0 0 4px; }
@@ -2619,9 +2685,10 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
     <head>
       <title>Seller dashboard — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${GOOGLE_FONT_LINK}
       <style>
         ${BRAND_TOKENS_CSS}
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:var(--bg); color:var(--text); }
+        body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); }
         header { background:var(--navy); color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
         header form { margin:0; }
         header button { background:transparent; border:1px solid rgba(255,255,255,0.3); color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
@@ -2695,10 +2762,11 @@ app.get("/customers", async (req, res) => {
     <head>
       <title>Stafly.AI - Customers</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${GOOGLE_FONT_LINK}
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
         header { background: var(--navy); color: white; padding: 16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
         header .sub { font-size: 12px; color: rgba(255,255,255,0.7); margin-top:2px; }
         header a { display:inline-block; padding:7px 14px; background: var(--accent); color: white; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none; }
@@ -2787,10 +2855,11 @@ function adminPanelHtml(key, sellers) {
     <head>
       <title>Admin — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${GOOGLE_FONT_LINK}
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:var(--bg); color:var(--text); }
+        body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); }
         header { background:var(--navy); color:white; padding:16px 24px; }
         header .sub { font-size:12px; color:rgba(255,255,255,0.65); margin-top:2px; }
         .wrap { max-width:960px; margin:32px auto; padding:0 24px; }
@@ -2927,10 +2996,11 @@ function dashboardHtml(key, sellerId, businessName) {
     <head>
       <title>Stafly.AI — Dashboard</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${GOOGLE_FONT_LINK}
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
         header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
         header h1 { font-size: 15px; margin: 0; font-weight: 400; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         header h1 .sep { opacity: 0.85; }
@@ -2975,6 +3045,7 @@ function dashboardHtml(key, sellerId, businessName) {
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
         .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
         .catalog-btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
         .catalog-btn:hover { background: var(--accent-dark); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; }
@@ -3037,12 +3108,21 @@ function dashboardHtml(key, sellerId, businessName) {
             </div>
             <button class="catalog-btn" onclick="saveProduct()">Save product</button>
           </div>
-          <div class="catalog-form" style="grid-template-columns: 1fr auto;">
+          <div class="catalog-form" style="grid-template-columns: 1fr; margin-top:10px;">
             <div>
-              <label>Photo URL (optional — leave blank for an auto placeholder)</label>
+              <label>Description (materials, sizes, colors — anything Amara should know to answer questions accurately)</label>
+              <textarea id="pDescription" rows="2" placeholder="e.g. 100% cotton, true to size, available in S–XL, machine washable"></textarea>
+            </div>
+          </div>
+          <div class="catalog-form" style="grid-template-columns: 1fr 1fr; margin-top:10px;">
+            <div>
+              <label>Upload a photo (max 1.5MB)</label>
+              <input id="pPhotoFile" type="file" accept="image/*">
+            </div>
+            <div>
+              <label>...or paste a photo URL instead</label>
               <input id="pImageUrl" placeholder="https://...">
             </div>
-            <div></div>
           </div>
           <div class="catalog-msg" id="catalogMsg"></div>
         </div>
@@ -3386,9 +3466,12 @@ function dashboardHtml(key, sellerId, businessName) {
           body.innerHTML = keys.length > 0
             ? keys.map((k) => {
                 const p = products[k];
+                const descLine = p.description
+                  ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px;max-width:280px;">' + escapeHtml(p.description) + '</div>'
+                  : "";
                 return '<tr>' +
                   '<td><img src="' + escapeHtml(p.imageUrl) + '" alt=""></td>' +
-                  '<td>' + escapeHtml(p.name) + '</td>' +
+                  '<td>' + escapeHtml(p.name) + descLine + '</td>' +
                   '<td><code>' + escapeHtml(k) + '</code></td>' +
                   '<td>N' + Number(p.price).toLocaleString() + '</td>' +
                   '<td>' +
@@ -3416,7 +3499,15 @@ function dashboardHtml(key, sellerId, businessName) {
           document.getElementById("pKey").value = key;
           document.getElementById("pName").value = p.name;
           document.getElementById("pPrice").value = p.price;
-          document.getElementById("pImageUrl").value = (p.imageUrl && p.imageUrl.indexOf("/images/") === -1) ? p.imageUrl : "";
+          document.getElementById("pDescription").value = p.description || "";
+          // Only pre-fill the URL box for a real pasted link, never for our
+          // own placeholder or an already-uploaded photo (that one has no
+          // URL to show -- the file input can't be pre-filled by the
+          // browser anyway, so leaving both blank just means "keep the
+          // current photo unless you choose a new one").
+          document.getElementById("pImageUrl").value =
+            (p.imageUrl && p.imageUrl.indexOf("/images/") === -1 && p.imageUrl.indexOf("/catalog-photo/") === -1) ? p.imageUrl : "";
+          document.getElementById("pPhotoFile").value = "";
           document.getElementById("pKey").focus();
         }
 
@@ -3424,17 +3515,21 @@ function dashboardHtml(key, sellerId, businessName) {
           const msg = document.getElementById("catalogMsg");
           msg.textContent = "";
           msg.className = "catalog-msg";
-          const body = {
-            key: document.getElementById("pKey").value,
-            name: document.getElementById("pName").value,
-            price: document.getElementById("pPrice").value,
-            imageUrl: document.getElementById("pImageUrl").value,
-          };
+          // FormData (not JSON) here, since a photo file might be attached
+          // -- the browser sets the multipart boundary itself, so no
+          // Content-Type header is set manually below.
+          const formData = new FormData();
+          formData.append("key", document.getElementById("pKey").value);
+          formData.append("name", document.getElementById("pName").value);
+          formData.append("price", document.getElementById("pPrice").value);
+          formData.append("description", document.getElementById("pDescription").value);
+          formData.append("imageUrl", document.getElementById("pImageUrl").value);
+          const photoFile = document.getElementById("pPhotoFile").files[0];
+          if (photoFile) formData.append("photo", photoFile);
           try {
             const res = await fetch("/api/catalog/product?" + ADMIN_QS, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
+              body: formData,
             });
             const data = await res.json();
             if (!res.ok || data.error) {
@@ -3447,7 +3542,9 @@ function dashboardHtml(key, sellerId, businessName) {
             document.getElementById("pKey").value = "";
             document.getElementById("pName").value = "";
             document.getElementById("pPrice").value = "";
+            document.getElementById("pDescription").value = "";
             document.getElementById("pImageUrl").value = "";
+            document.getElementById("pPhotoFile").value = "";
             loadCatalog();
           } catch (err) {
             msg.textContent = "Network error, please try again.";
@@ -3701,6 +3798,7 @@ app.get("/api/catalog", async (req, res) => {
       name: seller.catalog.PRODUCT_NAMES[key],
       price: seller.catalog.PRODUCT_PRICES[key],
       imageUrl: seller.catalog.PRODUCT_IMAGES[key],
+      description: seller.catalog.PRODUCT_DESCRIPTIONS[key] || "",
     };
   }
   res.json({ products, deliveryFees: seller.catalog.DELIVERY_FEES, bankDetails: seller.catalog.BANK_DETAILS });
@@ -3740,10 +3838,25 @@ app.post("/api/catalog/bank-details", async (req, res) => {
   }
 });
 
-app.post("/api/catalog/product", async (req, res) => {
+app.post("/api/catalog/product", (req, res, next) => {
+  // multer's own errors (file too big, etc.) need to be turned into the
+  // same JSON error shape the dashboard's fetch() already expects --
+  // otherwise a rejected upload would hand it an HTML error page instead
+  // and the "Could not save product" message would never show up.
+  upload.single("photo")(req, res, (err) => {
+    if (err) {
+      const message =
+        err.code === "LIMIT_FILE_SIZE"
+          ? "Photo is too large (max 1.5MB) -- please use a smaller image."
+          : "Could not process the uploaded photo.";
+      return res.status(400).json({ error: message });
+    }
+    next();
+  });
+}, async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
-  const { key, name, price, imageUrl } = req.body || {};
+  const { key, name, price, imageUrl, description } = req.body || {};
 
   // Same "code is the guarantee" rule as everywhere else money-adjacent
   // in this file: validate for real here, don't just trust whatever the
@@ -3752,6 +3865,7 @@ app.post("/api/catalog/product", async (req, res) => {
   const cleanName = String(name || "").trim();
   const cleanPrice = Number(price);
   const cleanImageUrl = imageUrl ? String(imageUrl).trim() : "";
+  const cleanDescription = String(description || "").trim().slice(0, 600);
 
   if (!cleanKey) {
     return res.status(400).json({ error: "Product key is required (letters, numbers, - and _ only)." });
@@ -3766,6 +3880,11 @@ app.post("/api/catalog/product", async (req, res) => {
     return res.status(400).json({ error: "Image URL must start with http:// or https://" });
   }
 
+  // Whether this key already existed BEFORE we touch anything below --
+  // decides what happens to the photo when neither a new file nor a new
+  // URL was submitted (see below).
+  const isNewProduct = !(cleanKey in seller.catalog.PRODUCT_PRICES);
+
   // Update the live catalog first -- this alone is what Amara and the
   // payment backstop actually read from, so the change is already in
   // effect for the very next customer message regardless of what happens
@@ -3775,7 +3894,31 @@ app.post("/api/catalog/product", async (req, res) => {
   // live behavior change already succeeded.
   seller.catalog.PRODUCT_NAMES[cleanKey] = cleanName;
   seller.catalog.PRODUCT_PRICES[cleanKey] = cleanPrice;
-  seller.catalog.PRODUCT_IMAGES[cleanKey] = cleanImageUrl || `${BASE_URL}/images/${cleanKey}.png`;
+  seller.catalog.PRODUCT_DESCRIPTIONS[cleanKey] = cleanDescription;
+
+  if (req.file) {
+    // A real photo was uploaded: store it in Redis (base64) next to the
+    // rest of this seller's catalog, cache it in memory for fast serving,
+    // and point PRODUCT_IMAGES at our own /catalog-photo URL for it.
+    const mime = req.file.mimetype;
+    const base64 = req.file.buffer.toString("base64");
+    sellerPhotoCache[`${seller.sellerId}:${cleanKey}`] = { mime, buffer: req.file.buffer };
+    seller.catalog.PRODUCT_IMAGES[cleanKey] = `${BASE_URL}/catalog-photo/${seller.sellerId}/${cleanKey}`;
+    try {
+      await redisCommand(["SET", nsKey(seller.sellerId, `catalog:photo:${cleanKey}`), JSON.stringify({ mime, data: base64 })]);
+    } catch (err) {
+      console.error("catalog photo upload: failed to persist to Redis:", err.message);
+      // The photo still works right now from the in-memory cache above;
+      // it just won't survive a restart until saved again successfully.
+    }
+  } else if (cleanImageUrl) {
+    seller.catalog.PRODUCT_IMAGES[cleanKey] = cleanImageUrl;
+  } else if (isNewProduct) {
+    seller.catalog.PRODUCT_IMAGES[cleanKey] = `${BASE_URL}/images/${cleanKey}.png`;
+  }
+  // else: editing an existing product with no new photo and no new URL --
+  // leave its existing PRODUCT_IMAGES entry exactly as it is.
+
   console.log(`Catalog: product "${cleanKey}" saved (${cleanName}, N${cleanPrice}) from the dashboard for ${seller.sellerId}.`);
 
   try {
@@ -3801,6 +3944,11 @@ app.delete("/api/catalog/product/:key", async (req, res) => {
   delete seller.catalog.PRODUCT_PRICES[key];
   delete seller.catalog.PRODUCT_NAMES[key];
   delete seller.catalog.PRODUCT_IMAGES[key];
+  delete seller.catalog.PRODUCT_DESCRIPTIONS[key];
+  delete sellerPhotoCache[`${seller.sellerId}:${key}`];
+  redisCommand(["DEL", nsKey(seller.sellerId, `catalog:photo:${key}`)]).catch((err) =>
+    console.error("catalog photo delete: cleanup failed (non-fatal):", err.message)
+  );
   console.log(`Catalog: product "${key}" removed from the dashboard for ${seller.sellerId}.`);
 
   try {
