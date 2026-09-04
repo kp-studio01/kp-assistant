@@ -2028,6 +2028,25 @@ async function processBufferedTurn(seller, from) {
           followUpReply = secondPass.cleanText;
         }
 
+        // Dead-end guard: if the model's ENTIRE follow-up reply was just
+        // the stripped tag above (or came back blank for any other
+        // reason), followUpReply is now an empty string. Without this,
+        // the customer's "checking" message was already sent, but nothing
+        // ever follows it -- a silent dead end, worse than the leaked tag
+        // this whole block exists to prevent, because it looks like Amara
+        // simply stopped responding. Build the real answer directly from
+        // the computed data instead of leaving this to the model at all.
+        if (!followUpReply.trim()) {
+          console.log(
+            `Bookable: follow-up reply for ${seller.sellerId} came back empty after cleanup -- using a hard-coded fallback so the customer isn't left hanging.`
+          );
+          followUpReply = !offering
+            ? `Sorry, could you tell me exactly which service you'd like? Just want to make sure I check the right one for you.`
+            : slots.length > 0
+              ? `For ${offering.name} on ${availabilityDate}, these times are open: ${slots.join(", ")}. Which works for you?`
+              : `Nothing's open for ${offering.name} on ${availabilityDate}, sorry! Want me to check a different day?`;
+        }
+
         rawReply = availStripped ? `${availStripped} ||| ${followUpReply}` : followUpReply;
         console.log(`Bookable: resolved [AVAILABILITY: ${availabilityKey}, ${availabilityDate}] -> ${slots.length} real slot(s) for ${seller.sellerId}.`);
       }
