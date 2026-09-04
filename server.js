@@ -3417,11 +3417,22 @@ app.get("/customers", async (req, res) => {
 function adminPanelHtml(key, sellers) {
   const rows = sellers
     .map((s) => {
+      // Every field on `s` came straight out of Redis via HGETALL, which
+      // means it's a raw string (or undefined), never an actual boolean --
+      // "0" included. `s.suspended ? ...` was therefore ALWAYS true once a
+      // seller had ever been suspended even once, since a non-empty string
+      // like "0" is truthy in JS: after resuming, the badge kept showing
+      // "Suspended" and this button kept reading "Resume" and calling
+      // toggleSuspend(id, false) on every click, no-op-ing forever because
+      // it thought the seller was still suspended. Comparing against the
+      // literal string "1" (matching how /api/admin/suspend-seller writes
+      // it) is what actually reads the real state.
+      const isSuspended = s.suspended === "1";
       const statusBadge =
         s.status === "active"
           ? '<span class="badge active">Active</span>'
           : '<span class="badge pending">Pending</span>';
-      const suspendedBadge = s.suspended ? ' <span class="badge suspended">Suspended</span>' : "";
+      const suspendedBadge = isSuspended ? ' <span class="badge suspended">Suspended</span>' : "";
       const dashboardHref =
         `/dashboard?key=${encodeURIComponent(key)}` +
         (s.sellerId === SELLER1_ID ? "" : `&sellerId=${encodeURIComponent(s.sellerId)}`);
@@ -3441,7 +3452,7 @@ function adminPanelHtml(key, sellers) {
       // so there's no string-into-HTML interpolation left to break.
       const holdDeleteButtons = isSeller1
         ? ""
-        : `<button class="btn secondary" onclick="toggleSuspend('${s.sellerId}', ${s.suspended ? "false" : "true"})">${s.suspended ? "Resume" : "Suspend"}</button>
+        : `<button class="btn secondary" onclick="toggleSuspend('${s.sellerId}', ${isSuspended ? "false" : "true"})">${isSuspended ? "Resume" : "Suspend"}</button>
           <button class="btn danger delete-seller-btn" data-seller-id="${escapeHtmlServer(s.sellerId)}" data-business-name="${escapeHtmlServer(s.businessName || "this seller")}">Delete</button>`;
       return `<tr>
         <td>${escapeHtmlServer(s.businessName || "")}${isSeller1 ? ' <span class="you-badge">your shop</span>' : ""}</td>
