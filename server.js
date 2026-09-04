@@ -1998,12 +1998,36 @@ async function processBufferedTurn(seller, from) {
       if (availabilityKey && availabilityDate) {
         const offering = seller.catalog.OFFERINGS[availabilityKey];
         const slots = offering ? getAvailableSlots(seller, availabilityKey, availabilityDate) : [];
+        // Every branch ends with the same hard instruction: this reply is
+        // plain text only, never another [AVAILABILITY: ...] tag. Without
+        // this, a confused model (especially in the unrecognized-key case)
+        // can try to "check again" by emitting a second tag here -- and
+        // since this second pass is never re-run through the extraction
+        // step below, that raw tag would otherwise leak straight to the
+        // customer as literal visible text instead of being resolved.
+        const NO_SECOND_TAG =
+          "This reply must be plain text only, meant to be read directly by the customer -- do NOT include an [AVAILABILITY: ...] tag or any other bracketed tag in it, under any circumstance.";
         const slotsNote = !offering
-          ? `The [AVAILABILITY] tag referenced an unrecognized service key ("${availabilityKey}"). Only use keys from the services list above.`
+          ? `The [AVAILABILITY] tag referenced a service key ("${availabilityKey}") that isn't in the services list above. Don't try the tag again. Just ask the customer in plain language which service they'd like (naming the real options from the list), so you can look it up correctly once you know. ${NO_SECOND_TAG}`
           : slots.length > 0
-            ? `Real availability check for "${offering.name}" on ${availabilityDate}: ${slots.join(", ")}. Whatever you said right before the [AVAILABILITY] tag (e.g. "let me check") has ALREADY been sent to the customer as its own message -- do not repeat that or any similar "checking now" phrase here, go straight into telling them the real times, using ONLY these real times if you mention any specific time.`
-            : `Real availability check for "${offering.name}" on ${availabilityDate}: nothing is open that day. Whatever you said right before the [AVAILABILITY] tag (e.g. "let me check") has ALREADY been sent to the customer as its own message -- do not repeat that or any similar "checking now" phrase here, tell them plainly that nothing's open that day and offer to check a different day.`;
-        const followUpReply = await askAI(seller, history, slotsNote);
+            ? `Real availability check for "${offering.name}" on ${availabilityDate}: ${slots.join(", ")}. Whatever you said right before the [AVAILABILITY] tag (e.g. "let me check") has ALREADY been sent to the customer as its own message -- do not repeat that or any similar "checking now" phrase here, go straight into telling them the real times, using ONLY these real times if you mention any specific time. ${NO_SECOND_TAG}`
+            : `Real availability check for "${offering.name}" on ${availabilityDate}: nothing is open that day. Whatever you said right before the [AVAILABILITY] tag (e.g. "let me check") has ALREADY been sent to the customer as its own message -- do not repeat that or any similar "checking now" phrase here, tell them plainly that nothing's open that day and offer to check a different day. ${NO_SECOND_TAG}`;
+        let followUpReply = await askAI(seller, history, slotsNote);
+
+        // Belt and suspenders: if the model ignored the instruction above
+        // and emitted another raw [AVAILABILITY: ...] tag anyway, strip it
+        // out here rather than letting it leak to the customer. This is
+        // deliberately NOT resolved into a second real check (that could
+        // loop) -- it's just cut out as clutter, same as the comment
+        // above this block always intended but never actually did.
+        const secondPass = extractAvailabilityTag(followUpReply);
+        if (secondPass.availabilityKey) {
+          console.log(
+            `Bookable: follow-up reply for ${seller.sellerId} tried to emit a second [AVAILABILITY] tag (${secondPass.availabilityKey}, ${secondPass.availabilityDate}) -- stripped, not resolved.`
+          );
+          followUpReply = secondPass.cleanText;
+        }
+
         rawReply = availStripped ? `${availStripped} ||| ${followUpReply}` : followUpReply;
         console.log(`Bookable: resolved [AVAILABILITY: ${availabilityKey}, ${availabilityDate}] -> ${slots.length} real slot(s) for ${seller.sellerId}.`);
       }
