@@ -2469,7 +2469,7 @@ function humanPause(replyText) {
 
 // ---------- Pull the invisible [PHOTO: key] tag out of the AI's reply ----------
 function extractPhotoTag(text) {
-  const match = text.match(/\[PHOTO:\s*(\w+)\]/i);
+  const match = text.match(/\[PHOTO:\s*([\w-]+)\]/i);
   if (!match) return { cleanText: text.trim(), photoKey: null };
 
   const photoKey = match[1].toLowerCase();
@@ -2489,7 +2489,7 @@ function extractEscalationTag(text) {
 
 // ---------- Pull the invisible [PAY: key, zone] tag out of the AI's reply ----------
 function extractPaymentTag(text) {
-  const match = text.match(/\[PAY:\s*(\w+)\s*,\s*(\w+)\]/i);
+  const match = text.match(/\[PAY:\s*([\w-]+)\s*,\s*([\w-]+)\]/i);
   if (!match) return { cleanText: text.trim(), paymentKey: null, paymentZone: null };
 
   const paymentKey = match[1].toLowerCase();
@@ -2500,7 +2500,7 @@ function extractPaymentTag(text) {
 
 // ---------- Bookable sellers only: pull the invisible [AVAILABILITY: key, date] tag ----------
 function extractAvailabilityTag(text) {
-  const match = text.match(/\[AVAILABILITY:\s*(\w+)\s*,\s*(\d{4}-\d{2}-\d{2})\]/i);
+  const match = text.match(/\[AVAILABILITY:\s*([\w-]+)\s*,\s*(\d{4}-\d{2}-\d{2})\]/i);
   if (!match) return { cleanText: text.trim(), availabilityKey: null, availabilityDate: null };
 
   const availabilityKey = match[1].toLowerCase();
@@ -2511,7 +2511,7 @@ function extractAvailabilityTag(text) {
 
 // ---------- Bookable sellers only: pull the invisible [BOOK: key, date, time] tag ----------
 function extractBookingTag(text) {
-  const match = text.match(/\[BOOK:\s*(\w+)\s*,\s*(\d{4}-\d{2}-\d{2})\s*,\s*([01]\d|2[0-3]):([0-5]\d)\]/i);
+  const match = text.match(/\[BOOK:\s*([\w-]+)\s*,\s*(\d{4}-\d{2}-\d{2})\s*,\s*([01]\d|2[0-3]):([0-5]\d)\]/i);
   if (!match) return { cleanText: text.trim(), bookingKey: null, bookingDate: null, bookingTime: null };
 
   const bookingKey = match[1].toLowerCase();
@@ -3779,6 +3779,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         table.catalog-table th, table.catalog-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
         table.catalog-table th { color: #64748b; font-weight: 600; font-size: 12px; }
         table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: #f1f5f9; }
+        table.catalog-table td.booking-date-header { background: #f8fafc; color: #475569; font-weight: 600; font-size: 12px; padding-top: 14px; border-bottom: 1px solid #e2e8f0; }
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
         .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
@@ -3835,11 +3836,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <thead><tr><th></th><th>Name</th><th>Key</th><th>Price</th><th></th></tr></thead>
             <tbody id="catalogTableBody"></tbody>
           </table>
+          <div id="productEditingNote" style="display:none;font-size:12px;color:#64748b;margin-bottom:8px;">
+            Editing "<b id="productEditingName"></b>" -- <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
+          </div>
           <div class="catalog-form">
-            <div>
-              <label>Key (edit uses existing key)</label>
-              <input id="pKey" placeholder="e.g. tee">
-            </div>
+            <input type="hidden" id="pKey">
             <div>
               <label>Name</label>
               <input id="pName" placeholder="e.g. Plain white tee">
@@ -3952,11 +3953,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <thead><tr><th>Name</th><th>Key</th><th>Price</th><th>Duration</th><th></th></tr></thead>
             <tbody id="offeringsTableBody"></tbody>
           </table>
+          <div id="offeringEditingNote" style="display:none;font-size:12px;color:#64748b;margin-bottom:8px;">
+            Editing "<b id="offeringEditingName"></b>" -- <a href="#" onclick="cancelEditOffering();return false;">cancel, add a new service instead</a>
+          </div>
           <div class="catalog-form">
-            <div>
-              <label>Key</label>
-              <input id="oKey" placeholder="e.g. strategycall">
-            </div>
+            <input type="hidden" id="oKey">
             <div>
               <label>Name</label>
               <input id="oName" placeholder="e.g. Strategy Call (30 min)">
@@ -4032,7 +4033,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </div>
       <div class="catalog-view" id="bookingsView" style="display:none;">
         <div class="catalog-card">
-          <h2>Upcoming bookings</h2>
+          <h2 id="bookingsHeading">Upcoming bookings</h2>
           <table class="catalog-table" id="bookingsTable">
             <thead><tr><th>Date</th><th>Time</th><th>Service</th><th>Customer</th><th>Reference</th><th></th></tr></thead>
             <tbody id="bookingsTableBody"></tbody>
@@ -4187,9 +4188,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           main.innerHTML =
             '<div class="thread-header">' +
               '<div><b>' + escapeHtml(phone) + '</b></div>' +
-              '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
-                (isPaused ? "Hand back to Amara" : "Take over") +
-              '</button>' +
+              '<div>' +
+                '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
+                  (isPaused ? "Hand back to Amara" : "Take over") +
+                '</button> ' +
+                '<button class="catalog-btn danger small" onclick="clearConversation(\\'' + phone + '\\')" title="Wipe this conversation and customer record so you can retest from a clean slate">Clear conversation</button>' +
+              '</div>' +
             '</div>' +
             '<div class="thread" id="thread"></div>' +
             '<div class="msg-compose">' +
@@ -4273,6 +4277,23 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             loadConversation(phone, false);
           } catch (err) {
             console.error("takeover toggle failed", err);
+          }
+        }
+
+        async function clearConversation(phone) {
+          if (!confirm("Clear this conversation? This wipes the chat history and this customer's record completely, so you can retest from a clean slate. Any bookings they made are NOT affected -- cancel those separately if needed. This can't be undone.")) return;
+          try {
+            await fetch("/api/conversation/clear?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: phone }),
+            });
+            selectedPhone = null;
+            renderedThreadPhone = null;
+            document.getElementById("main").innerHTML = '<div class="empty">Select a conversation on the left</div>';
+            loadDashboard();
+          } catch (err) {
+            alert("Network error, please try again.");
           }
         }
 
@@ -4477,13 +4498,60 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           document.getElementById("pImageUrl").value =
             (p.imageUrl && p.imageUrl.indexOf("/images/") === -1 && p.imageUrl.indexOf("/catalog-photo/") === -1) ? p.imageUrl : "";
           document.getElementById("pPhotoFile").value = "";
-          document.getElementById("pKey").focus();
+          document.getElementById("productEditingName").textContent = p.name;
+          document.getElementById("productEditingNote").style.display = "block";
+          document.getElementById("pName").focus();
+          document.getElementById("pName").scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        function cancelEditProduct() {
+          document.getElementById("pKey").value = "";
+          document.getElementById("pName").value = "";
+          document.getElementById("pPrice").value = "";
+          document.getElementById("pDescription").value = "";
+          document.getElementById("pImageUrl").value = "";
+          document.getElementById("pPhotoFile").value = "";
+          document.getElementById("productEditingNote").style.display = "none";
+        }
+
+        // Sellers never type or think about an internal "key" -- it's just
+        // a plain-text slug of the name, generated here, with a numeric
+        // suffix added only if that slug is already taken by a different
+        // product. Editing an existing product always keeps reusing ITS
+        // key (set into the hidden pKey field by editProduct above), so
+        // renaming a product never breaks a photo, order, or reference
+        // that was already saved under its original key.
+        function slugFromName(name, existingKeys, keepKey) {
+          let base = String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+          if (!base) base = "item";
+          if (!existingKeys.includes(base) || base === keepKey) return base;
+          let n = 2;
+          while (existingKeys.includes(base + "-" + n) && base + "-" + n !== keepKey) n++;
+          return base + "-" + n;
         }
 
         async function saveProduct() {
           const msg = document.getElementById("catalogMsg");
           msg.textContent = "";
           msg.className = "catalog-msg";
+
+          const nameValue = document.getElementById("pName").value.trim();
+          if (!nameValue) {
+            msg.textContent = "Product name is required.";
+            msg.className = "catalog-msg error";
+            return;
+          }
+
+          // Editing an existing product (pKey was set by editProduct) keeps
+          // its exact key no matter what the name is changed to. A brand
+          // new product (pKey still blank) gets a key generated from the
+          // name right here, so the seller never has to think about "the
+          // key" as its own separate, easy-to-get-wrong field at all.
+          const editingKey = document.getElementById("pKey").value.trim().toLowerCase();
+          if (!editingKey) {
+            const existingKeys = Object.keys(window.catalogCache || {});
+            document.getElementById("pKey").value = slugFromName(nameValue, existingKeys, "");
+          }
 
           const keyValue = document.getElementById("pKey").value.trim().toLowerCase();
           const photoFile = document.getElementById("pPhotoFile").files[0];
@@ -4533,6 +4601,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             document.getElementById("pDescription").value = "";
             document.getElementById("pImageUrl").value = "";
             document.getElementById("pPhotoFile").value = "";
+            document.getElementById("productEditingNote").style.display = "none";
             loadCatalog();
           } catch (err) {
             msg.textContent = "Network error, please try again.";
@@ -4708,16 +4777,62 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                   '<td><code>' + escapeHtml(k) + '</code></td>' +
                   '<td>N' + Number(o.price).toLocaleString() + '</td>' +
                   '<td>' + o.durationMinutes + ' min</td>' +
-                  '<td><button class="catalog-btn danger" onclick="removeOffering(\\'' + k + '\\')">Remove</button></td>' +
+                  '<td>' +
+                    '<button class="catalog-btn small" onclick="editOffering(\\'' + k + '\\')">Edit</button> ' +
+                    '<button class="catalog-btn danger" onclick="removeOffering(\\'' + k + '\\')">Remove</button>' +
+                  '</td>' +
                 '</tr>';
               }).join("")
             : '<tr><td colspan="5" style="color:#94a3b8;">No services yet.</td></tr>';
+        }
+
+        function editOffering(key) {
+          const o = (window.offeringsCache || {})[key];
+          if (!o) return;
+          document.getElementById("oKey").value = key;
+          document.getElementById("oName").value = o.name;
+          document.getElementById("oPrice").value = o.price;
+          document.getElementById("oDuration").value = o.durationMinutes;
+          document.getElementById("oDescription").value = o.description || "";
+          document.getElementById("offeringEditingName").textContent = o.name;
+          document.getElementById("offeringEditingNote").style.display = "block";
+          document.getElementById("oName").focus();
+          document.getElementById("oName").scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        function cancelEditOffering() {
+          document.getElementById("oKey").value = "";
+          document.getElementById("oName").value = "";
+          document.getElementById("oPrice").value = "";
+          document.getElementById("oDuration").value = "";
+          document.getElementById("oDescription").value = "";
+          document.getElementById("offeringEditingNote").style.display = "none";
         }
 
         async function saveOffering() {
           const msg = document.getElementById("offeringsMsg");
           msg.textContent = "";
           msg.className = "catalog-msg";
+
+          const nameValue = document.getElementById("oName").value.trim();
+          if (!nameValue) {
+            msg.textContent = "Service name is required.";
+            msg.className = "catalog-msg error";
+            return;
+          }
+
+          // Same idea as products: no manual "key" field for a seller to
+          // fill in and possibly get crossed with the name. A new service
+          // gets a key generated from its name right here; editing an
+          // existing one (oKey set by editOffering above) always keeps
+          // reusing ITS original key, so renaming never breaks a booking
+          // or an in-progress WhatsApp conversation referencing it.
+          const editingKey = document.getElementById("oKey").value.trim().toLowerCase();
+          if (!editingKey) {
+            const existingKeys = Object.keys(window.offeringsCache || {});
+            document.getElementById("oKey").value = slugFromName(nameValue, existingKeys, "");
+          }
+
           const body = {
             key: document.getElementById("oKey").value,
             name: document.getElementById("oName").value,
@@ -4742,6 +4857,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             document.getElementById("oPrice").value = "";
             document.getElementById("oDuration").value = "";
             document.getElementById("oDescription").value = "";
+            document.getElementById("offeringEditingNote").style.display = "none";
             msg.textContent = data.warning || "Saved.";
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
             loadBookable();
@@ -4869,23 +4985,52 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
         }
 
+        function formatBookingDateHeader(dateStr) {
+          const d = new Date(dateStr + "T00:00:00");
+          if (isNaN(d.getTime())) return dateStr;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((d - today) / 86400000);
+          const label = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+          if (diffDays === 0) return "Today -- " + label;
+          if (diffDays === 1) return "Tomorrow -- " + label;
+          return label;
+        }
+
         function renderBookings(bookings) {
+          const heading = document.getElementById("bookingsHeading");
+          if (heading) heading.textContent = "Upcoming bookings (" + bookings.length + ")";
+
           const body = document.getElementById("bookingsTableBody");
           const offerings = window.offeringsCache || {};
-          body.innerHTML = bookings.length > 0
-            ? bookings.map((b) => {
-                const offering = offerings[b.offeringKey];
-                const serviceName = offering ? offering.name : b.offeringKey;
-                return '<tr>' +
-                  '<td>' + b.date + '</td>' +
-                  '<td>' + b.time + '</td>' +
-                  '<td>' + escapeHtml(serviceName) + '</td>' +
-                  '<td>' + escapeHtml(b.phone) + '</td>' +
-                  '<td><code>' + escapeHtml(b.reference) + '</code></td>' +
-                  '<td><button class="catalog-btn danger" onclick="cancelBooking(\\'' + b.id + '\\')">Cancel</button></td>' +
-                '</tr>';
-              }).join("")
-            : '<tr><td colspan="6" style="color:#94a3b8;">No upcoming bookings.</td></tr>';
+          if (bookings.length === 0) {
+            body.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;">No upcoming bookings.</td></tr>';
+            return;
+          }
+
+          let html = "";
+          let lastDate = null;
+          for (const b of bookings) {
+            if (b.date !== lastDate) {
+              html += '<tr><td colspan="6" class="booking-date-header">' + escapeHtml(formatBookingDateHeader(b.date)) + '</td></tr>';
+              lastDate = b.date;
+            }
+            const offering = offerings[b.offeringKey];
+            const serviceName = offering ? offering.name : b.offeringKey;
+            html +=
+              '<tr id="booking-row-' + b.id + '">' +
+                '<td>' + b.date + '</td>' +
+                '<td>' + b.time + '</td>' +
+                '<td>' + escapeHtml(serviceName) + '</td>' +
+                '<td>' + escapeHtml(b.phone) + '</td>' +
+                '<td><code>' + escapeHtml(b.reference) + '</code></td>' +
+                '<td>' +
+                  '<button class="catalog-btn small" onclick="toggleReschedule(\\'' + b.id + '\\', \\'' + b.offeringKey + '\\')">Reschedule</button> ' +
+                  '<button class="catalog-btn danger" onclick="cancelBooking(\\'' + b.id + '\\')">Cancel</button>' +
+                '</td>' +
+              '</tr>';
+          }
+          body.innerHTML = html;
         }
 
         async function cancelBooking(id) {
@@ -4895,6 +5040,74 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             loadBookable();
           } catch (err) {
             console.error("cancel booking failed", err);
+          }
+        }
+
+        // Reschedule is deliberately pick-from-real-times, not a free time
+        // input -- same "the code is the guarantee, never trust a typed
+        // value" principle as everywhere else bookings are handled. Opens
+        // an inline row right under the booking being moved rather than a
+        // separate page/modal, so it's obvious which booking it belongs to.
+        function toggleReschedule(id, offeringKey) {
+          const already = document.getElementById("reschedule-" + id);
+          document.querySelectorAll('[id^="reschedule-"]').forEach((el) => el.remove());
+          if (already) return; // it was open, clicking again just closes it
+
+          const row = document.getElementById("booking-row-" + id);
+          if (!row) return;
+          const tr = document.createElement("tr");
+          tr.id = "reschedule-" + id;
+          tr.innerHTML =
+            '<td colspan="6" style="background:#f8fafc;padding:10px;border-radius:0 0 8px 8px;">' +
+              '<div class="fees-row">' +
+                '<div><label>New date</label><input type="date" id="rDate-' + id + '"></div>' +
+                '<button class="catalog-btn small" onclick="loadRescheduleSlots(\\'' + id + '\\', \\'' + offeringKey + '\\')">Check open times</button>' +
+              '</div>' +
+              '<div id="rSlots-' + id + '" style="margin-top:8px;font-size:13px;"></div>' +
+            '</td>';
+          row.parentNode.insertBefore(tr, row.nextSibling);
+        }
+
+        async function loadRescheduleSlots(id, offeringKey) {
+          const date = document.getElementById("rDate-" + id).value;
+          const slotsEl = document.getElementById("rSlots-" + id);
+          if (!date) {
+            slotsEl.textContent = "Pick a date first.";
+            return;
+          }
+          slotsEl.textContent = "Checking...";
+          try {
+            const res = await fetch(
+              "/api/bookable/availability?" + ADMIN_QS + "&offeringKey=" + encodeURIComponent(offeringKey) + "&date=" + encodeURIComponent(date)
+            );
+            const data = await res.json();
+            const slots = data.slots || [];
+            slotsEl.innerHTML = slots.length > 0
+              ? "Open times: " + slots.map((t) =>
+                  '<button class="catalog-btn small" style="margin:2px;" onclick="confirmReschedule(\\'' + id + '\\', \\'' + date + '\\', \\'' + t + '\\')">' + t + '</button>'
+                ).join("")
+              : '<span style="color:#94a3b8;">Nothing open that day. Try another date.</span>';
+          } catch (err) {
+            slotsEl.textContent = "Network error, please try again.";
+          }
+        }
+
+        async function confirmReschedule(id, date, time) {
+          if (!confirm("Move this booking to " + date + " at " + time + "?")) return;
+          try {
+            const res = await fetch("/api/bookable/bookings/" + encodeURIComponent(id) + "/reschedule?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ date: date, time: time }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              alert(data.error || "Could not move this booking.");
+              return;
+            }
+            loadBookable();
+          } catch (err) {
+            alert("Network error, please try again.");
           }
         }
 
@@ -4940,6 +5153,47 @@ app.get("/api/conversation", async (req, res) => {
   } catch (err) {
     console.error("api/conversation failed:", err.message);
     res.status(500).json({ error: "failed to load conversation" });
+  }
+});
+
+// Wipes everything tied to ONE customer thread -- chat memory, the
+// paused/notified flags, photo-already-sent tracking, and the customer
+// record itself -- so a repeat test conversation can start completely
+// fresh without needing a different phone number each time. Deliberately
+// does NOT touch the seller-level suspend switch (see
+// /api/admin/suspend-seller, an account-wide kill switch, a different
+// concept entirely) and does NOT touch any bookings this customer made
+// (cancel those individually from the Bookings tab if that's what's
+// actually meant). This is a testing convenience, not an account action,
+// so any logged-in seller (or the admin key) can do it for their own
+// customers, same as everything else on this dashboard.
+app.post("/api/conversation/clear", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const phone = String(req.body?.phone || "").trim();
+  if (!phone) return res.status(400).json({ error: "phone is required." });
+  try {
+    // Cancel any message still sitting in the debounce buffer for this
+    // customer first, so a stray reply can't land after the clear using
+    // now-deleted history.
+    const key = bufferKey(seller.sellerId, phone);
+    const buffer = pendingBuffers.get(key);
+    if (buffer?.timer) clearTimeout(buffer.timer);
+    pendingBuffers.delete(key);
+
+    await Promise.all([
+      redisCommand(["DEL", nsKey(seller.sellerId, `conv:${phone}`)]),
+      redisCommand(["DEL", nsKey(seller.sellerId, `paused:${phone}`)]),
+      redisCommand(["DEL", nsKey(seller.sellerId, `paused_notified:${phone}`)]),
+      redisCommand(["DEL", nsKey(seller.sellerId, `photos_sent:${phone}`)]),
+      redisCommand(["DEL", nsKey(seller.sellerId, `customer:${phone}`)]),
+      redisCommand(["SREM", nsKey(seller.sellerId, "all_customers"), phone]),
+    ]);
+    console.log(`Conversation and customer record cleared for ${phone} on ${seller.sellerId} (dashboard reset).`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/conversation/clear failed:", err.message);
+    res.status(500).json({ error: "Failed to clear conversation." });
   }
 });
 
@@ -5558,6 +5812,53 @@ app.post("/api/bookable/bookings/:id/cancel", async (req, res) => {
   } catch (err) {
     console.error("api/bookable/bookings cancel: live update succeeded but Redis persistence failed:", err.message);
     res.json({ ok: true, warning: "Cancelled and live now, but couldn't persist to storage -- it may revert if the server restarts before you try again." });
+  }
+});
+
+// Moves an existing booking to a different date/time instead of forcing a
+// cancel + a brand new booking (which used to be the only option, and
+// loses the original reference number and creation date in the process).
+// Re-checks the new slot against real availability first, exactly like a
+// fresh booking would, so this can never double-book a slot -- the
+// booking being moved is temporarily set aside during that check so it
+// doesn't collide with its OWN old slot when the new time happens to be
+// close to it.
+app.post("/api/bookable/bookings/:id/reschedule", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const id = String(req.params.id || "");
+  const newDate = String(req.body?.date || "");
+  const newTime = String(req.body?.time || "");
+  const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !timeRe.test(newTime)) {
+    return res.status(400).json({ error: "A valid date and time are required." });
+  }
+
+  const booking = seller.catalog.BOOKINGS.find((b) => b.id === id && b.status !== "cancelled");
+  if (!booking) return res.status(404).json({ error: "Booking not found." });
+
+  const originalDate = booking.date;
+  const originalTime = booking.time;
+  booking.date = "0000-01-01"; // parked out of the way so it can't collide with its own old slot below
+  booking.time = "00:00";
+  const openSlots = getAvailableSlots(seller, booking.offeringKey, newDate);
+  if (!openSlots.includes(newTime)) {
+    booking.date = originalDate; // put it back, nothing actually changed
+    booking.time = originalTime;
+    return res.status(409).json({ error: "That time isn't actually open anymore. Pick one of the currently available times." });
+  }
+
+  booking.date = newDate;
+  booking.time = newTime;
+  console.log(`Bookable: booking ${id} rescheduled from ${originalDate} ${originalTime} to ${newDate} ${newTime} for ${seller.sellerId}.`);
+
+  try {
+    await saveBookingsToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/bookable/bookings reschedule: live update succeeded but Redis persistence failed:", err.message);
+    res.json({ ok: true, warning: "Moved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try again." });
   }
 });
 
