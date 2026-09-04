@@ -285,6 +285,12 @@ async function getSellerContext(sellerId) {
     // this field was introduced (including seller1) keeps behaving exactly
     // as it always has, with zero migration needed.
     businessType: record?.businessType === "bookable" ? "bookable" : "goods",
+    // Admin-only kill switch (see /api/admin/suspend-seller): true means the
+    // webhook drops every incoming message for this seller without replying,
+    // without touching any of their stored data. Independent of `status`
+    // above, which tracks WhatsApp connection state, not whether the seller
+    // is allowed to talk to customers right now.
+    suspended: record?.suspended === "1",
     phoneNumberId: creds.phoneNumberId,
     whatsappToken: creds.whatsappToken,
     ownerPhoneNumber: creds.ownerPhoneNumber,
@@ -1758,6 +1764,10 @@ app.post("/webhook", async (req, res) => {
     const seller = await getSellerContext(sellerId);
     if (!seller) {
       console.error(`Webhook: resolved sellerId "${sellerId}" has no context, dropping this call.`);
+      return;
+    }
+    if (seller.suspended) {
+      console.log(`Webhook: seller ${sellerId} is suspended by admin, dropping this call.`);
       return;
     }
 
@@ -3411,16 +3421,23 @@ function adminPanelHtml(key, sellers) {
         s.status === "active"
           ? '<span class="badge active">Active</span>'
           : '<span class="badge pending">Pending</span>';
+      const suspendedBadge = s.suspended ? ' <span class="badge suspended">Suspended</span>' : "";
       const dashboardHref =
         `/dashboard?key=${encodeURIComponent(key)}` +
         (s.sellerId === SELLER1_ID ? "" : `&sellerId=${encodeURIComponent(s.sellerId)}`);
+      const isSeller1 = s.sellerId === SELLER1_ID;
+      const holdDeleteButtons = isSeller1
+        ? ""
+        : `<button class="btn secondary" onclick="toggleSuspend('${s.sellerId}', ${s.suspended ? "false" : "true"})">${s.suspended ? "Resume" : "Suspend"}</button>
+          <button class="btn danger" onclick="deleteSeller('${s.sellerId}', ${JSON.stringify(s.businessName || "this seller")})">Delete</button>`;
       return `<tr>
-        <td>${escapeHtmlServer(s.businessName || "")}${s.sellerId === SELLER1_ID ? ' <span class="you-badge">your shop</span>' : ""}</td>
+        <td>${escapeHtmlServer(s.businessName || "")}${isSeller1 ? ' <span class="you-badge">your shop</span>' : ""}</td>
         <td>${escapeHtmlServer(s.email || "")}</td>
-        <td>${statusBadge}</td>
+        <td>${statusBadge}${suspendedBadge}</td>
         <td>
           <a class="btn" href="${dashboardHref}">Open dashboard</a>
           <button class="btn secondary" onclick="toggleConnect('${s.sellerId}')">Connect WhatsApp</button>
+          ${holdDeleteButtons}
           <div class="connect-form" id="connect-${s.sellerId}">
             <label>Phone number ID</label>
             <input id="pni-${s.sellerId}" value="${escapeHtmlServer(s.phoneNumberId || "")}" placeholder="from Meta's WhatsApp Manager">
@@ -3431,6 +3448,7 @@ function adminPanelHtml(key, sellers) {
             <button class="btn" style="margin-top:8px;" onclick="connectSeller('${s.sellerId}')">Save connection</button>
             <div class="connect-msg" id="msg-${s.sellerId}"></div>
           </div>
+          <div class="connect-msg" id="action-msg-${s.sellerId}"></div>
         </td>
       </tr>`;
     })
@@ -3455,11 +3473,14 @@ function adminPanelHtml(key, sellers) {
         .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; }
         .badge.active { background:var(--success-bg); color:var(--success); }
         .badge.pending { background:var(--warning-bg); color:var(--warning); }
+        .badge.suspended { background:var(--danger-bg, #fee2e2); color:var(--danger, #dc2626); margin-left:4px; }
         .you-badge { font-size:11px; color:var(--muted); }
         a.btn, button.btn { display:inline-block; background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; margin:2px 6px 2px 0; }
         a.btn:hover, button.btn:hover { background:var(--accent-dark); }
         button.btn.secondary { background:transparent; color:var(--navy); border:1px solid #cbd5e1; }
         button.btn.secondary:hover { background:var(--bg); }
+        button.btn.danger { background:transparent; color:var(--danger, #dc2626); border:1px solid var(--danger, #dc2626); }
+        button.btn.danger:hover { background:var(--danger-bg, #fee2e2); }
         .connect-form { display:none; margin-top:10px; padding:12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); max-width:340px; }
         .connect-form.open { display:block; }
         .connect-form label { font-size:11px; color:var(--muted); display:block; margin:8px 0 3px; }
@@ -3508,6 +3529,57 @@ function adminPanelHtml(key, sellers) {
             msg.textContent = "Connected! Reloading...";
             msg.className = "connect-msg ok";
             setTimeout(function () { location.reload(); }, 800);
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "connect-msg error";
+          }
+        }
+        async function toggleSuspend(id, suspend) {
+          const msg = document.getElementById("action-msg-" + id);
+          msg.textContent = "";
+          msg.className = "connect-msg";
+          try {
+            const res = await fetch("/api/admin/suspend-seller?key=${encodeURIComponent(key)}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sellerId: id, suspended: suspend }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Failed to update.";
+              msg.className = "connect-msg error";
+              return;
+            }
+            msg.textContent = suspend ? "Suspended. Reloading..." : "Resumed. Reloading...";
+            msg.className = "connect-msg ok";
+            setTimeout(function () { location.reload(); }, 600);
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "connect-msg error";
+          }
+        }
+        async function deleteSeller(id, businessName) {
+          if (!confirm("Permanently delete \\"" + businessName + "\\"? This removes their account and every conversation, customer, and booking/catalog record. This can't be undone.")) {
+            return;
+          }
+          const msg = document.getElementById("action-msg-" + id);
+          msg.textContent = "Deleting...";
+          msg.className = "connect-msg";
+          try {
+            const res = await fetch("/api/admin/delete-seller?key=${encodeURIComponent(key)}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sellerId: id }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Failed to delete.";
+              msg.className = "connect-msg error";
+              return;
+            }
+            msg.textContent = "Deleted. Reloading...";
+            msg.className = "connect-msg ok";
+            setTimeout(function () { location.reload(); }, 600);
           } catch (err) {
             msg.textContent = "Network error, please try again.";
             msg.className = "connect-msg error";
@@ -5478,6 +5550,7 @@ app.get("/api/admin/sellers", async (req, res) => {
         businessName: s.businessName,
         email: s.email,
         status: s.status,
+        suspended: s.suspended === "1",
         phoneNumberId: s.phoneNumberId || null,
         createdAt: s.createdAt,
       })),
@@ -5485,6 +5558,98 @@ app.get("/api/admin/sellers", async (req, res) => {
   } catch (err) {
     console.error("api/admin/sellers failed:", err.message);
     res.status(500).json({ error: "failed to list sellers" });
+  }
+});
+
+// A soft, reversible hold: flips a seller's `suspended` flag without
+// touching anything else about them. While suspended, the webhook (see the
+// check right after resolving `seller` in the /webhook handler) drops every
+// incoming message for that seller's number without replying -- Amara goes
+// silent for their customers, but every catalog/offering/booking/customer
+// record stays exactly as it was, so un-suspending picks back up instantly.
+// Meant for "pause this test/live seller for a bit" -- for actually removing
+// a seller and its data, see /api/admin/delete-seller below.
+app.post("/api/admin/suspend-seller", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const sellerId = String(req.body?.sellerId || "").trim();
+  const suspended = !!req.body?.suspended;
+  if (!sellerId) return res.status(400).json({ error: "sellerId is required." });
+  if (sellerId === SELLER1_ID) {
+    return res.status(400).json({ error: "seller1 (your own shop) can't be suspended from here." });
+  }
+  const seller = await getSellerById(sellerId);
+  if (!seller) return res.status(404).json({ error: "No seller with that sellerId." });
+
+  try {
+    await redisCommand(["HSET", `seller:${sellerId}`, "suspended", suspended ? "1" : "0"]);
+    invalidateSellerContextCache(sellerId);
+    console.log(`Seller ${sellerId} (${seller.businessName}) ${suspended ? "suspended" : "resumed"} by admin.`);
+    res.json({ ok: true, suspended });
+  } catch (err) {
+    console.error("suspend-seller failed:", err.message);
+    res.status(500).json({ error: "Failed to save. Please try again." });
+  }
+});
+
+// Permanent, irreversible removal of a seller and every piece of data that
+// belongs only to them: their seller record, every namespaced Redis key
+// (catalog/offerings/availability/bookings/conversations/customers/photos
+// sent/analytics -- anything ever written under the `s:<sellerId>:` prefix
+// nsKey() gives non-seller1 sellers), and the email index that would
+// otherwise block re-signing-up with the same address. seller1 (the real
+// KP Collections shop) can never be deleted through this route -- there's
+// no path in this codebase that even computes an `s:<sellerId>:` prefix for
+// it, since nsKey() special-cases seller1 to the original unprefixed keys,
+// so this guard is what keeps a fat-fingered sellerId from ever reaching
+// that code.
+app.post("/api/admin/delete-seller", async (req, res) => {
+  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+  const sellerId = String(req.body?.sellerId || "").trim();
+  if (!sellerId) return res.status(400).json({ error: "sellerId is required." });
+  if (sellerId === SELLER1_ID) {
+    return res.status(400).json({ error: "seller1 (your own shop) can't be deleted." });
+  }
+  const seller = await getSellerById(sellerId);
+  if (!seller) return res.status(404).json({ error: "No seller with that sellerId." });
+
+  try {
+    // Scan out and delete every key namespaced to this seller, in batches --
+    // could be dozens of keys (catalog, offerings, availability, blocked
+    // dates, bookings, every customer's conversation history and profile,
+    // photo-sent tracking, analytics), so SCAN+DEL rather than assuming a
+    // fixed list.
+    const prefix = `s:${sellerId}:`;
+    let cursor = "0";
+    let deletedKeys = 0;
+    do {
+      const result = await redisCommand(["SCAN", cursor, "MATCH", `${prefix}*`, "COUNT", "200"]);
+      cursor = result?.[0] || "0";
+      const keys = result?.[1] || [];
+      if (keys.length > 0) {
+        await redisCommand(["DEL", ...keys]);
+        deletedKeys += keys.length;
+      }
+    } while (cursor !== "0");
+
+    await redisCommand(["DEL", `seller:${sellerId}`]);
+    await redisCommand(["SREM", "all_sellers", sellerId]);
+    if (seller.email) await redisCommand(["DEL", `seller_by_email:${seller.email.toLowerCase()}`]);
+
+    // Clean up every in-memory trace too, so nothing about this seller can
+    // linger in this running process until a restart.
+    delete sellerCatalogs[sellerId];
+    invalidateSellerContextCache(sellerId);
+    if (seller.phoneNumberId) delete phoneNumberIdToSellerId[seller.phoneNumberId];
+
+    console.log(`Seller ${sellerId} (${seller.businessName}) permanently deleted by admin -- ${deletedKeys} namespaced keys removed.`);
+    res.json({ ok: true, deletedKeys });
+  } catch (err) {
+    console.error("delete-seller failed:", err.message);
+    res.status(500).json({ error: "Failed to delete. Please try again." });
   }
 });
 
