@@ -105,6 +105,59 @@ const DEFAULT_DELIVERY_FEES = {
   outside: 3500,
 };
 
+// ---------- NIGERIA-WIDE DELIVERY (state-level coverage) ----------
+// The canonical list of Nigerian states (36) + the FCT, used to (a) drive
+// the "add a state" dropdown on the dashboard's Delivery fees card and
+// (b) validate any slug a seller tries to save, so a stored delivery zone
+// can never be something Amara can't actually reason about. Slugs are
+// deliberately plain lowercase words with no spaces or hyphens -- they
+// double as the "zone" code inside the AI's [PAY: key, zone] tag (see
+// extractPaymentTag), and that tag is parsed with a \w+ regex, so a slug
+// with a space or hyphen in it would silently fail to match. "outside" is
+// reserved separately (never a real state) as the zone code for the
+// fallback/default fee below, exactly like the old two-tier model.
+const NIGERIA_STATES = [
+  { slug: "abia", name: "Abia" },
+  { slug: "adamawa", name: "Adamawa" },
+  { slug: "akwaibom", name: "Akwa Ibom" },
+  { slug: "anambra", name: "Anambra" },
+  { slug: "bauchi", name: "Bauchi" },
+  { slug: "bayelsa", name: "Bayelsa" },
+  { slug: "benue", name: "Benue" },
+  { slug: "borno", name: "Borno" },
+  { slug: "crossriver", name: "Cross River" },
+  { slug: "delta", name: "Delta" },
+  { slug: "ebonyi", name: "Ebonyi" },
+  { slug: "edo", name: "Edo" },
+  { slug: "ekiti", name: "Ekiti" },
+  { slug: "enugu", name: "Enugu" },
+  { slug: "fct", name: "FCT (Abuja)" },
+  { slug: "gombe", name: "Gombe" },
+  { slug: "imo", name: "Imo" },
+  { slug: "jigawa", name: "Jigawa" },
+  { slug: "kaduna", name: "Kaduna" },
+  { slug: "kano", name: "Kano" },
+  { slug: "katsina", name: "Katsina" },
+  { slug: "kebbi", name: "Kebbi" },
+  { slug: "kogi", name: "Kogi" },
+  { slug: "kwara", name: "Kwara" },
+  { slug: "lagos", name: "Lagos" },
+  { slug: "nasarawa", name: "Nasarawa" },
+  { slug: "niger", name: "Niger" },
+  { slug: "ogun", name: "Ogun" },
+  { slug: "ondo", name: "Ondo" },
+  { slug: "osun", name: "Osun" },
+  { slug: "oyo", name: "Oyo" },
+  { slug: "plateau", name: "Plateau" },
+  { slug: "rivers", name: "Rivers" },
+  { slug: "sokoto", name: "Sokoto" },
+  { slug: "taraba", name: "Taraba" },
+  { slug: "yobe", name: "Yobe" },
+  { slug: "zamfara", name: "Zamfara" },
+];
+const NIGERIA_STATE_NAMES = Object.fromEntries(NIGERIA_STATES.map((s) => [s.slug, s.name]));
+const VALID_STATE_SLUGS = new Set(NIGERIA_STATES.map((s) => s.slug));
+
 // Bank transfer details, offered as a fallback alongside the Paystack
 // payment link (see buildShopProfile's RULES section). Owner-editable
 // from the dashboard's Catalog tab, same live-update + Redis-persist
@@ -149,8 +202,21 @@ function ensureCatalogEntry(sellerId) {
       PRODUCT_NAMES: {},
       PRODUCT_IMAGES: {},
       PRODUCT_DESCRIPTIONS: {},
-      DELIVERY_FEES: { lagos: 0, outside: 0 },
+      // Per-state delivery fees. Only states a seller explicitly added
+      // show up here (that's what "which states do you deliver to" means
+      // in practice), keyed by the slugs in NIGERIA_STATES above.
+      // DELIVERY_DEFAULT_FEE is an optional catch-all price for any
+      // Nigerian state NOT explicitly listed -- null means "we don't
+      // deliver anywhere else yet," matching the old behavior before a
+      // seller had opted into a fallback.
+      DELIVERY_STATES: {},
+      DELIVERY_DEFAULT_FEE: null,
       BANK_DETAILS: { bankName: "", accountNumber: "", accountName: "" },
+      // Optional second account -- e.g. a different bank, or a second
+      // person's account, offered as an alternative to the primary one.
+      // Stays empty (bankName: "") until a seller explicitly adds it from
+      // the dashboard; Amara only ever mentions it if it's actually set.
+      BANK_DETAILS_2: { bankName: "", accountNumber: "", accountName: "" },
     };
   }
   return sellerCatalogs[sellerId];
@@ -424,10 +490,25 @@ async function loadCatalogFromRedis(sellerId) {
     const rawFees = await redisCommand(["GET", nsKey(sellerId, "catalog:delivery_fees")]);
     if (rawFees) {
       const fees = JSON.parse(rawFees);
-      if (typeof fees.lagos === "number") catalog.DELIVERY_FEES.lagos = fees.lagos;
-      if (typeof fees.outside === "number") catalog.DELIVERY_FEES.outside = fees.outside;
+      if (fees.states && typeof fees.states === "object") {
+        // Current shape: per-state fees + an optional default fallback.
+        for (const [slug, fee] of Object.entries(fees.states)) {
+          if (VALID_STATE_SLUGS.has(slug) && typeof fee === "number") catalog.DELIVERY_STATES[slug] = fee;
+        }
+        catalog.DELIVERY_DEFAULT_FEE = typeof fees.defaultFee === "number" ? fees.defaultFee : null;
+      } else if (typeof fees.lagos === "number") {
+        // One-time migration from the old two-tier {lagos, outside} shape
+        // (pre Nigeria-wide delivery). Preserves whatever the seller had
+        // actually set, just reinterpreted as "Lagos" + a default fee for
+        // everywhere else, then saved back in the new shape so this branch
+        // only ever runs once per seller.
+        catalog.DELIVERY_STATES.lagos = fees.lagos;
+        catalog.DELIVERY_DEFAULT_FEE = typeof fees.outside === "number" ? fees.outside : null;
+        await saveDeliveryFeesToRedis(sellerId);
+      }
     } else if (sellerId === SELLER1_ID) {
-      Object.assign(catalog.DELIVERY_FEES, DEFAULT_DELIVERY_FEES);
+      catalog.DELIVERY_STATES.lagos = DEFAULT_DELIVERY_FEES.lagos;
+      catalog.DELIVERY_DEFAULT_FEE = DEFAULT_DELIVERY_FEES.outside;
       await saveDeliveryFeesToRedis(sellerId);
     }
 
@@ -441,6 +522,16 @@ async function loadCatalogFromRedis(sellerId) {
       Object.assign(catalog.BANK_DETAILS, DEFAULT_BANK_DETAILS);
       await saveBankDetailsToRedis(sellerId);
     }
+
+    const rawBankDetails2 = await redisCommand(["GET", nsKey(sellerId, "shop:bank_details_2")]);
+    if (rawBankDetails2) {
+      const bd2 = JSON.parse(rawBankDetails2);
+      catalog.BANK_DETAILS_2.bankName = bd2.bankName || "";
+      catalog.BANK_DETAILS_2.accountNumber = bd2.accountNumber || "";
+      catalog.BANK_DETAILS_2.accountName = bd2.accountName || "";
+    }
+    // No seller1 default seeding here -- a second account only ever exists
+    // once a seller explicitly adds one from the dashboard.
   } catch (err) {
     // If Redis is unreachable, keep running on whatever's already in
     // memory (the demo catalog for seller1, or empty for a new seller)
@@ -469,7 +560,11 @@ async function saveCatalogToRedis(sellerId) {
 
 async function saveDeliveryFeesToRedis(sellerId) {
   const catalog = ensureCatalogEntry(sellerId);
-  await redisCommand(["SET", nsKey(sellerId, "catalog:delivery_fees"), JSON.stringify(catalog.DELIVERY_FEES)]);
+  await redisCommand([
+    "SET",
+    nsKey(sellerId, "catalog:delivery_fees"),
+    JSON.stringify({ states: catalog.DELIVERY_STATES, defaultFee: catalog.DELIVERY_DEFAULT_FEE }),
+  ]);
 }
 
 async function saveBankDetailsToRedis(sellerId) {
@@ -477,11 +572,16 @@ async function saveBankDetailsToRedis(sellerId) {
   await redisCommand(["SET", nsKey(sellerId, "shop:bank_details"), JSON.stringify(catalog.BANK_DETAILS)]);
 }
 
+async function saveBankDetails2ToRedis(sellerId) {
+  const catalog = ensureCatalogEntry(sellerId);
+  await redisCommand(["SET", nsKey(sellerId, "shop:bank_details_2"), JSON.stringify(catalog.BANK_DETAILS_2)]);
+}
+
 // ---------- THE DEMO SHOP (later this comes from a real seller) ----------
 // This used to be one static template literal with the catalog and
 // delivery fees typed directly into the prompt text. Now that both are
 // editable live from the dashboard's Catalog tab (see PRODUCT_PRICES,
-// PRODUCT_NAMES, DELIVERY_FEES above), the prompt has to be rebuilt fresh
+// PRODUCT_NAMES, DELIVERY_STATES above), the prompt has to be rebuilt fresh
 // from whatever the current catalog actually is every time Amara replies
 // — otherwise an owner could correct a price on the dashboard and Amara
 // would keep quoting the old one from a stale, baked-in copy. Everything
@@ -508,6 +608,20 @@ function buildShopProfile(seller) {
       return description ? `${line}\n   Details: ${description}` : line;
     })
     .join("\n");
+
+  // Delivery fees, state by state. Only states the seller actually added
+  // are listed by name; DELIVERY_DEFAULT_FEE (zone code "outside") is the
+  // optional fallback price for any other Nigerian state -- if it isn't
+  // set, Amara is told plainly not to invent a price for a state that
+  // isn't listed.
+  const stateFeeLines = Object.entries(catalog.DELIVERY_STATES)
+    .map(([slug, fee]) => ({ slug, fee, name: NIGERIA_STATE_NAMES[slug] || slug }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((s) => `${s.name} (zone: ${s.slug}) — N${s.fee.toLocaleString()}`)
+    .join(", ");
+  const deliveryLine = typeof catalog.DELIVERY_DEFAULT_FEE === "number"
+    ? `${stateFeeLines || "no state-specific prices set yet"}. Any other Nigerian state not listed above (zone: outside) — N${catalog.DELIVERY_DEFAULT_FEE.toLocaleString()}.`
+    : `${stateFeeLines || "no delivery prices set yet"}. We do not currently deliver to any state not listed above -- if a customer is somewhere else, say delivery isn't available there yet and use [ESCALATE: ...] so the owner can decide.`;
 
   return `
 You are "Amara", the sales assistant for ${shopName}, a small Nigerian
@@ -621,11 +735,17 @@ NEGOTIATION AND PRICE INTEGRITY (read this carefully):
 RULES:
 - Quote prices EXACTLY as listed (never change or guess a price), even
   when writing them the casual "18k" way.
-- Delivery: Lagos N${catalog.DELIVERY_FEES.lagos.toLocaleString()} (1-2 days), outside Lagos N${catalog.DELIVERY_FEES.outside.toLocaleString()} (2-4 days).
+- Delivery fees by state: ${deliveryLine} Ask which state the customer is
+  in (not just "Lagos or outside Lagos") and match it to the right zone
+  code above -- never guess or assume Lagos.
 - Payment: the automatic payment link (see SENDING A PAYMENT LINK below)
   is the preferred way, use it once an order is confirmed. If a customer
   specifically asks to pay by direct bank transfer instead, that's fine
-  too: bank transfer to ${catalog.BANK_DETAILS.accountName}, ${catalog.BANK_DETAILS.bankName} ${catalog.BANK_DETAILS.accountNumber}.
+  too: bank transfer to ${catalog.BANK_DETAILS.accountName}, ${catalog.BANK_DETAILS.bankName} ${catalog.BANK_DETAILS.accountNumber}.${
+    catalog.BANK_DETAILS_2 && catalog.BANK_DETAILS_2.bankName
+      ? ` A second account also works if that's easier for them: ${catalog.BANK_DETAILS_2.accountName}, ${catalog.BANK_DETAILS_2.bankName} ${catalog.BANK_DETAILS_2.accountNumber}. Only mention this second option if they ask for an alternative account (e.g. their bank can't send to the first one) -- otherwise just offer the first.`
+      : ""
+  }
   Ask them to send a screenshot after transferring, and say the owner
   will confirm it shortly. Don't bring up bank transfer yourself
   unprompted, only offer it if the customer asks for it.
@@ -636,10 +756,15 @@ RULES:
 
 SENDING A PAYMENT LINK:
 - Once a customer has clearly confirmed they want to buy a specific
-  catalog item AND told you which delivery zone they're in (Lagos, or
-  outside Lagos), add an invisible tag at the very end of your message,
-  on its own, in this exact format: [PAY: key, zone] using the product
-  key from the catalog above and zone as exactly "lagos" or "outside".
+  catalog item AND told you which Nigerian state they're in, add an
+  invisible tag at the very end of your message, on its own, in this
+  exact format: [PAY: key, zone] using the product key from the catalog
+  above and zone as the exact zone code shown next to their state in the
+  delivery fees list (e.g. "lagos", "ogun", "fct"). If their state isn't
+  individually listed but a fallback price was given, use "outside" as
+  the zone. If their state isn't listed AND no fallback price was given,
+  do not send a payment link at all -- delivery isn't available there,
+  say so and escalate instead.
   This tag is invisible to the customer, it
   triggers a real, correct payment link to be generated and sent right
   after your message, so never mention the tag itself or explain it.
@@ -653,8 +778,8 @@ SENDING A PAYMENT LINK:
 - Only add this tag once the order is genuinely confirmed, not while the
   customer is still deciding, asking questions, or negotiating. Only one
   [PAY: key, zone] tag per message, and only for products in the catalog.
-- If the customer hasn't told you their delivery zone yet, ask first
-  instead of guessing or assuming Lagos. Never invent a zone.
+- If the customer hasn't told you their state yet, ask first instead of
+  guessing or assuming Lagos. Never invent a zone.
 
 ALERTING THE OWNER:
 - Whenever you tell a customer the owner will reply shortly, also alert
@@ -1657,18 +1782,23 @@ async function processBufferedTurn(seller, from) {
     // If she flagged a confirmed order, generate the real payment link.
     //
     // HARD BACKSTOP for money: the actual amount charged is ALWAYS
-    // computed here from PRODUCT_PRICES + DELIVERY_FEES, never from
-    // anything the AI said in its own reply. Same "code is the real
-    // guarantee, the prompt is just a nudge" principle as everywhere
-    // else in this file, just applied to the one place a slip actually
-    // costs real naira.
+    // computed here from PRODUCT_PRICES + DELIVERY_STATES (or the
+    // DELIVERY_DEFAULT_FEE fallback for "outside"), never from anything
+    // the AI said in its own reply. Same "code is the real guarantee, the
+    // prompt is just a nudge" principle as everywhere else in this file,
+    // just applied to the one place a slip actually costs real naira.
     if (paymentKey && paymentZone) {
       const productPrice = seller.catalog.PRODUCT_PRICES[paymentKey];
-      const deliveryFee = seller.catalog.DELIVERY_FEES[paymentZone];
+      const deliveryFee =
+        paymentZone in seller.catalog.DELIVERY_STATES
+          ? seller.catalog.DELIVERY_STATES[paymentZone]
+          : paymentZone === "outside"
+            ? seller.catalog.DELIVERY_DEFAULT_FEE
+            : undefined;
 
       if (!PAYSTACK_SECRET_KEY) {
         console.error("Payment tag fired but PAYSTACK_SECRET_KEY isn't set, no link sent.");
-      } else if (productPrice === undefined || deliveryFee === undefined) {
+      } else if (productPrice === undefined || deliveryFee === undefined || deliveryFee === null) {
         console.error(
           `Payment tag had an unrecognized key/zone (${paymentKey}/${paymentZone}), no link sent.`
         );
@@ -3128,16 +3258,33 @@ function dashboardHtml(key, sellerId, businessName) {
         </div>
         <div class="catalog-card">
           <h2>Delivery fees</h2>
+          <div style="font-size:12px;color:#64748b;margin-bottom:12px;">
+            Add the Nigerian states you actually deliver to, each with its own fee. Customers
+            outside those states can still be covered by a fallback fee below, or left
+            unavailable if you're not ready to ship there yet.
+          </div>
+          <table class="catalog-table" style="margin-bottom:14px;">
+            <thead><tr><th>State</th><th>Fee (N)</th><th></th></tr></thead>
+            <tbody id="deliveryStatesTableBody"></tbody>
+          </table>
           <div class="fees-row">
             <div>
-              <label>Lagos (N)</label>
-              <input id="feeLagos" type="number" min="0">
+              <label>Add a state</label>
+              <select id="stateSelect"></select>
             </div>
             <div>
-              <label>Outside Lagos (N)</label>
-              <input id="feeOutside" type="number" min="0">
+              <label>Fee (N)</label>
+              <input id="stateFee" type="number" min="0" placeholder="2000">
             </div>
-            <button class="catalog-btn" onclick="saveDeliveryFees()">Save fees</button>
+            <button class="catalog-btn" onclick="addDeliveryState()">Add state</button>
+          </div>
+          <div class="catalog-msg" id="stateMsg"></div>
+          <div class="fees-row" style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px;">
+            <div>
+              <label>Fallback fee for any other state (N)</label>
+              <input id="feeDefault" type="number" min="0" placeholder="Leave blank = don't deliver there yet">
+            </div>
+            <button class="catalog-btn" onclick="saveDeliveryDefaultFee()">Save fallback fee</button>
           </div>
           <div class="catalog-msg" id="feesMsg"></div>
         </div>
@@ -3160,6 +3307,30 @@ function dashboardHtml(key, sellerId, businessName) {
             <button class="catalog-btn" onclick="saveBankDetails()">Save</button>
           </div>
           <div class="catalog-msg" id="bankMsg"></div>
+
+          <div id="bank2Toggle" style="margin-top:14px;">
+            <button class="catalog-btn small" style="background:transparent;color:#4f46e5;padding:4px 0;" onclick="showBank2Form()">+ Add a second account</button>
+          </div>
+          <div id="bank2Form" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
+            <div style="font-size:12px;color:#64748b;margin-bottom:10px;">A second option, in case a customer's bank can't send to the first account. Amara only mentions this one if asked for an alternative.</div>
+            <div class="fees-row">
+              <div>
+                <label>Bank name</label>
+                <input id="bank2Name" placeholder="e.g. Kuda">
+              </div>
+              <div>
+                <label>Account number</label>
+                <input id="bank2AccountNumber" placeholder="0123456789">
+              </div>
+              <div>
+                <label>Account name</label>
+                <input id="bank2AccountName" placeholder="e.g. KP Collections">
+              </div>
+              <button class="catalog-btn" onclick="saveBankDetails2()">Save</button>
+            </div>
+            <button class="catalog-btn small" style="background:transparent;color:#dc2626;padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
+            <div class="catalog-msg" id="bank2Msg"></div>
+          </div>
         </div>
       </div>
       <div class="catalog-view" id="analyticsView" style="display:none;">
@@ -3454,13 +3625,23 @@ function dashboardHtml(key, sellerId, businessName) {
             const res = await fetch("/api/catalog?" + ADMIN_QS);
             const data = await res.json();
             if (data.error) return;
-            renderCatalog(data.products, data.deliveryFees, data.bankDetails);
+            window.nigeriaStates = data.nigeriaStates || [];
+            populateStateSelect();
+            renderCatalog(data.products, data.deliveryStates, data.deliveryDefaultFee, data.bankDetails, data.bankDetails2);
           } catch (err) {
             console.error("catalog load failed", err);
           }
         }
 
-        function renderCatalog(products, deliveryFees, bankDetails) {
+        function populateStateSelect() {
+          const select = document.getElementById("stateSelect");
+          if (!select || select.options.length > 0) return;
+          select.innerHTML = (window.nigeriaStates || [])
+            .map((s) => '<option value="' + escapeHtml(s.slug) + '">' + escapeHtml(s.name) + '</option>')
+            .join("");
+        }
+
+        function renderCatalog(products, deliveryStates, deliveryDefaultFee, bankDetails, bankDetails2) {
           const body = document.getElementById("catalogTableBody");
           const keys = Object.keys(products);
           body.innerHTML = keys.length > 0
@@ -3482,14 +3663,86 @@ function dashboardHtml(key, sellerId, businessName) {
               }).join("")
             : '<tr><td colspan="5" style="color:#94a3b8;">No products yet.</td></tr>';
           window.catalogCache = products;
+          window.deliveryStatesCache = deliveryStates || {};
 
-          document.getElementById("feeLagos").value = deliveryFees.lagos;
-          document.getElementById("feeOutside").value = deliveryFees.outside;
+          renderDeliveryStates(window.deliveryStatesCache);
+          document.getElementById("feeDefault").value =
+            deliveryDefaultFee === null || deliveryDefaultFee === undefined ? "" : deliveryDefaultFee;
 
           if (bankDetails) {
             document.getElementById("bankName").value = bankDetails.bankName || "";
             document.getElementById("bankAccountNumber").value = bankDetails.accountNumber || "";
             document.getElementById("bankAccountName").value = bankDetails.accountName || "";
+          }
+
+          if (bankDetails2 && bankDetails2.bankName) {
+            document.getElementById("bank2Name").value = bankDetails2.bankName || "";
+            document.getElementById("bank2AccountNumber").value = bankDetails2.accountNumber || "";
+            document.getElementById("bank2AccountName").value = bankDetails2.accountName || "";
+            document.getElementById("bank2Toggle").style.display = "none";
+            document.getElementById("bank2Form").style.display = "block";
+          } else {
+            document.getElementById("bank2Name").value = "";
+            document.getElementById("bank2AccountNumber").value = "";
+            document.getElementById("bank2AccountName").value = "";
+            document.getElementById("bank2Toggle").style.display = "block";
+            document.getElementById("bank2Form").style.display = "none";
+          }
+        }
+
+        function showBank2Form() {
+          document.getElementById("bank2Toggle").style.display = "none";
+          document.getElementById("bank2Form").style.display = "block";
+        }
+
+        async function saveBankDetails2() {
+          const msg = document.getElementById("bank2Msg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const body = {
+            bankName: document.getElementById("bank2Name").value,
+            accountNumber: document.getElementById("bank2AccountNumber").value,
+            accountName: document.getElementById("bank2AccountName").value,
+          };
+          try {
+            const res = await fetch("/api/catalog/bank-details-2?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not save the second account.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            msg.textContent = data.warning || "Saved.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function removeBankDetails2() {
+          if (!confirm("Remove the second bank account? Amara will only offer the first one going forward.")) return;
+          const msg = document.getElementById("bank2Msg");
+          try {
+            const res = await fetch("/api/catalog/bank-details-2?" + ADMIN_QS, { method: "DELETE" });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not remove the second account.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            document.getElementById("bank2Name").value = "";
+            document.getElementById("bank2AccountNumber").value = "";
+            document.getElementById("bank2AccountName").value = "";
+            document.getElementById("bank2Form").style.display = "none";
+            document.getElementById("bank2Toggle").style.display = "block";
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
           }
         }
 
@@ -3589,23 +3842,87 @@ function dashboardHtml(key, sellerId, businessName) {
           }
         }
 
-        async function saveDeliveryFees() {
+        function renderDeliveryStates(deliveryStates) {
+          const body = document.getElementById("deliveryStatesTableBody");
+          const slugs = Object.keys(deliveryStates || {});
+          const nameFor = (slug) => {
+            const found = (window.nigeriaStates || []).find((s) => s.slug === slug);
+            return found ? found.name : slug;
+          };
+          body.innerHTML = slugs.length > 0
+            ? slugs
+                .sort((a, b) => nameFor(a).localeCompare(nameFor(b)))
+                .map((slug) =>
+                  '<tr>' +
+                    '<td>' + escapeHtml(nameFor(slug)) + '</td>' +
+                    '<td>N' + Number(deliveryStates[slug]).toLocaleString() + '</td>' +
+                    '<td><button class="catalog-btn danger" onclick="removeDeliveryState(\\'' + slug + '\\')">Remove</button></td>' +
+                  '</tr>'
+                ).join("")
+            : '<tr><td colspan="3" style="color:#94a3b8;">No states added yet -- Amara won\\'t quote delivery to any state until you add at least one, or set a fallback fee below.</td></tr>';
+        }
+
+        async function addDeliveryState() {
+          const msg = document.getElementById("stateMsg");
+          msg.textContent = "";
+          msg.className = "catalog-msg";
+          const slug = document.getElementById("stateSelect").value;
+          const fee = document.getElementById("stateFee").value;
+          if (!slug) {
+            msg.textContent = "Pick a state first.";
+            msg.className = "catalog-msg error";
+            return;
+          }
+          try {
+            const res = await fetch("/api/catalog/delivery-states?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slug, fee }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+              msg.textContent = data.error || "Could not add that state.";
+              msg.className = "catalog-msg error";
+              return;
+            }
+            document.getElementById("stateFee").value = "";
+            msg.textContent = data.warning || "Added.";
+            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+            loadCatalog();
+          } catch (err) {
+            msg.textContent = "Network error, please try again.";
+            msg.className = "catalog-msg error";
+          }
+        }
+
+        async function removeDeliveryState(slug) {
+          const name = ((window.nigeriaStates || []).find((s) => s.slug === slug) || {}).name || slug;
+          if (!confirm('Stop delivering to ' + name + '? Amara will no longer be able to quote or charge for it, unless a fallback fee covers it.')) return;
+          try {
+            await fetch("/api/catalog/delivery-states/" + encodeURIComponent(slug) + "?" + ADMIN_QS, {
+              method: "DELETE",
+            });
+            loadCatalog();
+          } catch (err) {
+            console.error("remove delivery state failed", err);
+          }
+        }
+
+        async function saveDeliveryDefaultFee() {
           const msg = document.getElementById("feesMsg");
           msg.textContent = "";
           msg.className = "catalog-msg";
-          const body = {
-            lagos: document.getElementById("feeLagos").value,
-            outside: document.getElementById("feeOutside").value,
-          };
+          const raw = document.getElementById("feeDefault").value;
+          const body = { fee: raw === "" ? null : raw };
           try {
-            const res = await fetch("/api/catalog/delivery-fees?" + ADMIN_QS, {
+            const res = await fetch("/api/catalog/delivery-default-fee?" + ADMIN_QS, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save delivery fees.";
+              msg.textContent = data.error || "Could not save the fallback fee.";
               msg.className = "catalog-msg error";
               return;
             }
@@ -3802,7 +4119,7 @@ app.post("/api/note", async (req, res) => {
 // Add, edit and remove products, and change delivery fees, straight from
 // the dashboard instead of needing a code change and a redeploy every
 // time. Every edit here updates the SAME in-memory PRODUCT_PRICES /
-// PRODUCT_NAMES / PRODUCT_IMAGES / DELIVERY_FEES objects that Amara's
+// PRODUCT_NAMES / PRODUCT_IMAGES / DELIVERY_STATES objects that Amara's
 // prompt, the payment hard-backstop, and the photo-sending code all
 // already read from, so a saved change takes effect on the very next
 // customer message, no restart needed, and is also persisted to Redis so
@@ -3820,7 +4137,14 @@ app.get("/api/catalog", async (req, res) => {
       description: seller.catalog.PRODUCT_DESCRIPTIONS[key] || "",
     };
   }
-  res.json({ products, deliveryFees: seller.catalog.DELIVERY_FEES, bankDetails: seller.catalog.BANK_DETAILS });
+  res.json({
+    products,
+    deliveryStates: seller.catalog.DELIVERY_STATES,
+    deliveryDefaultFee: seller.catalog.DELIVERY_DEFAULT_FEE,
+    nigeriaStates: NIGERIA_STATES,
+    bankDetails: seller.catalog.BANK_DETAILS,
+    bankDetails2: seller.catalog.BANK_DETAILS_2 && seller.catalog.BANK_DETAILS_2.bankName ? seller.catalog.BANK_DETAILS_2 : null,
+  });
 });
 
 app.post("/api/catalog/bank-details", async (req, res) => {
@@ -3855,6 +4179,57 @@ app.post("/api/catalog/bank-details", async (req, res) => {
       warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
     });
   }
+});
+
+// ---------- Second bank account (optional) ----------
+// Same shape and validation as the primary account above, just stored and
+// offered as an alternative -- e.g. a different bank, in case a customer's
+// bank can't send to the first one. Amara only ever mentions this one if
+// it's actually been added (see buildShopProfile).
+app.post("/api/catalog/bank-details-2", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const bankName = String(req.body?.bankName || "").trim();
+  const accountNumber = String(req.body?.accountNumber || "").trim();
+  const accountName = String(req.body?.accountName || "").trim();
+
+  if (!bankName || !accountNumber || !accountName) {
+    return res.status(400).json({ error: "Bank name, account number, and account name are all required." });
+  }
+  if (!/^\d{6,20}$/.test(accountNumber)) {
+    return res.status(400).json({ error: "Account number should be digits only (6-20 of them)." });
+  }
+
+  seller.catalog.BANK_DETAILS_2.bankName = bankName;
+  seller.catalog.BANK_DETAILS_2.accountNumber = accountNumber;
+  seller.catalog.BANK_DETAILS_2.accountName = accountName;
+  console.log(`Catalog: second bank account added/updated from the dashboard (${bankName}, ${accountName}) for ${seller.sellerId}.`);
+
+  try {
+    await saveBankDetails2ToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/catalog/bank-details-2: live update succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
+    });
+  }
+});
+
+app.delete("/api/catalog/bank-details-2", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  seller.catalog.BANK_DETAILS_2.bankName = "";
+  seller.catalog.BANK_DETAILS_2.accountNumber = "";
+  seller.catalog.BANK_DETAILS_2.accountName = "";
+  console.log(`Catalog: second bank account removed from the dashboard for ${seller.sellerId}.`);
+  try {
+    await redisCommand(["DEL", nsKey(seller.sellerId, "shop:bank_details_2")]);
+  } catch (err) {
+    console.error("api/catalog/bank-details-2 delete: cleanup failed (non-fatal):", err.message);
+  }
+  res.json({ ok: true });
 });
 
 app.post("/api/catalog/product", (req, res, next) => {
@@ -3982,23 +4357,76 @@ app.delete("/api/catalog/product/:key", async (req, res) => {
   }
 });
 
-app.post("/api/catalog/delivery-fees", async (req, res) => {
+// Nigeria-wide delivery: a seller adds one state at a time (with its own
+// fee), removes one, or sets/clears the optional fallback fee for every
+// other state. Same live-update-then-persist-to-Redis pattern, and the
+// same money-matters validation discipline, as every other catalog route.
+
+app.post("/api/catalog/delivery-states", async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
-  const lagos = Number(req.body?.lagos);
-  const outside = Number(req.body?.outside);
-  if (!Number.isFinite(lagos) || lagos < 0 || !Number.isFinite(outside) || outside < 0) {
-    return res.status(400).json({ error: "Both delivery fees must be numbers, 0 or higher." });
+  const slug = String(req.body?.slug || "").trim().toLowerCase();
+  const fee = Number(req.body?.fee);
+  if (!VALID_STATE_SLUGS.has(slug)) {
+    return res.status(400).json({ error: "That's not a recognized Nigerian state." });
   }
-  seller.catalog.DELIVERY_FEES.lagos = lagos;
-  seller.catalog.DELIVERY_FEES.outside = outside;
-  console.log(`Catalog: delivery fees updated from the dashboard (lagos=${lagos}, outside=${outside}) for ${seller.sellerId}.`);
+  if (!Number.isFinite(fee) || fee < 0) {
+    return res.status(400).json({ error: "Delivery fee must be a number, 0 or higher." });
+  }
+  seller.catalog.DELIVERY_STATES[slug] = fee;
+  console.log(`Catalog: delivery fee for ${slug} set to ${fee} from the dashboard for ${seller.sellerId}.`);
 
   try {
     await saveDeliveryFeesToRedis(seller.sellerId);
     res.json({ ok: true });
   } catch (err) {
-    console.error("api/catalog/delivery-fees: live update succeeded but Redis persistence failed:", err.message);
+    console.error("api/catalog/delivery-states: live update succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
+    });
+  }
+});
+
+app.delete("/api/catalog/delivery-states/:slug", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const slug = String(req.params.slug || "").trim().toLowerCase();
+  delete seller.catalog.DELIVERY_STATES[slug];
+  console.log(`Catalog: delivery to ${slug} removed from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveDeliveryFeesToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/catalog/delivery-states delete: live update succeeded but Redis persistence failed:", err.message);
+    res.json({
+      ok: true,
+      warning: "Removed and live now, but couldn't persist to storage -- it may come back if the server restarts before you try again.",
+    });
+  }
+});
+
+app.post("/api/catalog/delivery-default-fee", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const raw = req.body?.fee;
+  if (raw === null || raw === undefined || raw === "") {
+    seller.catalog.DELIVERY_DEFAULT_FEE = null;
+  } else {
+    const fee = Number(raw);
+    if (!Number.isFinite(fee) || fee < 0) {
+      return res.status(400).json({ error: "Fallback fee must be a number, 0 or higher (or left blank)." });
+    }
+    seller.catalog.DELIVERY_DEFAULT_FEE = fee;
+  }
+  console.log(`Catalog: fallback delivery fee set to ${seller.catalog.DELIVERY_DEFAULT_FEE} from the dashboard for ${seller.sellerId}.`);
+
+  try {
+    await saveDeliveryFeesToRedis(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("api/catalog/delivery-default-fee: live update succeeded but Redis persistence failed:", err.message);
     res.json({
       ok: true,
       warning: "Saved and live now, but couldn't persist to storage -- it may revert if the server restarts before you try saving again.",
