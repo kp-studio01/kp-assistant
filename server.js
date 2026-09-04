@@ -3515,6 +3515,26 @@ function dashboardHtml(key, sellerId, businessName) {
           const msg = document.getElementById("catalogMsg");
           msg.textContent = "";
           msg.className = "catalog-msg";
+
+          const keyValue = document.getElementById("pKey").value.trim().toLowerCase();
+          const photoFile = document.getElementById("pPhotoFile").files[0];
+          const imageUrlValue = document.getElementById("pImageUrl").value.trim();
+          const existing = (window.catalogCache || {})[keyValue];
+
+          // Safety net: editing an EXISTING product's photo goes live to real
+          // customers on WhatsApp the instant you hit Save -- there's no
+          // staging environment to catch a wrong file or a leftover key
+          // first. A brand new product has no live photo yet, so it needs
+          // no extra confirmation; only replacing one that's already live
+          // does.
+          if (existing && (photoFile || imageUrlValue)) {
+            const confirmed = confirm(
+              'Replace the LIVE photo for "' + existing.name + '" (N' + Number(existing.price).toLocaleString() + ')? ' +
+              "Customers messaging Amara on WhatsApp right now may already be seeing the current photo, and this takes effect immediately."
+            );
+            if (!confirmed) return;
+          }
+
           // FormData (not JSON) here, since a photo file might be attached
           // -- the browser sets the multipart boundary itself, so no
           // Content-Type header is set manually below.
@@ -3524,7 +3544,6 @@ function dashboardHtml(key, sellerId, businessName) {
           formData.append("price", document.getElementById("pPrice").value);
           formData.append("description", document.getElementById("pDescription").value);
           formData.append("imageUrl", document.getElementById("pImageUrl").value);
-          const photoFile = document.getElementById("pPhotoFile").files[0];
           if (photoFile) formData.append("photo", photoFile);
           try {
             const res = await fetch("/api/catalog/product?" + ADMIN_QS, {
