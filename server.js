@@ -2001,8 +2001,8 @@ async function processBufferedTurn(seller, from) {
         const slotsNote = !offering
           ? `The [AVAILABILITY] tag referenced an unrecognized service key ("${availabilityKey}"). Only use keys from the services list above.`
           : slots.length > 0
-            ? `Real availability check for "${offering.name}" on ${availabilityDate}: ${slots.join(", ")}. Write your reply to the customer now, using ONLY these real times if you mention any specific time.`
-            : `Real availability check for "${offering.name}" on ${availabilityDate}: nothing is open that day. Tell the customer plainly and offer to check a different day.`;
+            ? `Real availability check for "${offering.name}" on ${availabilityDate}: ${slots.join(", ")}. Whatever you said right before the [AVAILABILITY] tag (e.g. "let me check") has ALREADY been sent to the customer as its own message -- do not repeat that or any similar "checking now" phrase here, go straight into telling them the real times, using ONLY these real times if you mention any specific time.`
+            : `Real availability check for "${offering.name}" on ${availabilityDate}: nothing is open that day. Whatever you said right before the [AVAILABILITY] tag (e.g. "let me check") has ALREADY been sent to the customer as its own message -- do not repeat that or any similar "checking now" phrase here, tell them plainly that nothing's open that day and offer to check a different day.`;
         const followUpReply = await askAI(seller, history, slotsNote);
         rawReply = availStripped ? `${availStripped} ||| ${followUpReply}` : followUpReply;
         console.log(`Bookable: resolved [AVAILABILITY: ${availabilityKey}, ${availabilityDate}] -> ${slots.length} real slot(s) for ${seller.sellerId}.`);
