@@ -2395,6 +2395,49 @@ app.get("/subscribe", async (req, res) => {
 // Visit /customers?key=YOUR_ADMIN_KEY in any browser to see every customer
 // Amara has ever talked to, in one place. Kept around as a plain,
 // zero-JS fallback view of the same data the dashboard below uses.
+// ---------- Shared visual identity (brand mark + color tokens) ----------
+// Every HTML page below grew its own inline colors as it was built, so the
+// product read as five slightly different pages instead of one thing. These
+// two shared pieces fix that everywhere at once: BRAND_TOKENS_CSS is a set
+// of CSS custom properties every page's <style> block starts with, and
+// brandMark() is the one small logo lockup every header uses instead of
+// plain "Stafly.AI" text. --navy stays the structural color (headers, body
+// text, secondary buttons, the AI's own chat bubbles) so it keeps meaning
+// "Stafly.AI itself"; --accent is the single color introduced for primary,
+// clickable actions (buttons, active tabs, links, chart bars) so those
+// stand out from the chrome around them instead of everything being the
+// same dark navy.
+const BRAND_TOKENS_CSS = `
+  :root {
+    --navy: #1e293b;
+    --accent: #4f46e5;
+    --accent-dark: #4338ca;
+    --accent-light: #eef2ff;
+    --bg: #f8fafc;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --muted: #64748b;
+    --text: #1e293b;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --success: #15803d;
+    --success-bg: #dcfce7;
+    --warning: #b45309;
+    --warning-bg: #fef3c7;
+  }
+`;
+
+function brandMark({ dark = false, size = "normal" } = {}) {
+  const textColor = dark ? "#fff" : "var(--navy)";
+  const fontSize = size === "small" ? "13px" : "16px";
+  return (
+    `<span style="display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:${fontSize};color:${textColor};">` +
+    `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--accent);color:#fff;font-size:13px;flex-shrink:0;">S</span>` +
+    `Stafly<span style="color:${dark ? "#a5b4fc" : "var(--accent)"};">.AI</span>` +
+    `</span>`
+  );
+}
+
 // ---------- SELLER SIGNUP / LOGIN PAGES ----------
 function authPageHtml({ title, heading, formHtml, error }) {
   return `
@@ -2403,22 +2446,25 @@ function authPageHtml({ title, heading, formHtml, error }) {
       <title>${title} — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:#f8fafc; color:#1e293b; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        ${BRAND_TOKENS_CSS}
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh; }
         .auth-card { background:white; padding:32px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); width:100%; max-width:360px; }
+        .auth-card .brand-row { margin-bottom:20px; }
         .auth-card h1 { font-size:18px; margin:0 0 4px; }
-        .auth-card .brand { font-size:12px; color:#64748b; margin-bottom:20px; }
-        .auth-card label { font-size:12px; color:#64748b; display:block; margin:14px 0 4px; }
+        .auth-card label { font-size:12px; color:var(--muted); display:block; margin:14px 0 4px; }
         .auth-card input { width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; box-sizing:border-box; }
-        .auth-card button { width:100%; margin-top:20px; padding:10px; background:#1e293b; color:white; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; }
-        .auth-error { background:#fef2f2; color:#dc2626; padding:8px 10px; border-radius:6px; font-size:13px; margin-top:14px; }
-        .auth-footer { text-align:center; font-size:13px; color:#64748b; margin-top:16px; }
-        .auth-footer a { color:#1e293b; font-weight:600; text-decoration:none; }
+        .auth-card input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light); }
+        .auth-card button { width:100%; margin-top:20px; padding:10px; background:var(--accent); color:white; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; }
+        .auth-card button:hover { background:var(--accent-dark); }
+        .auth-error { background:var(--danger-bg); color:var(--danger); padding:8px 10px; border-radius:6px; font-size:13px; margin-top:14px; }
+        .auth-footer { text-align:center; font-size:13px; color:var(--muted); margin-top:16px; }
+        .auth-footer a { color:var(--accent); font-weight:600; text-decoration:none; }
       </style>
     </head>
     <body>
       <div class="auth-card">
+        <div class="brand-row">${brandMark()}</div>
         <h1>${escapeHtmlServer(heading)}</h1>
-        <div class="brand">Stafly.AI</div>
         <form method="POST">
           ${formHtml}
           <button type="submit">${escapeHtmlServer(title)}</button>
@@ -2566,7 +2612,7 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
       : "WhatsApp connection: pending — this part isn't self-serve yet, we'll reach out personally to get your number connected.";
   const dashboardLink =
     seller.status === "active"
-      ? '<div style="margin-top:14px;"><a href="/dashboard">Open your live conversation dashboard →</a></div>'
+      ? '<div style="margin-top:18px;"><a class="btn-primary-link" href="/dashboard">Open your live conversation dashboard →</a></div>'
       : "";
   res.send(`
     <html>
@@ -2574,20 +2620,22 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
       <title>Seller dashboard — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:#f8fafc; color:#1e293b; }
-        header { background:#1e293b; color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
-        header h1 { font-size:16px; margin:0; }
+        ${BRAND_TOKENS_CSS}
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:var(--bg); color:var(--text); }
+        header { background:var(--navy); color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
         header form { margin:0; }
         header button { background:transparent; border:1px solid rgba(255,255,255,0.3); color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
         .wrap { max-width:640px; margin:32px auto; padding:0 24px; }
         .card { background:white; border-radius:8px; padding:24px; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
         .card h2 { font-size:16px; margin:0 0 6px; }
-        .status { font-size:14px; color:#475569; margin-top:8px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0; }
+        .status { font-size:14px; color:#475569; margin-top:8px; padding:12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); }
+        .btn-primary-link { display:inline-block; padding:9px 16px; background:var(--accent); color:white !important; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; }
+        .btn-primary-link:hover { background:var(--accent-dark); }
       </style>
     </head>
     <body>
       <header>
-        <h1>Stafly.AI</h1>
+        ${brandMark({ dark: true })}
         <form method="POST" action="/logout"><button type="submit">Log out</button></form>
       </header>
       <div class="wrap">
@@ -2617,10 +2665,10 @@ app.get("/customers", async (req, res) => {
     .map((c) => {
       const pausedBadge =
         c.paused === "yes"
-          ? '<span style="color:#b45309;font-weight:600;">Paused</span>'
-          : '<span style="color:#15803d;">Active</span>';
+          ? '<span class="badge paused">Paused</span>'
+          : '<span class="badge active">Active</span>';
       const paidBadge = c.last_payment_at
-        ? `<span style="color:#15803d;font-weight:600;">N${Number(c.last_payment_amount || 0).toLocaleString()}</span>`
+        ? `<span class="badge paid">N${Number(c.last_payment_amount || 0).toLocaleString()}</span>`
         : "";
       return `<tr>
         <td>${c.phone || ""}</td>
@@ -2636,29 +2684,59 @@ app.get("/customers", async (req, res) => {
     })
     .join("");
 
+  const dashboardHref =
+    "/dashboard" +
+    (req.query.key
+      ? "?key=" + encodeURIComponent(req.query.key) + (req.query.sellerId ? "&sellerId=" + encodeURIComponent(req.query.sellerId) : "")
+      : "");
+
   res.send(`
     <html>
     <head>
       <title>Stafly.AI - Customers</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body { font-family: -apple-system, sans-serif; margin: 24px; background: #f8fafc; }
-        h1 { font-size: 20px; }
-        table { border-collapse: collapse; width: 100%; background: white; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
-        th { background: #1e293b; color: white; }
-        tr:hover { background: #f1f5f9; }
+        ${BRAND_TOKENS_CSS}
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        header { background: var(--navy); color: white; padding: 16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+        header .sub { font-size: 12px; color: rgba(255,255,255,0.7); margin-top:2px; }
+        header a { display:inline-block; padding:7px 14px; background: var(--accent); color: white; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none; }
+        header a:hover { background: var(--accent-dark); }
+        .wrap { max-width: 1080px; margin: 28px auto; padding: 0 24px; }
+        .table-card { background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow: hidden; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-light); font-size: 13px; }
+        th { background: var(--bg); color: var(--muted); font-weight: 600; font-size: 12px; }
+        tr:hover td { background: var(--bg); }
+        .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; font-weight:600; }
+        .badge.paused { background: var(--warning-bg); color: var(--warning); }
+        .badge.active { background: var(--success-bg); color: var(--success); }
+        .badge.paid { background: var(--success-bg); color: var(--success); }
+        .empty-note { padding: 32px; text-align: center; color: #94a3b8; font-size: 13px; }
       </style>
     </head>
     <body>
-      <h1>Customers (${customers.length})${seller.businessName ? " &middot; " + escapeHtmlServer(seller.businessName) : ""} — <a href="/dashboard${req.query.key ? "?key=" + encodeURIComponent(req.query.key) + (req.query.sellerId ? "&sellerId=" + encodeURIComponent(req.query.sellerId) : "") : ""}" style="font-size:14px;">Open live dashboard →</a></h1>
-      <table>
-        <tr>
-          <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
-          <th>Messages</th><th>Last escalation</th><th>Escalated at</th>
-          <th>Last payment</th><th>Paid at</th>
-        </tr>
-        ${rows || '<tr><td colspan="9">No customers yet.</td></tr>'}
-      </table>
+      <header>
+        <div>
+          ${brandMark({ dark: true })}
+          <div class="sub">${customers.length} customer${customers.length === 1 ? "" : "s"}${seller.businessName ? " &middot; " + escapeHtmlServer(seller.businessName) : ""}</div>
+        </div>
+        <a href="${dashboardHref}">Open live dashboard →</a>
+      </header>
+      <div class="wrap">
+        <div class="table-card">
+          <table>
+            <tr>
+              <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
+              <th>Messages</th><th>Last escalation</th><th>Escalated at</th>
+              <th>Last payment</th><th>Paid at</th>
+            </tr>
+            ${rows}
+          </table>
+          ${customers.length === 0 ? '<div class="empty-note">No customers yet.</div>' : ""}
+        </div>
+      </div>
     </body>
     </html>
   `);
@@ -2710,32 +2788,38 @@ function adminPanelHtml(key, sellers) {
       <title>Admin — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
+        ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:#f8fafc; color:#1e293b; }
-        header { background:#1e293b; color:white; padding:16px 24px; }
-        header h1 { font-size:16px; margin:0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin:0; background:var(--bg); color:var(--text); }
+        header { background:var(--navy); color:white; padding:16px 24px; }
+        header .sub { font-size:12px; color:rgba(255,255,255,0.65); margin-top:2px; }
         .wrap { max-width:960px; margin:32px auto; padding:0 24px; }
         table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
-        th, td { text-align:left; padding:12px 14px; border-bottom:1px solid #f1f5f9; font-size:13px; vertical-align:top; }
-        th { background:#f8fafc; color:#64748b; font-weight:600; font-size:12px; }
+        th, td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--border-light); font-size:13px; vertical-align:top; }
+        th { background:var(--bg); color:var(--muted); font-weight:600; font-size:12px; }
         .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; }
-        .badge.active { background:#dcfce7; color:#15803d; }
-        .badge.pending { background:#fef3c7; color:#b45309; }
-        .you-badge { font-size:11px; color:#64748b; }
-        a.btn, button.btn { display:inline-block; background:#1e293b; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; margin:2px 6px 2px 0; }
-        button.btn.secondary { background:transparent; color:#1e293b; border:1px solid #cbd5e1; }
-        .connect-form { display:none; margin-top:10px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0; max-width:340px; }
+        .badge.active { background:var(--success-bg); color:var(--success); }
+        .badge.pending { background:var(--warning-bg); color:var(--warning); }
+        .you-badge { font-size:11px; color:var(--muted); }
+        a.btn, button.btn { display:inline-block; background:var(--accent); color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; margin:2px 6px 2px 0; }
+        a.btn:hover, button.btn:hover { background:var(--accent-dark); }
+        button.btn.secondary { background:transparent; color:var(--navy); border:1px solid #cbd5e1; }
+        button.btn.secondary:hover { background:var(--bg); }
+        .connect-form { display:none; margin-top:10px; padding:12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); max-width:340px; }
         .connect-form.open { display:block; }
-        .connect-form label { font-size:11px; color:#64748b; display:block; margin:8px 0 3px; }
+        .connect-form label { font-size:11px; color:var(--muted); display:block; margin:8px 0 3px; }
         .connect-form input { width:100%; padding:6px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; }
         .connect-msg { font-size:12px; margin-top:6px; min-height:14px; }
-        .connect-msg.error { color:#dc2626; }
-        .connect-msg.ok { color:#15803d; }
+        .connect-msg.error { color:var(--danger); }
+        .connect-msg.ok { color:var(--success); }
         .empty-note { padding:24px; text-align:center; color:#94a3b8; font-size:13px; }
       </style>
     </head>
     <body>
-      <header><h1>Stafly.AI — Admin: all sellers</h1></header>
+      <header>
+        ${brandMark({ dark: true })}
+        <div class="sub">Admin &middot; all sellers</div>
+      </header>
       <div class="wrap">
         <table>
           <thead><tr><th>Business</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
@@ -2844,14 +2928,16 @@ function dashboardHtml(key, sellerId, businessName) {
       <title>Stafly.AI — Dashboard</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
+        ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
-        header { background: #1e293b; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-        header h1 { font-size: 18px; margin: 0; }
-        header a { color: #93c5fd; font-size: 12px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        header h1 { font-size: 15px; margin: 0; font-weight: 400; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        header h1 .sep { opacity: 0.85; }
+        header a { color: #c7d2fe; font-size: 12px; }
         nav.tabs { display: flex; gap: 4px; }
         nav.tabs button { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-        nav.tabs button.active-tab { background: white; color: #1e293b; border-color: white; font-weight: 600; }
+        nav.tabs button.active-tab { background: var(--accent-light); color: var(--accent-dark); border-color: var(--accent-light); font-weight: 600; }
         .stats { display: flex; gap: 12px; flex-wrap: wrap; }
         .stat { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 13px; white-space: nowrap; }
         .stat b { font-size: 15px; }
@@ -2862,7 +2948,7 @@ function dashboardHtml(key, sellerId, businessName) {
         .list { flex: 1; overflow-y: auto; }
         .list-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
         .list-item:hover { background: #f8fafc; }
-        .list-item.active-row { background: #eff6ff; }
+        .list-item.active-row { background: var(--accent-light); }
         .list-item .phone { font-weight: 600; font-size: 14px; }
         .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
         .badge.paused { background: #fef3c7; color: #b45309; }
@@ -2889,8 +2975,9 @@ function dashboardHtml(key, sellerId, businessName) {
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
         .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-        .catalog-btn { background: #1e293b; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-        .catalog-btn.danger { background: transparent; color: #dc2626; font-weight: 500; padding: 4px 8px; }
+        .catalog-btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .catalog-btn:hover { background: var(--accent-dark); }
+        .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
         .catalog-msg.error { color: #dc2626; }
@@ -2904,16 +2991,16 @@ function dashboardHtml(key, sellerId, businessName) {
         .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
         .trend-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding-top: 16px; }
         .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-        .trend-bar { width: 100%; background: #1e293b; border-radius: 3px 3px 0 0; min-height: 2px; }
+        .trend-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
         .trend-label { font-size: 10px; color: #94a3b8; }
         .trend-value { font-size: 10px; color: #64748b; white-space: nowrap; }
-        .conversion-stat { font-size: 32px; font-weight: 700; color: #1e293b; }
+        .conversion-stat { font-size: 32px; font-weight: 700; color: var(--navy); }
         .conversion-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
       </style>
     </head>
     <body>
       <header>
-        <h1>Stafly.AI — Live Dashboard${businessName ? " &middot; " + businessName : ""} &nbsp; <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">plain table view</a>${key ? ` &nbsp; <a href="/admin?key=${key}">all sellers →</a>` : ""}</h1>
+        <h1>${brandMark({ dark: true, size: "small" })}<span class="sep">— Live Dashboard${businessName ? " &middot; " + businessName : ""}</span> <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">plain table view</a>${key ? ` &nbsp; <a href="/admin?key=${key}">all sellers →</a>` : ""}</h1>
         <nav class="tabs">
           <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
           <button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>
