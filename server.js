@@ -3999,6 +3999,17 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         header h1 { font-size: 15px; margin: 0; font-weight: 400; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         header h1 .sep { opacity: 0.85; }
         header a { color: #c7d2fe; font-size: 12px; }
+        /* An honest "yes, this is actually refreshing itself" cue -- the
+           dashboard really does poll every few seconds (see setInterval
+           near the bottom), so this isn't decoration pretending to be
+           realtime, it's a label for something that's already true. */
+        .live-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a7f3d0; }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: liveDotPulse 2s infinite; }
+        @keyframes liveDotPulse {
+          0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+          70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
         nav.tabs { display: flex; gap: 4px; }
         nav.tabs button { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #cbd5e1; padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
         nav.tabs button:hover { border-color: rgba(255,255,255,0.45); color: white; }
@@ -4054,7 +4065,20 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
         button.takeover-btn.take { background: #b45309; color: white; }
         button.takeover-btn.hand { background: #15803d; color: white; }
-        .empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
+        .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
+        .empty .empty-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+        .empty .empty-icon svg { width: 24px; height: 24px; }
+        .empty .empty-title { font-size: 14px; font-weight: 600; color: var(--navy); }
+        .empty .empty-sub { font-size: 12px; color: var(--muted); max-width: 240px; line-height: 1.5; }
+        .spinner { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--accent-light); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Stat tiles fade + rise into place once on the very first load
+           only (renderStats() only passes the "tile-in" class the first
+           time it ever runs -- see the statsAnimated flag) -- otherwise,
+           since the whole bar re-renders every 5s poll, this would replay
+           forever and read as a flicker instead of a one-time flourish. */
+        @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .stat-tile.tile-in { animation: tileIn 0.4s ease-out backwards; }
         .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; width: 100%; }
         .catalog-card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
         .catalog-card h2 { font-size: 15px; margin: 0 0 14px; }
@@ -4111,14 +4135,15 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
           <button id="tabAnalytics" onclick="switchTab('analytics')">Analytics</button>
         </nav>
+        <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
       </header>
       <div class="stats-bar" id="stats"></div>
       <div class="layout" id="conversationsView">
         <div class="list-pane">
           <div class="search-box"><input id="searchBox" placeholder="Search by phone or escalation reason..." oninput="applyFilter()"></div>
-          <div class="list" id="list"><div class="empty">Loading…</div></div>
+          <div class="list" id="list"><div class="empty"><div class="spinner"></div><div class="empty-title">Loading conversations…</div></div></div>
         </div>
-        <div class="main" id="main"><div class="empty">Select a conversation on the left</div></div>
+        <div class="main" id="main"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><div class="empty-title">Select a conversation</div><div class="empty-sub">Pick a customer from the list on the left to see the full thread.</div></div></div>
       </div>
       <div class="catalog-view" id="catalogView" style="display:none;">
         <div class="catalog-card">
@@ -4411,12 +4436,18 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           return '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div><div class="stat-icon">' + icon + '</div></div>';
         }
 
+        // Only the very first render gets the fade-in -- renderStats() runs
+        // again on every 5s poll, and replaying the animation every single
+        // time would read as a flicker, not a flourish.
+        let statsAnimated = false;
         function renderStats(stats) {
+          const inCls = statsAnimated ? "" : " tile-in";
+          statsAnimated = true;
           document.getElementById("stats").innerHTML =
-            statTile("tile-total", ICON_USERS, stats.totalCustomers, "Total customers") +
-            statTile("tile-active", ICON_CHAT, stats.activeToday, "Active today") +
-            statTile("tile-paused", ICON_PAUSE, stats.pausedNow, "Paused") +
-            statTile("tile-revenue", ICON_WALLET, "N" + stats.revenueTodayNaira.toLocaleString(), stats.paymentsToday + " order" + (stats.paymentsToday === 1 ? "" : "s") + " today");
+            statTile("tile-total" + inCls, ICON_USERS, stats.totalCustomers, "Total customers") +
+            statTile("tile-active" + inCls, ICON_CHAT, stats.activeToday, "Active today") +
+            statTile("tile-paused" + inCls, ICON_PAUSE, stats.pausedNow, "Paused") +
+            statTile("tile-revenue" + inCls, ICON_WALLET, "N" + stats.revenueTodayNaira.toLocaleString(), stats.paymentsToday + " order" + (stats.paymentsToday === 1 ? "" : "s") + " today");
         }
 
         function getFilteredCustomers() {
@@ -4435,7 +4466,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         function renderList(customers) {
           const list = document.getElementById("list");
           if (customers.length === 0) {
-            list.innerHTML = '<div class="empty">No customers yet.</div>';
+            list.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_USERS + '</div><div class="empty-title">No customers yet</div><div class="empty-sub">Once someone messages your WhatsApp number, they\\'ll show up here.</div></div>';
             return;
           }
           list.innerHTML = customers.map((c) => {
@@ -4491,7 +4522,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // customer -- so a thread reads as a real two-sided conversation
         // rather than a flat stack of identical gray/navy blocks.
         function renderBubblesHtml(history) {
-          if (!history || history.length === 0) return '<div class="empty">No messages yet.</div>';
+          if (!history || history.length === 0) return '<div class="empty"><div class="empty-icon">' + ICON_CHAT + '</div><div class="empty-title">No messages yet</div><div class="empty-sub">Nothing in this conversation yet.</div></div>';
           return history.map((m) => {
             const isUser = m.role === "user";
             return '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + '">' +
@@ -4626,7 +4657,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             });
             selectedPhone = null;
             renderedThreadPhone = null;
-            document.getElementById("main").innerHTML = '<div class="empty">Select a conversation on the left</div>';
+            document.getElementById("main").innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_CHAT + '</div><div class="empty-title">Select a conversation</div><div class="empty-sub">Pick a customer from the list on the left to see the full thread.</div></div>';
             loadDashboard();
           } catch (err) {
             alert("Network error, please try again.");
