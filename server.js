@@ -3986,25 +3986,53 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
+        html, body { height: 100%; }
         body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
-        header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        /* Everything lives in one full-height flex column now instead of
+           every scrolling panel hardcoding "calc(100vh - 64px)" -- that
+           number quietly assumed the header always renders at exactly
+           64px, which broke the moment the stats moved into their own
+           bar below it. header/stats-bar size themselves naturally and
+           every view below just takes "whatever's left" (flex: 1). */
+        .app-shell { display: flex; flex-direction: column; height: 100vh; }
+        header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
         header h1 { font-size: 15px; margin: 0; font-weight: 400; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         header h1 .sep { opacity: 0.85; }
         header a { color: #c7d2fe; font-size: 12px; }
         nav.tabs { display: flex; gap: 4px; }
-        nav.tabs button { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #cbd5e1; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-        nav.tabs button.active-tab { background: var(--accent-light); color: var(--accent-dark); border-color: var(--accent-light); font-weight: 600; }
-        .stats { display: flex; gap: 12px; flex-wrap: wrap; }
-        .stat { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 13px; white-space: nowrap; }
-        .stat b { font-size: 15px; }
-        .layout { display: flex; height: calc(100vh - 64px); }
+        nav.tabs button { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #cbd5e1; padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+        nav.tabs button:hover { border-color: rgba(255,255,255,0.45); color: white; }
+        nav.tabs button.active-tab { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 6px rgba(79,70,229,0.4); }
+        /* stat tiles -- a light strip of its own between the dark header
+           and the working area, each tile a small elevated card with an
+           icon-in-a-circle, echoing the "Total Project Handled"-style
+           tiles from the dashboard reference Miji shared, rather than
+           the old cramped, same-color pills that all read as one blur. */
+        .stats-bar { display: flex; gap: 14px; padding: 16px 24px; background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
+        .stat-tile { flex: 1; min-width: 190px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+        .stat-tile .stat-value { font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.1; white-space: nowrap; }
+        .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 5px; white-space: nowrap; }
+        .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-tile .stat-icon svg { width: 20px; height: 20px; }
+        .stat-tile.tile-total .stat-icon { background: var(--accent-light); color: var(--accent); }
+        .stat-tile.tile-active .stat-icon { background: var(--success-bg); color: var(--success); }
+        .stat-tile.tile-paused .stat-icon { background: var(--warning-bg); color: var(--warning); }
+        .stat-tile.tile-revenue .stat-icon { background: #eef2ff; color: var(--accent-dark); }
+        .layout { display: flex; flex: 1; min-height: 0; }
         .list-pane { width: 320px; border-right: 1px solid #e2e8f0; background: white; flex-shrink: 0; display: flex; flex-direction: column; }
         .search-box { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
         .search-box input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .search-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .list { flex: 1; overflow-y: auto; }
-        .list-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .list-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s; }
         .list-item:hover { background: #f8fafc; }
         .list-item.active-row { background: var(--accent-light); }
+        .list-avatar { position: relative; width: 38px; height: 38px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .list-avatar svg { width: 18px; height: 18px; }
+        .list-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid white; }
+        .status-dot.active { background: var(--success); }
+        .status-dot.paused { background: var(--warning); }
+        .list-item-body { min-width: 0; flex: 1; }
         .list-item .phone { font-weight: 600; font-size: 14px; }
         .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
         .badge.paused { background: #fef3c7; color: #b45309; }
@@ -4014,29 +4042,40 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .thread-header { padding: 16px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; }
         .thread { flex: 1; overflow-y: auto; padding: 24px; }
-        .bubble { max-width: 70%; padding: 10px 14px; border-radius: 12px; margin-bottom: 10px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
-        .bubble.user { background: #e2e8f0; margin-right: auto; }
-        .bubble.assistant { background: #1e293b; color: white; margin-left: auto; }
-        button.takeover-btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 12px; }
+        .msg-row.from-assistant { flex-direction: row-reverse; }
+        .msg-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+        .msg-avatar svg { width: 13px; height: 13px; }
+        .msg-avatar.assistant { background: var(--accent); color: white; }
+        .msg-avatar.user { background: #e2e8f0; color: var(--muted); }
+        .bubble { max-width: 66%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+        .bubble.user { background: #e2e8f0; }
+        .bubble.assistant { background: #1e293b; color: white; }
+        button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
         button.takeover-btn.take { background: #b45309; color: white; }
         button.takeover-btn.hand { background: #15803d; color: white; }
         .empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
-        .catalog-view { padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; height: calc(100vh - 64px); }
-        .catalog-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; width: 100%; }
+        .catalog-card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
         .catalog-card h2 { font-size: 15px; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
-        table.catalog-table th, table.catalog-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
-        table.catalog-table th { color: #64748b; font-weight: 600; font-size: 12px; }
+        table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+        table.catalog-table th { color: #64748b; font-weight: 600; font-size: 12px; background: #f8fafc; }
+        table.catalog-table th:first-child { border-top-left-radius: 8px; }
+        table.catalog-table th:last-child { border-top-right-radius: 8px; }
+        table.catalog-table tbody tr { transition: background .15s; }
+        table.catalog-table tbody tr:hover { background: #fafafe; }
         table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: #f1f5f9; }
         table.catalog-table td.booking-date-header { background: #f8fafc; color: #475569; font-weight: 600; font-size: 12px; padding-top: 14px; border-bottom: 1px solid #e2e8f0; }
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
         .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
-        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
-        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; }
-        .catalog-btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
+        .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
+        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; }
+        .catalog-btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 1px 2px rgba(79,70,229,0.25); transition: background .15s; }
         .catalog-btn:hover { background: var(--accent-dark); }
-        .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; }
+        .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
         .catalog-msg.error { color: #dc2626; }
@@ -4044,10 +4083,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
         .msg-compose { display: flex; gap: 8px; padding: 12px 24px; border-top: 1px solid #e2e8f0; background: white; }
-        .msg-compose input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .msg-compose input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
+        .msg-compose input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .notes-box { padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #fdfdfd; }
         .notes-box label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
-        .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; }
+        .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
         .trend-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding-top: 16px; }
         .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
         .trend-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
@@ -4058,6 +4098,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </style>
     </head>
     <body>
+    <div class="app-shell">
       <header>
         <h1>${brandMark({ dark: true, size: "small" })}<span class="sep">— Live Dashboard${businessName ? " &middot; " + businessName : ""}</span> <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">plain table view</a>${key ? ` &nbsp; <a href="/admin?key=${key}">all sellers →</a>` : ""}</h1>
         <nav class="tabs">
@@ -4070,8 +4111,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
           <button id="tabAnalytics" onclick="switchTab('analytics')">Analytics</button>
         </nav>
-        <div class="stats" id="stats"></div>
       </header>
+      <div class="stats-bar" id="stats"></div>
       <div class="layout" id="conversationsView">
         <div class="list-pane">
           <div class="search-box"><input id="searchBox" placeholder="Search by phone or escalation reason..." oninput="applyFilter()"></div>
@@ -4319,6 +4360,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           <div class="conversion-sub" id="conversionSub"></div>
         </div>
       </div>
+    </div>
       <script>
         const KEY = ${JSON.stringify(key)};
         const SELLER_ID = ${JSON.stringify(sellerId || "")};
@@ -4354,12 +4396,27 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
         }
 
+        // Small hand-written stroke icons (same visual family as the
+        // marketing site's lucide-react icons, just inlined as raw SVG
+        // since this dashboard has no build step / icon package of its
+        // own) -- one per stat tile, so each reads at a glance instead of
+        // every tile being the same undifferentiated block of text.
+        const ICON_USERS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+        const ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+        const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>';
+        const ICON_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>';
+        const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+
+        function statTile(cls, icon, value, label) {
+          return '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div><div class="stat-icon">' + icon + '</div></div>';
+        }
+
         function renderStats(stats) {
           document.getElementById("stats").innerHTML =
-            '<div class="stat"><b>' + stats.totalCustomers + '</b> total</div>' +
-            '<div class="stat"><b>' + stats.activeToday + '</b> active today</div>' +
-            '<div class="stat"><b>' + stats.pausedNow + '</b> paused</div>' +
-            '<div class="stat"><b>N' + stats.revenueTodayNaira.toLocaleString() + '</b> today (' + stats.paymentsToday + ' order' + (stats.paymentsToday === 1 ? "" : "s") + ')</div>';
+            statTile("tile-total", ICON_USERS, stats.totalCustomers, "Total customers") +
+            statTile("tile-active", ICON_CHAT, stats.activeToday, "Active today") +
+            statTile("tile-paused", ICON_PAUSE, stats.pausedNow, "Paused") +
+            statTile("tile-revenue", ICON_WALLET, "N" + stats.revenueTodayNaira.toLocaleString(), stats.paymentsToday + " order" + (stats.paymentsToday === 1 ? "" : "s") + " today");
         }
 
         function getFilteredCustomers() {
@@ -4391,10 +4448,14 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             const escalationLine = c.last_escalation_reason
               ? '<div class="snippet">⚠ ' + escapeHtml(c.last_escalation_reason) + '</div>'
               : "";
+            const dotClass = c.paused === "yes" ? "paused" : "active";
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
-              '<div class="phone">' + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
-              '<div class="snippet">' + (c.message_count || 0) + ' messages · last ' + lastContact + '</div>' +
-              escalationLine +
+              '<div class="list-avatar">' + ICON_PHONE + '<span class="status-dot ' + dotClass + '"></span></div>' +
+              '<div class="list-item-body">' +
+                '<div class="phone">' + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
+                '<div class="snippet">' + (c.message_count || 0) + ' messages · last ' + lastContact + '</div>' +
+                escalationLine +
+              '</div>' +
               '</div>';
           }).join("");
         }
@@ -4422,13 +4483,29 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
         }
 
+        // Shared by both renderThread() (first open / switching conversation)
+        // and updateThreadMessages() (the 5s background poll on the SAME
+        // conversation) so the two never quietly drift into rendering
+        // bubbles differently. Each row carries a tiny avatar -- Amara's
+        // own "S" mark on her replies, a plain phone glyph for the
+        // customer -- so a thread reads as a real two-sided conversation
+        // rather than a flat stack of identical gray/navy blocks.
+        function renderBubblesHtml(history) {
+          if (!history || history.length === 0) return '<div class="empty">No messages yet.</div>';
+          return history.map((m) => {
+            const isUser = m.role === "user";
+            return '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + '">' +
+              '<div class="msg-avatar ' + (isUser ? "user" : "assistant") + '">' + (isUser ? ICON_PHONE : "S") + '</div>' +
+              '<div class="bubble ' + (isUser ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>' +
+              '</div>';
+          }).join("");
+        }
+
         function updateThreadMessages(history, customer) {
           const threadEl = document.getElementById("thread");
           if (!threadEl) return; // panel isn't built yet, nothing to update
           const nearBottom = threadEl.scrollTop + threadEl.clientHeight >= threadEl.scrollHeight - 20;
-          threadEl.innerHTML = (history && history.length > 0)
-            ? history.map((m) => '<div class="bubble ' + (m.role === "user" ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>').join("")
-            : '<div class="empty">No messages yet.</div>';
+          threadEl.innerHTML = renderBubblesHtml(history);
           if (nearBottom) threadEl.scrollTop = threadEl.scrollHeight;
 
           // Keep the Take over / Hand back button in sync too (e.g. if the
@@ -4468,9 +4545,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               '<span class="catalog-msg" id="noteMsg"></span>' +
             '</div>';
           const threadEl = document.getElementById("thread");
-          threadEl.innerHTML = (history && history.length > 0)
-            ? history.map((m) => '<div class="bubble ' + (m.role === "user" ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>').join("")
-            : '<div class="empty">No messages yet.</div>';
+          threadEl.innerHTML = renderBubblesHtml(history);
           threadEl.scrollTop = threadEl.scrollHeight;
         }
 
