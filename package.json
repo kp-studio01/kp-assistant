@@ -1,8 +1,14 @@
 {
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "chart.js": "^4.4.4",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "multer": "^2.3.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.62.1",
+    "redis": "^6.2.1",
+    "undici": "^8.10.2"
   }
 }

@@ -9,6 +9,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
 const multer = require("multer");
+const path = require("path");
 const app = express();
 app.use(cookieParser());
 // The `verify` hook stashes the raw request bytes on req.rawBody. We need
@@ -25,6 +26,17 @@ app.use(
 // Needed for the signup/login HTML forms below (plain <form method="POST">
 // submissions arrive as x-www-form-urlencoded, not JSON).
 app.use(express.urlencoded({ extended: true }));
+
+// Chart.js served from our own dependency rather than a public CDN --
+// no external network call for sellers loading the dashboard (and no
+// risk of a corporate firewall or ad-blocker silently killing the
+// analytics chart the way a third-party CDN could).
+app.get("/vendor/chart.js", (req, res) => {
+  // chart.js's own package.json "exports" map blocks require.resolve()
+  // on a dist subpath, so we build the path by hand instead of asking
+  // Node's module resolver for it.
+  res.sendFile(path.join(__dirname, "node_modules", "chart.js", "dist", "chart.umd.js"));
+});
 
 // ---------- SETTINGS (come from environment variables) ----------
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
@@ -4006,6 +4018,19 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .topbar h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .topbar h1 .sep { font-weight: 400; color: var(--muted); }
         .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .topbar-date { font-size: 12px; color: var(--muted); font-weight: 500; }
+        .topbar-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; box-shadow: 0 2px 5px rgba(79,70,229,0.35); }
+        /* A real profile card at the top of the sidebar -- who's logged
+           in and what kind of seller they are, using only real fields
+           already passed into dashboardHtml (never fabricated). This is
+           the piece that was missing between the bare logo and the nav
+           links -- every reference dashboard has an identity anchor
+           here, not just a wordmark. */
+        .sidebar-profile { display: flex; align-items: center; gap: 10px; padding: 4px 20px 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+        .sidebar-profile-name { font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-profile-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
         /* An honest "yes, this is actually refreshing itself" cue -- the
            dashboard really does poll every few seconds (see setInterval
            near the bottom), so this isn't decoration pretending to be
@@ -4030,7 +4055,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            tiles from the dashboard reference Miji shared, rather than
            the old cramped, same-color pills that all read as one blur. */
         .stats-bar { display: flex; gap: 14px; padding: 16px 24px; background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
-        .stat-tile { flex: 1; min-width: 190px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+        .stat-tile { flex: 1; min-width: 190px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease; }
+        .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.09); }
         .stat-tile .stat-value { font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.1; white-space: nowrap; }
         .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 5px; white-space: nowrap; }
         .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -4072,9 +4098,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .bubble { max-width: 66%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
         .bubble.user { background: #e2e8f0; }
         .bubble.assistant { background: #1e293b; color: white; }
-        button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
-        button.takeover-btn.take { background: #b45309; color: white; }
-        button.takeover-btn.hand { background: #15803d; color: white; }
+        button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
+        button.takeover-btn:hover { transform: translateY(-1px); }
+        button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
+        button.takeover-btn.hand { background: linear-gradient(135deg, #16a34a, #15803d); color: white; }
         .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
         .empty .empty-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; }
         .empty .empty-icon svg { width: 24px; height: 24px; }
@@ -4090,7 +4117,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .stat-tile.tile-in { animation: tileIn 0.4s ease-out backwards; }
         .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; width: 100%; }
-        .catalog-card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+        .catalog-card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: box-shadow .15s ease; }
+        .catalog-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
         .catalog-card h2 { font-size: 15px; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
         table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
@@ -4107,8 +4135,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
         .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; }
-        .catalog-btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 1px 2px rgba(79,70,229,0.25); transition: background .15s; }
-        .catalog-btn:hover { background: var(--accent-dark); }
+        .catalog-btn { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px rgba(79,70,229,0.3); transition: box-shadow .15s, transform .15s; }
+        .catalog-btn:hover { box-shadow: 0 4px 10px rgba(79,70,229,0.4); transform: translateY(-1px); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
@@ -4122,11 +4150,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .notes-box { padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #fdfdfd; }
         .notes-box label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
         .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
-        .trend-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding-top: 16px; }
-        .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-        .trend-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
-        .trend-label { font-size: 10px; color: #94a3b8; }
-        .trend-value { font-size: 10px; color: #64748b; white-space: nowrap; }
+        .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
+        .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
+        .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
         .conversion-stat { font-size: 32px; font-weight: 700; color: var(--navy); }
         .conversion-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
       </style>
@@ -4135,6 +4161,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
     <div class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">${brandMark({ dark: true, size: "small" })}</div>
+        <div class="sidebar-profile">
+          <div class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</div>
+          <div style="min-width:0;">
+            <div class="sidebar-profile-name">${escapeHtmlServer(businessName || "Your business")}</div>
+            <div class="sidebar-profile-role">${isBookable ? "Bookings &amp; services" : "Product seller"}</div>
+          </div>
+        </div>
         <div class="sidebar-section-label">Menu</div>
         <nav class="tabs">
           <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Conversations</button>
@@ -4155,6 +4188,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       <div class="main-column">
       <header class="topbar">
         <h1>Live Dashboard${businessName ? `<span class="sep">&middot; ${businessName}</span>` : ""}</h1>
+        <div class="topbar-right">
+          <span class="topbar-date" id="topbarDate"></span>
+          <span class="topbar-avatar" title="${escapeHtmlServer(businessName || "Your business")}">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span>
+        </div>
       </header>
       <div class="stats-bar" id="stats"></div>
       <div class="layout" id="conversationsView">
@@ -4389,7 +4426,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       <div class="catalog-view" id="analyticsView" style="display:none;">
         <div class="catalog-card">
           <h2>Revenue — last 14 days</h2>
-          <div class="trend-chart" id="trendChart"></div>
+          <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
         </div>
         <div class="catalog-card">
           <h2>Best sellers</h2>
@@ -4406,6 +4443,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </div>
       </div>
     </div>
+      <script src="/vendor/chart.js"></script>
       <script>
         const KEY = ${JSON.stringify(key)};
         const SELLER_ID = ${JSON.stringify(sellerId || "")};
@@ -4460,6 +4498,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // again on every 5s poll, and replaying the animation every single
         // time would read as a flicker, not a flourish.
         let statsAnimated = false;
+        let trendChartInstance = null;
         function renderStats(stats) {
           const inCls = statsAnimated ? "" : " tile-in";
           statsAnimated = true;
@@ -4717,24 +4756,83 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         }
 
         function renderAnalytics(data) {
-          const maxRevenue = Math.max(1, ...data.trend.map((d) => d.revenue));
-          const chart = document.getElementById("trendChart");
-          chart.innerHTML = data.trend.map((d) => {
-            const heightPct = Math.max(Math.round((d.revenue / maxRevenue) * 100), d.revenue > 0 ? 4 : 1);
-            const dayLabel = new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2);
-            const valueLabel = d.revenue > 0 ? (d.revenue >= 1000 ? "N" + Math.round(d.revenue / 1000) + "k" : "N" + d.revenue) : "";
-            const tooltip = d.date + ": N" + d.revenue.toLocaleString() + " (" + d.orders + " order" + (d.orders === 1 ? "" : "s") + ")";
-            return '<div class="trend-bar-wrap" title="' + escapeHtml(tooltip) + '">' +
-              '<div class="trend-value">' + valueLabel + '</div>' +
-              '<div class="trend-bar" style="height:' + heightPct + '%;"></div>' +
-              '<div class="trend-label">' + dayLabel + '</div>' +
-            '</div>';
-          }).join("");
+          const labels = data.trend.map((d) => new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric" }));
+          const values = data.trend.map((d) => d.revenue);
+          const orders = data.trend.map((d) => d.orders);
+          const canvas = document.getElementById("trendChart");
+          const ctx = canvas.getContext("2d");
 
+          // A real chart (Chart.js) instead of hand-rolled divs -- a
+          // smooth gradient-filled area reads as an actual analytics
+          // product rather than a prototype. Destroy + recreate on every
+          // poll is simplest and cheap at this data size (14 points);
+          // Chart.js has no built-in "update in place" that's simpler
+          // than just rebuilding here.
+          if (trendChartInstance) trendChartInstance.destroy();
+          const gradient = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight || 220);
+          gradient.addColorStop(0, "rgba(79, 70, 229, 0.28)");
+          gradient.addColorStop(1, "rgba(79, 70, 229, 0)");
+          trendChartInstance = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: labels,
+              datasets: [{
+                label: "Revenue",
+                data: values,
+                borderColor: "#4f46e5",
+                borderWidth: 2.5,
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.35,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: "#4f46e5",
+                pointHoverBorderColor: "#fff",
+                pointHoverBorderWidth: 2,
+              }],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: "index", intersect: false },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: "#1e293b",
+                  padding: 10,
+                  cornerRadius: 8,
+                  titleFont: { family: "Sora", weight: "600" },
+                  bodyFont: { family: "Sora" },
+                  callbacks: {
+                    label: (item) => {
+                      const i = item.dataIndex;
+                      return "N" + item.parsed.y.toLocaleString() + " (" + orders[i] + " order" + (orders[i] === 1 ? "" : "s") + ")";
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { family: "Sora", size: 11 } } },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: "#f1f5f9" },
+                  ticks: {
+                    color: "#94a3b8",
+                    font: { family: "Sora", size: 11 },
+                    callback: (v) => v >= 1000 ? "N" + (v / 1000) + "k" : "N" + v,
+                  },
+                },
+              },
+            },
+          });
+
+          const maxSold = Math.max(1, ...data.bestSellers.map((p) => p.sold));
           const body = document.getElementById("bestSellersBody");
           body.innerHTML = data.bestSellers.length > 0
             ? data.bestSellers.map((p) =>
-                '<tr><td>' + escapeHtml(p.name) + '</td><td>' + p.sold + '</td><td>N' + p.revenue.toLocaleString() + '</td></tr>'
+                '<tr><td>' + escapeHtml(p.name) +
+                  '<div class="best-seller-bar-track"><div class="best-seller-bar-fill" style="width:' + Math.round((p.sold / maxSold) * 100) + '%;"></div></div>' +
+                '</td><td>' + p.sold + '</td><td>N' + p.revenue.toLocaleString() + '</td></tr>'
               ).join("")
             : '<tr><td colspan="3" style="color:#94a3b8;">No sales yet.</td></tr>';
 
@@ -5509,6 +5607,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             alert("Network error, please try again.");
           }
         }
+
+        const topbarDateEl = document.getElementById("topbarDate");
+        if (topbarDateEl) topbarDateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
         loadDashboard();
         setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
