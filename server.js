@@ -4236,6 +4236,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .stat-tile.tile-paused { --tile: var(--warn-fg); --tile-bg: var(--warn-bg); }
         .stat-tile.tile-revenue { --tile: var(--info-fg); --tile-bg: var(--info-bg); }
         .stat-tile::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tile); opacity: 0.85; }
+        /* A soft wash of the tile's own hue behind the icon -- depth without
+           another border or shadow. */
+        .stat-tile::after { content: ""; position: absolute; right: -26px; top: -34px; width: 120px; height: 120px; border-radius: 50%; background: var(--tile-bg); opacity: 0.75; pointer-events: none; }
         .stat-tile > * { position: relative; z-index: 1; }
         .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tile); }
         .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
@@ -4306,6 +4309,34 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .badge.waiting { background: var(--dang-bg); color: var(--dang-fg); border-color: var(--dang-border); font-weight: 700; }
         .snippet { font-size: 12px; color: var(--muted); margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        /* Customer details column. Everything it shows is a field the
+           dashboard genuinely stores -- see renderDetailPane. */
+        /* Hidden unless the layout says otherwise -- one explicit state, so
+           wide and narrow screens can't disagree about the default. */
+        .detail-pane { display: none; width: 300px; flex-shrink: 0; border-left: 1px solid var(--border); background: var(--surface); overflow-y: auto; padding: 16px; flex-direction: column; gap: 12px; }
+        .layout.details-on .detail-pane { display: flex; }
+        .layout.details-on .detail-pane:empty { display: none; }
+        .detail-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px; padding: 4px 0 10px; border-bottom: 1px solid var(--border-light); }
+        .detail-avatar { width: 56px; height: 56px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); }
+        .detail-avatar svg { width: 28px; height: 28px; opacity: 0.95; }
+        .detail-phone { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+        .detail-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; }
+        .detail-card-title { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+        .detail-card-title svg { width: 12px; height: 12px; color: var(--accent); flex-shrink: 0; }
+        .detail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 4px 0; }
+        .detail-row + .detail-row { border-top: 1px solid var(--border-light); }
+        .detail-label { font-size: 12px; color: var(--muted); }
+        .detail-value { font-size: 12.5px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+        .detail-muted { font-size: 12px; color: var(--muted); line-height: 1.5; }
+        .detail-amount { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--ok-fg); letter-spacing: -0.02em; line-height: 1.15; }
+        .detail-ref { font-size: 10.5px; color: var(--muted-2); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .detail-card.paid-card { background: var(--ok-bg); border-color: var(--ok-border); }
+        .detail-card.warn-card { background: var(--warn-bg); border-color: var(--warn-border); }
+        .detail-card.warn-card .detail-card-title { color: var(--warn-fg); }
+        .detail-pane textarea { width: 100%; min-height: 74px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 12.5px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
+        .detail-pane textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .icon-btn.active-toggle { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
+        .compose-hint { font-size: 11px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
         .thread-header { padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
@@ -4389,6 +4420,17 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            time it ever runs -- see the statsAnimated flag) -- otherwise,
            since the whole bar re-renders every 5s poll, this would replay
            forever and read as a flicker instead of a one-time flourish. */
+        /* One visible focus ring for keyboard users, everywhere. */
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+        /* Skeleton rows while the first load is in flight -- the list keeps
+           its real shape instead of collapsing to a spinner and jumping. */
+        @keyframes shimmer { from { background-position: -200px 0; } to { background-position: calc(200px + 100%) 0; } }
+        .skeleton-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border-light); }
+        .sk { background: var(--surface-3); background-image: linear-gradient(90deg, transparent, var(--border-light), transparent); background-size: 200px 100%; background-repeat: no-repeat; animation: shimmer 1.2s ease-in-out infinite; border-radius: 6px; }
+        .sk-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
+        .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; padding-top: 3px; }
+        .sk-line { height: 10px; }
+        @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
         @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .stat-tile.tile-in { animation: tileIn 0.4s ease-out backwards; }
         /* A newly arrived message lands from its own side, so you can see
@@ -4459,20 +4501,6 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .msg-send-btn svg { width: 17px; height: 17px; }
         .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
         .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
-        .notes-box { border-top: 1px solid var(--border); background: var(--surface-2); flex-shrink: 0; }
-        .notes-box-head { display: flex; align-items: center; gap: 7px; width: 100%; padding: 10px 24px; background: transparent; border: none; cursor: pointer; text-align: left; font-family: inherit; transition: background .15s; }
-        .notes-box-head:hover { background: var(--surface-3); }
-        .notes-box-head > svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
-        .notes-box-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
-        .notes-box-sub { font-size: 11px; color: var(--muted); }
-        .notes-box-chevron { margin-left: auto; display: flex; color: var(--muted); transition: transform .2s ease; }
-        .notes-box-chevron svg { width: 15px; height: 15px; }
-        .notes-box.open .notes-box-chevron { transform: rotate(180deg); }
-        .notes-box-body { display: none; padding: 0 24px 14px; }
-        .notes-box.open .notes-box-body { display: block; animation: notesOpen .2s ease-out; }
-        @keyframes notesOpen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-        .notes-box textarea { width: 100%; min-height: 52px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
-        .notes-box textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .notes-box-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
         .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
@@ -4496,6 +4524,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           .sidebar.open { transform: translateX(0); box-shadow: 8px 0 24px rgba(15,23,42,0.3); }
           .list-pane { width: 260px; }
         }
+        /* Below this three columns stop fitting side by side, so the details
+           panel slides over the thread instead of squeezing it. */
+        @media (max-width: 1280px) {
+          .layout { position: relative; }
+          .layout.details-on .detail-pane { position: absolute; right: 0; top: 0; bottom: 0; z-index: 12; box-shadow: var(--shadow-lg); }
+        }
         @media (max-width: 700px) {
           .list-pane { width: 100%; }
           .layout { position: relative; overflow: hidden; }
@@ -4510,6 +4544,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           .fees-row div { width: 100%; }
           .stats-bar { padding: 12px 16px; gap: 10px; }
           body.mobile-thread-open .stats-bar { display: none; }
+          .layout.details-on .detail-pane { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
         }
         @media (max-width: 480px) {
@@ -4573,9 +4608,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <button class="list-tab" id="tab-paused" onclick="setTab('paused')"><span class="list-tab-label">Paused</span><span class="list-tab-count">0</span></button>
             <button class="list-tab" id="tab-starred" onclick="setTab('starred')"><span class="list-tab-label">&#9733;</span><span class="list-tab-count">0</span></button>
           </div>
-          <div class="list" id="list"><div class="empty"><div class="spinner"></div><div class="empty-title">Loading conversations…</div></div></div>
+          <div class="list" id="list"><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:62%"></div><div class="sk sk-line" style="width:40%"></div></div></div><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:54%"></div><div class="sk sk-line" style="width:34%"></div></div></div><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:58%"></div><div class="sk sk-line" style="width:44%"></div></div></div></div>
         </div>
         <div class="main" id="main"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><div class="empty-title">Select a conversation</div><div class="empty-sub">Pick a customer from the list on the left to see the full thread.</div></div></div>
+        <aside class="detail-pane" id="detailPane"></aside>
       </div>
       <div class="catalog-view" id="catalogView" style="display:none;">
         <div class="catalog-card">
@@ -4952,6 +4988,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
         const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
         const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+        const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
         // WhatsApp gives us no profile photo and no name, so a contact chip
         // shows a person mark rather than repeating digits we already print
         // as text right beside it -- the per-contact colour is what makes
@@ -5257,6 +5294,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             statusChip.className = "thread-status-chip" + (isPaused ? " is-paused" : "");
             statusChip.innerHTML = '<span class="chip-dot"></span>' + (isPaused ? "You&#39;re handling this" : "Amara is replying");
           }
+          // Keep the details panel current too, but never while the owner is
+          // mid-sentence in the note -- re-rendering would wipe what they've
+          // typed. Skipped entirely if the note field has focus.
+          const noteEl = document.getElementById("notesInput");
+          if (customer && document.activeElement !== noteEl) {
+            renderDetailPane(selectedPhone, customer);
+          }
           const starBtn = document.getElementById("starBtn");
           if (starBtn && customer) {
             const starred = customer.starred === "yes";
@@ -5299,6 +5343,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               '</div>' +
               '<div class="thread-actions">' +
                 '<button class="icon-btn" onclick="toggleThreadSearch()" title="Search in this conversation">' + ICON_SEARCH + '</button>' +
+                '<button class="icon-btn" id="detailToggle" onclick="toggleDetailPane()" title="Customer details">' + ICON_SIDEPANEL + '</button>' +
                 '<button class="icon-btn' + ((customer && customer.starred === "yes") ? " starred" : "") + '" id="starBtn" data-starred="' + ((customer && customer.starred === "yes") ? "yes" : "no") + '" onclick="toggleStar(\\'' + phone + '\\')" title="Star this conversation">' +
                   ((customer && customer.starred === "yes") ? ICON_STAR_FILLED : ICON_STAR) +
                 '</button>' +
@@ -5339,24 +5384,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               '</div>' +
               '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
             '</div>' +
-            // The note is reference material, not something you read every
-            // time -- collapsed it gives that vertical space back to the
-            // conversation, which is what the panel is actually for. Opens
-            // by default only when there's already a note worth seeing.
-            '<div class="notes-box' + ((customer && customer.note) ? " open" : "") + '" id="notesBox">' +
-              '<button class="notes-box-head" onclick="toggleNotesBox()" aria-expanded="' + ((customer && customer.note) ? "true" : "false") + '">' +
-                ICON_LOCK + '<span class="notes-box-title">Private note</span>' +
-                '<span class="notes-box-sub">Only visible to you</span>' +
-                '<span class="notes-box-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>' +
-              '</button>' +
-              '<div class="notes-box-body">' +
-              '<textarea id="notesInput" placeholder="e.g. Prefers evening delivery, always pays by transfer...">' + escapeHtml((customer && customer.note) || "") + '</textarea>' +
-              '<div class="notes-box-actions">' +
-                '<button class="catalog-btn small" onclick="saveNote(\\'' + phone + '\\')">Save note</button>' +
-                '<span class="catalog-msg" id="noteMsg"></span>' +
-              '</div>' +
-              '</div>' +
-            '</div>';
+            // The private note moved into the details panel beside the thread
+            // -- it's reference material, and keeping it out of this column
+            // gives the whole height back to the conversation itself.
+            '<div class="compose-hint">Enter to send · Shift + Enter for a new line</div>';
+          renderDetailPane(phone, customer);
           const threadEl = document.getElementById("thread");
           threadEl.innerHTML = renderBubblesHtml(history);
           lastRenderedCount = history.length; // baseline for the new-message animation
@@ -5658,13 +5690,97 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // Light / dark. The choice is remembered per browser; until the owner
         // picks one, the OS preference decides (see the inline script in
         // <head>, which applies it before first paint).
-        function toggleNotesBox() {
-          const box = document.getElementById("notesBox");
-          if (!box) return;
-          const open = box.classList.toggle("open");
-          const head = box.querySelector(".notes-box-head");
-          if (head) head.setAttribute("aria-expanded", open ? "true" : "false");
-          if (open) { const ta = document.getElementById("notesInput"); if (ta) ta.focus(); }
+        // ---- Customer details panel ----------------------------------
+        // Every line in here is a field this dashboard genuinely stores on
+        // the customer record (see recordCustomerContact / upsertCustomer):
+        // first_contact, message_count, last_contact, last_payment_*,
+        // last_escalation_reason, note. Nothing is inferred or invented --
+        // WhatsApp gives us no name, location, or "customer tier", so none
+        // is shown.
+        function detailRow(label, value) {
+          return '<div class="detail-row"><span class="detail-label">' + label + '</span><span class="detail-value">' + value + '</span></div>';
+        }
+        function formatFullDate(iso) {
+          if (!iso) return "";
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return "";
+          return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+        }
+        function renderDetailPane(phone, customer) {
+          const pane = document.getElementById("detailPane");
+          if (!pane) return;
+          const c = customer || {};
+          const isPaused = c.paused === "yes";
+          const since = formatFullDate(c.first_contact);
+          const msgCount = Number(c.message_count || 0);
+
+          const paymentBlock = c.last_payment_at
+            ? '<div class="detail-card paid-card">' +
+                '<div class="detail-card-title">Last payment</div>' +
+                '<div class="detail-amount">N' + Number(c.last_payment_amount || 0).toLocaleString() + '</div>' +
+                '<div class="detail-muted">' + escapeHtml(formatFullDate(c.last_payment_at)) + '</div>' +
+                (c.last_payment_reference
+                  ? '<div class="detail-ref" title="' + escapeHtml(c.last_payment_reference) + '">Ref ' + escapeHtml(String(c.last_payment_reference).slice(0, 18)) + '</div>'
+                  : "") +
+              '</div>'
+            : '<div class="detail-card">' +
+                '<div class="detail-card-title">Payments</div>' +
+                '<div class="detail-muted">No payment recorded for this customer yet.</div>' +
+              '</div>';
+
+          const escalationBlock = c.last_escalation_reason
+            ? '<div class="detail-card warn-card">' +
+                '<div class="detail-card-title">Why Amara stepped back</div>' +
+                '<div class="detail-muted">' + escapeHtml(c.last_escalation_reason) + '</div>' +
+              '</div>'
+            : "";
+
+          pane.innerHTML =
+            '<div class="detail-head">' +
+              '<div class="detail-avatar" style="' + avatarStyleFor(phone) + '">' + ICON_PERSON + '</div>' +
+              '<div class="detail-phone">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' +
+              '<span class="thread-status-chip' + (isPaused ? ' is-paused' : '') + '"><span class="chip-dot"></span>' +
+                (isPaused ? "You&#39;re handling this" : "Amara is replying") +
+              '</span>' +
+            '</div>' +
+            '<div class="detail-card">' +
+              detailRow("Customer since", since ? escapeHtml(since) : "&mdash;") +
+              detailRow("Messages", msgCount ? msgCount.toLocaleString() : "&mdash;") +
+              detailRow("Last active", c.last_contact ? escapeHtml(timeAgo(c.last_contact)) : "&mdash;") +
+            '</div>' +
+            paymentBlock +
+            escalationBlock +
+            '<div class="detail-card">' +
+              '<div class="detail-card-title">' + ICON_LOCK + 'Private note</div>' +
+              '<div class="detail-muted" style="margin-bottom:8px;">Only visible to you &mdash; never sent to the customer or Amara.</div>' +
+              '<textarea id="notesInput" placeholder="e.g. Prefers evening delivery, always pays by transfer...">' + escapeHtml(c.note || "") + '</textarea>' +
+              '<div class="notes-box-actions">' +
+                '<button class="catalog-btn small" onclick="saveNote(\\'' + phone + '\\')">Save note</button>' +
+                '<span class="catalog-msg" id="noteMsg"></span>' +
+              '</div>' +
+            '</div>';
+        }
+
+        function setDetailPane(on) {
+          const view = document.getElementById("conversationsView");
+          if (!view) return;
+          view.classList.toggle("details-on", on);
+          const btn = document.getElementById("detailToggle");
+          if (btn) btn.classList.toggle("active-toggle", on);
+        }
+        function toggleDetailPane() {
+          const view = document.getElementById("conversationsView");
+          if (!view) return;
+          const on = !view.classList.contains("details-on");
+          setDetailPane(on);
+          try { localStorage.setItem("stafly-details", on ? "on" : "off"); } catch (e) {}
+        }
+        // Open by default only where all three columns actually fit; below
+        // that it stays closed until asked for. A saved choice always wins.
+        function initDetailPane() {
+          let saved = null;
+          try { saved = localStorage.getItem("stafly-details"); } catch (e) {}
+          setDetailPane(saved ? saved === "on" : window.innerWidth > 1280);
         }
 
         function toggleTheme() {
@@ -6558,6 +6674,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const topbarDateEl = document.getElementById("topbarDate");
         if (topbarDateEl) topbarDateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
+        initDetailPane();
         loadDashboard();
         setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
       </script>
