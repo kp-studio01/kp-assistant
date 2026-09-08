@@ -4131,8 +4131,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .list-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s; }
         .list-item:hover { background: #f8fafc; }
         .list-item.active-row { background: var(--accent-light); }
-        .list-avatar { position: relative; width: 38px; height: 38px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-        .list-avatar svg { width: 18px; height: 18px; }
+        .list-avatar { position: relative; width: 42px; height: 42px; border-radius: 50%; color: #fff; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: 0.2px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; box-shadow: 0 1px 2px rgba(15,23,42,0.15); }
         .list-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid white; }
         .status-dot.active { background: var(--success); }
         .status-dot.paused { background: var(--warning); }
@@ -4144,17 +4143,29 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .badge.paid { background: #dbeafe; color: #1d4ed8; }
         .snippet { font-size: 12px; color: #64748b; margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .thread-header { padding: 16px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; }
+        .thread-header { padding: 14px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; font-family: var(--font-heading); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid white; }
+        .thread-name { font-size: 15px; font-weight: 700; color: var(--navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thread-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .thread-sub.is-paused { color: #b45309; font-weight: 600; }
+        .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .thread { flex: 1; overflow-y: auto; padding: 24px; }
-        .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 12px; }
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 14px; }
         .msg-row.from-assistant { flex-direction: row-reverse; }
-        .msg-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-        .msg-avatar svg { width: 13px; height: 13px; }
-        .msg-avatar.assistant { background: var(--accent); color: white; }
-        .msg-avatar.user { background: #e2e8f0; color: var(--muted); }
-        .bubble { max-width: 66%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
-        .bubble.user { background: #e2e8f0; }
-        .bubble.assistant { background: #1e293b; color: white; }
+        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; }
+        .msg-avatar.assistant { background: var(--accent); }
+        /* .msg-avatar.user gets its background set inline per-contact (see
+           avatarStyleFor) so the same customer's initials chip matches the
+           one already shown for them in the list and thread header. */
+        .bubble { max-width: 68%; padding: 10px 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 2px rgba(15,23,42,0.06); }
+        /* Corner nearest each side's own avatar stays sharp (a small "tail"
+           cue) -- the customer's bubble sits bottom-left flat, Amara's
+           bottom-right flat, the same asymmetric shape real chat apps use
+           instead of a uniform rounded rectangle on every bubble. */
+        .bubble.user { background: #eef2f7; color: var(--navy); border-radius: 3px 16px 16px 16px; }
+        .bubble.assistant { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: 16px 3px 16px 16px; }
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
         button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
@@ -4201,9 +4212,15 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-msg.ok { color: #15803d; }
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
-        .msg-compose { display: flex; gap: 8px; padding: 12px 24px; border-top: 1px solid #e2e8f0; background: white; }
-        .msg-compose input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
-        .msg-compose input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid #e2e8f0; background: white; }
+        .msg-compose-inner { flex: 1; display: flex; align-items: flex-end; border: 1.5px solid #e2e8f0; border-radius: 22px; padding: 5px 6px 5px 16px; background: #f8fafc; transition: border-color .15s, box-shadow .15s, background .15s; }
+        .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: #fff; }
+        .msg-compose textarea { flex: 1; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.4; padding: 8px 0; max-height: 120px; }
+        .msg-compose textarea:focus { outline: none; }
+        .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px rgba(79,70,229,0.35); transition: transform .15s ease, box-shadow .15s ease; }
+        .msg-send-btn svg { width: 17px; height: 17px; }
+        .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
+        .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
         .notes-box { padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #fdfdfd; }
         .notes-box label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
         .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
@@ -4522,6 +4539,45 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           return String(str || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
         }
 
+        // Real customers have no photo on file -- WhatsApp doesn't hand one
+        // over, and inventing one would be fake data in a dashboard that's
+        // otherwise careful never to show anything that isn't real. So
+        // instead of one generic gray phone-icon circle for every row (the
+        // old look), each phone number gets its own small, consistent
+        // "contact chip" -- two real digits from their own number, on a
+        // color picked deterministically from a small curated palette so
+        // the same customer always lands on the same color and the list
+        // reads as genuinely distinct people, the same pattern Slack/Gmail
+        // use for contacts without a picture.
+        const AVATAR_PALETTE = ["#4f46e5", "#0891b2", "#be185d", "#b45309", "#15803d", "#7c3aed", "#0f766e", "#c2410c", "#1d4ed8", "#a21caf"];
+        function avatarStyleFor(phone) {
+          const str = String(phone || "");
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+          return "background:" + AVATAR_PALETTE[hash % AVATAR_PALETTE.length] + ";";
+        }
+        function avatarInitialsFor(phone) {
+          const digits = String(phone || "").replace(/\\D/g, "");
+          return digits.length >= 2 ? digits.slice(-2) : (digits || "?");
+        }
+
+        // Relative time for real timestamps we actually store (last_contact)
+        // -- never used to imply live "online" presence, which WhatsApp
+        // doesn't give us at all.
+        function timeAgo(dateStr) {
+          if (!dateStr) return "";
+          const then = new Date(dateStr).getTime();
+          if (isNaN(then)) return "";
+          const mins = Math.floor((Date.now() - then) / 60000);
+          if (mins < 1) return "just now";
+          if (mins < 60) return mins + "m ago";
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return hours + "h ago";
+          const days = Math.floor(hours / 24);
+          if (days < 7) return days + "d ago";
+          return new Date(dateStr).toLocaleDateString();
+        }
+
         async function loadDashboard() {
           try {
             const res = await fetch("/api/dashboard-data?" + ADMIN_QS);
@@ -4546,6 +4602,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>';
         const ICON_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>';
         const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+        const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 
         function statTile(cls, icon, value, label) {
           return '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div><div class="stat-icon">' + icon + '</div></div>';
@@ -4591,16 +4648,16 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               ? '<span class="badge paused">Paused</span>'
               : '<span class="badge active">Active</span>';
             const paidBadge = c.last_payment_at ? '<span class="badge paid">Paid</span>' : "";
-            const lastContact = c.last_contact ? new Date(c.last_contact).toLocaleString() : "";
+            const lastContact = c.last_contact ? timeAgo(c.last_contact) : "no messages yet";
             const escalationLine = c.last_escalation_reason
               ? '<div class="snippet">⚠ ' + escapeHtml(c.last_escalation_reason) + '</div>'
               : "";
             const dotClass = c.paused === "yes" ? "paused" : "active";
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
-              '<div class="list-avatar">' + ICON_PHONE + '<span class="status-dot ' + dotClass + '"></span></div>' +
+              '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + escapeHtml(avatarInitialsFor(c.phone)) + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
                 '<div class="phone">' + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
-                '<div class="snippet">' + (c.message_count || 0) + ' messages · last ' + lastContact + '</div>' +
+                '<div class="snippet">' + (c.message_count || 0) + ' messages · ' + lastContact + '</div>' +
                 escalationLine +
               '</div>' +
               '</div>';
@@ -4633,16 +4690,31 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // Shared by both renderThread() (first open / switching conversation)
         // and updateThreadMessages() (the 5s background poll on the SAME
         // conversation) so the two never quietly drift into rendering
-        // bubbles differently. Each row carries a tiny avatar -- Amara's
-        // own "S" mark on her replies, a plain phone glyph for the
-        // customer -- so a thread reads as a real two-sided conversation
-        // rather than a flat stack of identical gray/navy blocks.
+        // bubbles differently. Each row carries a real avatar chip -- see
+        // above -- so a thread reads as a genuine two-sided conversation
+        // rather than a flat stack of identical gray/navy blocks. Note:
+        // there's deliberately no per-message timestamp here -- the stored
+        // conversation history only ever keeps {role, content}, never a
+        // timestamp, so a time on each bubble would have to be invented
+        // rather than real. The thread header's "Last message Nm ago" line
+        // uses a real stored timestamp instead (see renderThread).
         function renderBubblesHtml(history) {
           if (!history || history.length === 0) return '<div class="empty"><div class="empty-icon">' + ICON_CHAT + '</div><div class="empty-title">No messages yet</div><div class="empty-sub">Nothing in this conversation yet.</div></div>';
+          // The customer's chip uses the same color/initials as their row in
+          // the list and their thread-header avatar (all keyed off the same
+          // phone number) so the same person reads as the same person
+          // everywhere on the page. Amara's own avatar stays a fixed "S" --
+          // that's a brand identity, not a per-contact one, same idea as the
+          // sidebar profile mark.
+          const userAvatarStyle = avatarStyleFor(selectedPhone);
+          const userInitials = escapeHtml(avatarInitialsFor(selectedPhone));
           return history.map((m) => {
             const isUser = m.role === "user";
+            const avatarHtml = isUser
+              ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + userInitials + '</div>'
+              : '<div class="msg-avatar assistant">S</div>';
             return '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + '">' +
-              '<div class="msg-avatar ' + (isUser ? "user" : "assistant") + '">' + (isUser ? ICON_PHONE : "S") + '</div>' +
+              avatarHtml +
               '<div class="bubble ' + (isUser ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>' +
               '</div>';
           }).join("");
@@ -4655,9 +4727,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           threadEl.innerHTML = renderBubblesHtml(history);
           if (nearBottom) threadEl.scrollTop = threadEl.scrollHeight;
 
-          // Keep the Take over / Hand back button in sync too (e.g. if the
-          // owner paused/resumed from elsewhere), without touching the
-          // compose or notes box at all.
+          // Keep the header status (avatar dot + subtitle) and the Take
+          // over / Hand back button in sync too (e.g. if the owner
+          // paused/resumed from elsewhere), without touching the compose
+          // or notes box at all.
           const isPaused = customer && customer.paused === "yes";
           const btn = document.querySelector(".takeover-btn");
           if (btn) {
@@ -4665,6 +4738,22 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             btn.textContent = isPaused ? "Hand back to Amara" : "Take over";
             btn.onclick = function () { toggleTakeover(selectedPhone, isPaused); };
           }
+          const dot = document.querySelector(".thread-avatar .status-dot");
+          if (dot) dot.className = "status-dot " + (isPaused ? "paused" : "active");
+          const sub = document.querySelector(".thread-sub");
+          if (sub) {
+            sub.className = "thread-sub" + (isPaused ? " is-paused" : "");
+            sub.textContent = threadSubtitle(customer, isPaused);
+          }
+        }
+
+        // Real, not invented: paused state and last_contact are both actual
+        // stored fields, never a fake "online"/"typing..." claim -- WhatsApp
+        // gives us no live presence signal to show one honestly.
+        function threadSubtitle(customer, isPaused) {
+          if (isPaused) return "Paused — you're handling this one";
+          if (customer && customer.last_contact) return "Last message " + timeAgo(customer.last_contact);
+          return "New conversation";
         }
 
         function renderThread(phone, history, customer) {
@@ -4672,18 +4761,26 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const main = document.getElementById("main");
           main.innerHTML =
             '<div class="thread-header">' +
-              '<div><b>' + escapeHtml(phone) + '</b></div>' +
-              '<div>' +
+              '<div class="thread-header-id">' +
+                '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + escapeHtml(avatarInitialsFor(phone)) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
+                '<div style="min-width:0;">' +
+                  '<div class="thread-name">' + escapeHtml(phone) + '</div>' +
+                  '<div class="thread-sub' + (isPaused ? ' is-paused' : '') + '">' + threadSubtitle(customer, isPaused) + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="thread-actions">' +
                 '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
                   (isPaused ? "Hand back to Amara" : "Take over") +
-                '</button> ' +
+                '</button>' +
                 '<button class="catalog-btn danger small" onclick="clearConversation(\\'' + phone + '\\')" title="Wipe this conversation and customer record so you can retest from a clean slate">Clear conversation</button>' +
               '</div>' +
             '</div>' +
             '<div class="thread" id="thread"></div>' +
             '<div class="msg-compose">' +
-              '<input id="composeInput" placeholder="Type a message to send directly to this customer..." onkeydown="if(event.key===\\'Enter\\') sendManualMessage(\\'' + phone + '\\')">' +
-              '<button class="catalog-btn small" onclick="sendManualMessage(\\'' + phone + '\\')">Send</button>' +
+              '<div class="msg-compose-inner">' +
+                '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(phone) + ' directly..." oninput="autoGrowCompose(this)" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
+              '</div>' +
+              '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
             '</div>' +
             '<div class="notes-box">' +
               '<label>Notes (only visible to you, never sent to the customer or Amara)</label>' +
@@ -4696,11 +4793,28 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           threadEl.scrollTop = threadEl.scrollHeight;
         }
 
+        // Lets the compose box grow with what's typed (up to a cap, then it
+        // scrolls) instead of staying a fixed single line -- and Enter sends
+        // while Shift+Enter still inserts a real newline, the convention
+        // WhatsApp itself and most chat apps use.
+        function autoGrowCompose(el) {
+          el.style.height = "auto";
+          el.style.height = Math.min(el.scrollHeight, 120) + "px";
+        }
+        function handleComposeKeydown(event, phone) {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendManualMessage(phone);
+          }
+        }
+
         async function sendManualMessage(phone) {
           const input = document.getElementById("composeInput");
+          const sendBtn = document.getElementById("composeSendBtn");
           const text = input.value.trim();
           if (!text) return;
           input.disabled = true;
+          if (sendBtn) sendBtn.disabled = true;
           try {
             const res = await fetch("/api/send-message?" + ADMIN_QS, {
               method: "POST",
@@ -4711,15 +4825,19 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             if (!res.ok || data.error) {
               alert(data.error || "Could not send message.");
               input.disabled = false;
+              if (sendBtn) sendBtn.disabled = false;
               return;
             }
             input.value = "";
+            input.style.height = "auto";
             input.disabled = false;
+            if (sendBtn) sendBtn.disabled = false;
             loadDashboard();
             loadConversation(phone, false);
           } catch (err) {
             alert("Network error, please try again.");
             input.disabled = false;
+            if (sendBtn) sendBtn.disabled = false;
           }
         }
 
