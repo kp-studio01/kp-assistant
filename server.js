@@ -1416,15 +1416,20 @@ async function listAllCustomers(sellerId) {
 
 // Called on every incoming customer message: keeps first/last contact
 // time and message count up to date without needing any separate step.
-async function recordCustomerContact(sellerId, phone) {
+async function recordCustomerContact(sellerId, phone, waName) {
   const existing = await getCustomer(sellerId, phone);
   const now = new Date().toISOString();
-  await upsertCustomer(sellerId, phone, {
+  const fields = {
     phone,
     first_contact: existing?.first_contact || now,
     last_contact: now,
     message_count: existing?.message_count ? Number(existing.message_count) + 1 : 1,
-  });
+  };
+  // Their WhatsApp profile name, refreshed on every message so a rename on
+  // their side follows through. Only written when Meta actually sent one --
+  // never blanked out by a payload that happens to omit it.
+  if (waName) fields.wa_name = waName;
+  await upsertCustomer(sellerId, phone, fields);
 }
 
 // ---------- SELLER ACCOUNTS (multi-tenant foundation) ----------
@@ -1992,6 +1997,13 @@ app.post("/webhook", async (req, res) => {
 
     const from = message.from;             // sender's number
     const text = message.text.body;        // what they said
+    // Meta puts the sender's WhatsApp profile name in every webhook payload
+    // and we had never read it -- which is why the whole dashboard showed a
+    // wall of raw phone numbers. This is the name THEY set on their own
+    // WhatsApp account; it can change, and it is not verified, so it's shown
+    // as a label beside the number, never as a substitute for identifying
+    // who actually paid.
+    const waName = String(value?.contacts?.[0]?.profile?.name || "").trim().slice(0, 80);
 
     // If this message is from THIS SELLER's own owner number, treat it as
     // a control command (pause/resume), not a customer conversation.
@@ -2007,7 +2019,7 @@ app.post("/webhook", async (req, res) => {
 
     // Keep the customer database up to date: when we first heard from
     // them, when we last did, and how many messages total.
-    await recordCustomerContact(seller.sellerId, from);
+    await recordCustomerContact(seller.sellerId, from, waName);
 
     // If the owner has paused this customer, handle it separately and
     // stop here. This must happen BEFORE we show any typing indicator,
@@ -2134,7 +2146,14 @@ async function processBufferedTurn(seller, from) {
       photosAlreadySent.length > 0
         ? `You have ALREADY sent these product photos to this customer in this chat: ${photosAlreadySent.join(", ")}. Do not resend any of these unless the customer explicitly asks to see it again.`
         : "";
-    let rawReply = await askAI(seller, history, photoReminder);
+    // Amara can greet the customer by the name they set on WhatsApp. Framed
+    // as "may be a nickname" on purpose -- it's unverified and self-chosen,
+    // so she must never treat it as the name on a payment or an order.
+    const nameNote = waName
+      ? `The customer's WhatsApp profile name is "${waName}". You may greet them by their first name if it reads naturally, but it is self-chosen and unverified -- never use it to confirm an identity, a payment or an order.`
+      : "";
+    const reminder = [photoReminder, nameNote].filter(Boolean).join("\n\n");
+    let rawReply = await askAI(seller, history, reminder);
 
     // Bookable sellers only: if she asked for a real availability check,
     // resolve it right now, before anything gets sent to the customer,
@@ -4478,6 +4497,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--surface); }
         .thread-name { display: flex; align-items: center; gap: 7px; font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; min-width: 0; }
         .thread-num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .thread-phone-sub { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 1px; }
+        .detail-phone-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -3px; }
+        /* Initials when the customer's WhatsApp name is known; the person
+           mark stays for everyone else. */
+        .avatar-initials { font-family: var(--font-heading); font-weight: 700; letter-spacing: 0.3px; }
+        .list-avatar .avatar-initials { font-size: 14px; }
+        .thread-avatar .avatar-initials { font-size: 15px; }
+        .detail-avatar .avatar-initials { font-size: 19px; }
         .thread-star-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--star); background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 2px 8px 2px 6px; border-radius: 999px; flex-shrink: 0; white-space: nowrap; }
         .thread-star-mark svg { width: 11px; height: 11px; }
         .lbl-short { display: none; }
@@ -4626,6 +4653,22 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .btn-quiet:hover { background: var(--surface-2); color: var(--text); }
         .table-wrap { overflow-x: auto; }
         .card-head-products { align-items: center; }
+        /* Analytics */
+        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .kpi-sub { font-size: 11px; color: var(--muted-2); margin-top: 3px; }
+        .period-chip { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; flex-shrink: 0; }
+        .seller-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+        .seller-row:last-child { border-bottom: none; }
+        .seller-rank { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-3); color: var(--muted); font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .seller-row:first-child .seller-rank { background: var(--accent-light); color: var(--accent); }
+        .seller-main { flex: 1; min-width: 0; }
+        .seller-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .seller-name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .seller-rev { font-family: var(--font-heading); font-size: 13.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .seller-units { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+        .conversion-block { display: flex; flex-direction: column; gap: 10px; }
+        .conversion-meter { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+        .conversion-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width .5s cubic-bezier(.4,0,.2,1); }
         .card-head-products > div:last-child { display: flex; align-items: center; }
         /* Products as cards led by their photo -- that photo is exactly what
            Amara sends a customer, so it's the thing worth recognising. */
@@ -4842,6 +4885,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .thread-name { font-size: 15px; }
           .thread-header-id > div:last-child { min-width: 0; overflow: hidden; }
           .compose-hint { display: none; }
+          /* Settings on a phone: label above, control below at full width,
+             instead of a squeezed control fighting its own label. */
+          .setting-row { flex-direction: column; align-items: stretch; gap: 10px; padding: 13px 0; }
+          .setting-static { text-align: left; font-size: 14px; }
+          .seg-control { width: 100%; }
+          .seg-control button { flex: 1; padding: 8px 4px; }
+          .swatches { justify-content: flex-start; }
+          .setting-row .switch, .setting-row .btn-quiet { align-self: flex-start; }
+          .setting-row .thread-status-chip { align-self: flex-start; }
+          .catalog-card { padding: 16px 14px; }
+          .fees-row { flex-direction: column; align-items: stretch; }
+          .fees-row div { width: 100% !important; }
+          .fees-row .catalog-btn { width: 100%; justify-content: center; }
           .layout.details-on .detail-pane { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
         }
@@ -4900,7 +4956,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       <div class="stats-bar" id="stats"></div>
       <div class="layout" id="conversationsView">
         <div class="list-pane">
-          <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by phone or reason..." oninput="applyFilter()"></div></div>
+          <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by name, phone or reason..." oninput="applyFilter()"></div></div>
           <div class="list-tabs">
             <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')" title="All conversations"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg></span><span class="list-tab-label">All</span><span class="list-tab-count">0</span></button>
             <button class="list-tab" id="tab-active" onclick="setTab('active')" title="Amara is handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span><span class="list-tab-label">Active</span><span class="list-tab-count">0</span></button>
@@ -5287,21 +5343,41 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         </div>
       </div>
       <div class="catalog-view" id="analyticsView" style="display:none;">
+        <!-- Every figure below is derived from the same 14-day trend the
+             chart draws, or from stored payment records. Nothing here is
+             projected, estimated or benchmarked. -->
+        <div class="kpi-row" id="analyticsKpis"></div>
         <div class="catalog-card">
-          <h2>Revenue — last 14 days</h2>
+          <div class="card-head">
+            <div>
+              <h2>Revenue</h2>
+              <div class="card-sub">Paid orders over the last 14 days.</div>
+            </div>
+            <span class="period-chip">14 days</span>
+          </div>
           <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
         </div>
         <div class="catalog-card">
-          <h2>Best sellers</h2>
-          <table class="catalog-table">
-            <thead><tr><th>Product</th><th>Units sold</th><th>Revenue</th></tr></thead>
-            <tbody id="bestSellersBody"></tbody>
-          </table>
+          <div class="card-head">
+            <div>
+              <h2>Best sellers</h2>
+              <div class="card-sub">By units sold, across every paid order.</div>
+            </div>
+          </div>
+          <div id="bestSellersList"></div>
         </div>
         <div class="catalog-card">
-          <h2>Chat &rarr; order conversion</h2>
-          <div class="conversion-stat" id="conversionStat">&mdash;</div>
-          <div class="conversion-sub" id="conversionSub"></div>
+          <div class="card-head">
+            <div>
+              <h2>Chat to order</h2>
+              <div class="card-sub">How many people who ever messaged you have gone on to pay.</div>
+            </div>
+          </div>
+          <div class="conversion-block">
+            <div class="conversion-stat" id="conversionStat">&mdash;</div>
+            <div class="conversion-meter"><div class="conversion-fill" id="conversionFill" style="width:0%"></div></div>
+            <div class="conversion-sub" id="conversionSub"></div>
+          </div>
         </div>
       </div>
       </div>
@@ -5353,6 +5429,26 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // a wall of 13 identical-weight digits it's genuinely hard to scan --
         // this only re-groups the SAME real digits for readability, never
         // invents or hides any of them.
+        // A customer's WhatsApp profile name when Meta gave us one, otherwise
+        // their formatted number. The name is what THEY set on their own
+        // account -- unverified and changeable -- so the number always stays
+        // visible somewhere nearby rather than being replaced outright.
+        function displayNameFor(c) {
+          const n = (c && c.wa_name || "").trim();
+          return n || formatPhoneDisplay(c && c.phone);
+        }
+        function hasWaName(c) {
+          return !!((c && c.wa_name || "").trim());
+        }
+        // Initials from a real name read far better than two digits.
+        function avatarTextFor(c) {
+          const n = (c && c.wa_name || "").trim();
+          if (!n) return "";
+          const parts = n.split(/\s+/).filter(Boolean);
+          const first = parts[0] ? parts[0][0] : "";
+          const second = parts.length > 1 ? parts[parts.length - 1][0] : "";
+          return (first + second).toUpperCase();
+        }
         function formatPhoneDisplay(phone) {
           const digits = String(phone || "").replace(/\\D/g, "");
           if (!digits) return phone || "";
@@ -5447,6 +5543,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
         const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
         const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
         const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
         // WhatsApp gives us no profile photo and no name, so a contact chip
@@ -5528,6 +5625,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (!q) return list;
           return list.filter((c) =>
             (c.phone || "").toLowerCase().indexOf(q) !== -1 ||
+            (c.wa_name || "").toLowerCase().indexOf(q) !== -1 ||
             (c.last_escalation_reason || "").toLowerCase().indexOf(q) !== -1
           );
         }
@@ -5574,7 +5672,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // the 5s poll can skip the DOM entirely when nothing has changed.
         function listSignature(customers) {
           return currentTab + "|" + selectedPhone + "|" + customers.map((c) =>
-            [c.phone, c.paused, c.starred, c.last_contact, c.last_payment_at,
+            [c.phone, c.wa_name, c.paused, c.starred, c.last_contact, c.last_payment_at,
              c.last_escalation_reason, c.last_message_preview, c.message_count].join("~")
           ).join("|");
         }
@@ -5618,10 +5716,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 : '<span class="row-faint">' + (c.message_count || 0) + ' message' + (Number(c.message_count) === 1 ? '' : 's') + '</span>');
             const dotClass = c.paused === "yes" ? "paused" : "active";
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + rowAnim + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
-              '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + ICON_PERSON + '<span class="status-dot ' + dotClass + '"></span></div>' +
+              '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + (avatarTextFor(c) ? '<span class="avatar-initials">' + escapeHtml(avatarTextFor(c)) + '</span>' : ICON_PERSON) + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
                 '<div class="list-item-top">' +
-                  '<span class="phone">' + starIcon + escapeHtml(formatPhoneDisplay(c.phone)) + paidMark + '</span>' +
+                  '<span class="phone">' + starIcon + escapeHtml(displayNameFor(c)) + paidMark + '</span>' +
                   // A row that needs attention says so up here instead of
                   // squeezing the preview line; ordinary rows show the time.
                   (statusBadge || '<span class="row-time">' + escapeHtml(timeLabel) + '</span>') +
@@ -5766,7 +5864,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const btn = document.querySelector(".takeover-btn");
           if (btn) {
             btn.className = "takeover-btn " + (isPaused ? "hand" : "take");
-            btn.textContent = isPaused ? "Hand back to Amara" : "Take over";
+            // innerHTML, not textContent: textContent wiped the two
+            // breakpoint labels, so five seconds after opening a paused
+            // thread the mobile button silently grew back to the long
+            // wording and started colliding with the number again.
+            btn.innerHTML = isPaused
+              ? '<span class="lbl-full">Hand back to Amara</span><span class="lbl-short">Hand back</span>'
+              : '<span class="lbl-full">Take over</span><span class="lbl-short">Take over</span>';
             btn.onclick = function () { toggleTakeover(selectedPhone, isPaused); };
           }
           const dot = document.querySelector(".thread-avatar .status-dot");
@@ -5822,9 +5926,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '<div class="thread-header">' +
               '<div class="thread-header-id" style="--thread-accent:' + avatarColorFor(phone) + ';">' +
                 '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
-                '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + ICON_PERSON + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
+                '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + (avatarTextFor(customer) ? '<span class="avatar-initials">' + escapeHtml(avatarTextFor(customer)) + '</span>' : ICON_PERSON) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
                 '<div style="min-width:0;">' +
-                  '<div class="thread-name"><span class="thread-num">' + escapeHtml(formatPhoneDisplay(phone)) + '</span></div>' +
+                  '<div class="thread-name"><span class="thread-num">' + escapeHtml(displayNameFor(customer)) + '</span></div>' +
+                  // When a profile name is showing, the number still has to be
+                  // on screen: it's the identifier that actually ties to a
+                  // payment, and a WhatsApp name is neither unique nor verified.
+                  (hasWaName(customer) ? '<div class="thread-phone-sub">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' : '') +
                   '<div class="thread-sub-row">' +
                     // The star button folds into the ⋮ menu on a phone, so the
                     // starred state needs its own mark. It sits on this row
@@ -6252,13 +6360,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
           pane.innerHTML =
             '<div class="detail-head">' +
-              '<div class="detail-avatar" style="' + avatarStyleFor(phone) + '">' + ICON_PERSON + '</div>' +
-              '<div class="detail-phone">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' +
+              '<div class="detail-avatar" style="' + avatarStyleFor(phone) + '">' + (avatarTextFor(c) ? '<span class="avatar-initials">' + escapeHtml(avatarTextFor(c)) + '</span>' : ICON_PERSON) + '</div>' +
+              '<div class="detail-phone">' + escapeHtml(displayNameFor(c)) + '</div>' +
+              (hasWaName(c) ? '<div class="detail-phone-sub">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' : '') +
               '<span class="thread-status-chip' + (isPaused ? ' is-paused' : '') + '"><span class="chip-dot"></span>' +
                 (isPaused ? "You&#39;re handling this" : "Amara is replying") +
               '</span>' +
             '</div>' +
             '<div class="detail-card">' +
+              (hasWaName(c) ? detailRow("WhatsApp name", escapeHtml(c.wa_name)) : "") +
               detailRow("Customer since", since ? escapeHtml(since) : "&mdash;") +
               detailRow("Messages", msgCount ? msgCount.toLocaleString() : "&mdash;") +
               detailRow("Last active", c.last_contact ? escapeHtml(timeAgo(c.last_contact)) : "&mdash;") +
@@ -6454,10 +6564,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         // ---- Export + sign out -----------------------------------------
         function exportCustomersCsv() {
-          const rows = [["phone", "status", "messages", "first_contact", "last_contact", "last_payment_at", "last_payment_amount", "escalation_reason", "note"]];
+          const rows = [["phone", "whatsapp_name", "status", "messages", "first_contact", "last_contact", "last_payment_at", "last_payment_amount", "escalation_reason", "note"]];
           (customersCache || []).forEach((c) => {
             rows.push([
-              c.phone || "", c.paused === "yes" ? "paused" : "active", c.message_count || 0,
+              c.phone || "", c.wa_name || "", c.paused === "yes" ? "paused" : "active", c.message_count || 0,
               c.first_contact || "", c.last_contact || "", c.last_payment_at || "",
               c.last_payment_amount || "", c.last_escalation_reason || "", c.note || "",
             ]);
@@ -6617,17 +6727,43 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             },
           });
 
+          // KPIs, all arithmetic on the same 14 days the chart draws -- no
+          // projections, no benchmarks, nothing the data can't support.
+          const totalRevenue = values.reduce((a2, b2) => a2 + b2, 0);
+          const totalOrders = orders.reduce((a2, b2) => a2 + b2, 0);
+          const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+          let bestIdx = -1;
+          values.forEach((v, i) => { if (v > 0 && (bestIdx === -1 || v > values[bestIdx])) bestIdx = i; });
+          const kpi = (cls, icon, value, label, sub) =>
+            '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div>' +
+            '<div class="stat-label">' + label + '</div>' +
+            (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>' +
+            '<div class="stat-icon">' + icon + '</div></div>';
+          document.getElementById("analyticsKpis").innerHTML =
+            kpi("tile-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", "last 14 days") +
+            kpi("tile-total", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", "last 14 days") +
+            kpi("tile-active", ICON_WALLET, totalOrders > 0 ? "N" + avgOrder.toLocaleString() : "\u2014", "Average order", totalOrders > 0 ? "across " + totalOrders + " order" + (totalOrders === 1 ? "" : "s") : "no orders yet") +
+            kpi("tile-paused", ICON_TREND, bestIdx === -1 ? "\u2014" : "N" + values[bestIdx].toLocaleString(), "Best day", bestIdx === -1 ? "no sales in this window" : escapeHtml(labels[bestIdx]));
+
           const maxSold = Math.max(1, ...data.bestSellers.map((p) => p.sold));
-          const body = document.getElementById("bestSellersBody");
-          body.innerHTML = data.bestSellers.length > 0
-            ? data.bestSellers.map((p) =>
-                '<tr><td>' + escapeHtml(p.name) +
-                  '<div class="best-seller-bar-track"><div class="best-seller-bar-fill" style="width:' + Math.round((p.sold / maxSold) * 100) + '%;"></div></div>' +
-                '</td><td>' + p.sold + '</td><td>N' + p.revenue.toLocaleString() + '</td></tr>'
+          const list = document.getElementById("bestSellersList");
+          list.innerHTML = data.bestSellers.length > 0
+            ? data.bestSellers.map((p, i) =>
+                '<div class="seller-row">' +
+                  '<span class="seller-rank">' + (i + 1) + '</span>' +
+                  '<div class="seller-main">' +
+                    '<div class="seller-top"><span class="seller-name">' + escapeHtml(p.name) + '</span>' +
+                    '<span class="seller-rev">N' + p.revenue.toLocaleString() + '</span></div>' +
+                    '<div class="best-seller-bar-track"><div class="best-seller-bar-fill" style="width:' + Math.round((p.sold / maxSold) * 100) + '%;"></div></div>' +
+                    '<div class="seller-units">' + p.sold + ' sold</div>' +
+                  '</div>' +
+                '</div>'
               ).join("")
-            : '<tr><td colspan="3" style="color:var(--muted-2);">No sales yet.</td></tr>';
+            : '<div class="empty"><div class="empty-icon">' + ICON_BOX + '</div><div class="empty-title">No sales yet</div><div class="empty-sub">Once a customer pays, your best sellers show up here.</div></div>';
 
           document.getElementById("conversionStat").textContent = data.conversion.conversionPct + "%";
+          const fill = document.getElementById("conversionFill");
+          if (fill) fill.style.width = Math.min(100, data.conversion.conversionPct) + "%";
           document.getElementById("conversionSub").textContent =
             data.conversion.paidCustomers + " of " + data.conversion.totalCustomers + " conversation" +
             (data.conversion.totalCustomers === 1 ? "" : "s") + " turned into a paid order";
