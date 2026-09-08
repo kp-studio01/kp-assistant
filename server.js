@@ -3764,20 +3764,20 @@ app.get("/customers", async (req, res) => {
         : "";
       const statusDotCls = c.paused === "yes" ? "paused" : "active";
       return `<tr>
-        <td>
+        <td data-label="Phone" class="cell-primary">
           <div class="phone-cell">
             <span class="row-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span class="status-dot ${statusDotCls}"></span></span>
             <span class="phone-num">${escapeHtmlServer(c.phone || "")}</span>
           </div>
         </td>
-        <td>${pausedBadge}</td>
-        <td>${c.first_contact ? new Date(c.first_contact).toLocaleString() : "&mdash;"}</td>
-        <td>${c.last_contact ? new Date(c.last_contact).toLocaleString() : "&mdash;"}</td>
-        <td>${c.message_count || 0}</td>
-        <td>${c.last_escalation_reason ? escapeHtmlServer(c.last_escalation_reason) : "&mdash;"}</td>
-        <td>${c.last_escalation_at ? new Date(c.last_escalation_at).toLocaleString() : "&mdash;"}</td>
-        <td>${paidBadge || "&mdash;"}</td>
-        <td>${c.last_payment_at ? new Date(c.last_payment_at).toLocaleString() : "&mdash;"}</td>
+        <td data-label="Status">${pausedBadge}</td>
+        <td data-label="First contact">${c.first_contact ? new Date(c.first_contact).toLocaleString() : "&mdash;"}</td>
+        <td data-label="Last contact">${c.last_contact ? new Date(c.last_contact).toLocaleString() : "&mdash;"}</td>
+        <td data-label="Messages">${c.message_count || 0}</td>
+        <td data-label="Last escalation">${c.last_escalation_reason ? escapeHtmlServer(c.last_escalation_reason) : "&mdash;"}</td>
+        <td data-label="Escalated at">${c.last_escalation_at ? new Date(c.last_escalation_at).toLocaleString() : "&mdash;"}</td>
+        <td data-label="Last payment">${paidBadge || "&mdash;"}</td>
+        <td data-label="Paid at">${c.last_payment_at ? new Date(c.last_payment_at).toLocaleString() : "&mdash;"}</td>
       </tr>`;
     })
     .join("");
@@ -3816,6 +3816,25 @@ app.get("/customers", async (req, res) => {
         tbody tr { transition: background .15s; }
         tbody tr:hover { background: #fafafe; }
         tbody tr:last-child td { border-bottom: none; }
+
+  /* Tables become stacked cards below 760px. Each cell keeps its column
+     name via data-label, so nothing has to be remembered from a header
+     that has scrolled off -- and no horizontal scrolling on a phone. */
+  @media (max-width: 760px) {
+    table { min-width: 0 !important; width: 100%; }
+    thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    tbody tr { display: block; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; padding: 10px 12px; background: var(--surface, #fff); }
+    tbody tr:hover { background: var(--surface, #fff); }
+    tbody td { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 6px 0; border-bottom: 1px solid var(--border-light); white-space: normal; text-align: right; }
+    tbody td:last-child { border-bottom: none; }
+    tbody td::before { content: attr(data-label); font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; flex-shrink: 0; }
+    tbody td.cell-primary { display: block; text-align: left; font-size: 15px; font-weight: 600; padding-top: 2px; }
+    tbody td.cell-primary::before { display: block; margin-bottom: 4px; }
+    tbody td.cell-actions { display: block; text-align: left; }
+    tbody td.cell-actions::before { display: block; margin-bottom: 6px; }
+    .table-card, .wrap > table { overflow: visible; }
+  }
+
         .phone-cell { display: flex; align-items: center; gap: 10px; }
         .row-avatar { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .row-avatar svg { width: 14px; height: 14px; }
@@ -3918,10 +3937,10 @@ function adminPanelHtml(key, sellers) {
         : `<button class="btn secondary" onclick="toggleSuspend('${s.sellerId}', ${isSuspended ? "false" : "true"})">${isSuspended ? "Resume" : "Suspend"}</button>
           <button class="btn danger delete-seller-btn" data-seller-id="${escapeHtmlServer(s.sellerId)}" data-business-name="${escapeHtmlServer(s.businessName || "this seller")}">Delete</button>`;
       return `<tr>
-        <td>${escapeHtmlServer(s.businessName || "")}${isSeller1 ? ' <span class="you-badge">your shop</span>' : ""}</td>
-        <td>${escapeHtmlServer(s.email || "")}</td>
-        <td>${statusBadge}${suspendedBadge}</td>
-        <td>
+        <td data-label="Business" class="cell-primary">${escapeHtmlServer(s.businessName || "")}${isSeller1 ? ' <span class="you-badge">your shop</span>' : ""}</td>
+        <td data-label="Email">${escapeHtmlServer(s.email || "")}</td>
+        <td data-label="Status">${statusBadge}${suspendedBadge}</td>
+        <td data-label="Actions" class="cell-actions">
           <a class="btn" href="${dashboardHref}">Open dashboard</a>
           <button class="btn secondary" onclick="toggleConnect('${s.sellerId}')">Connect WhatsApp</button>
           ${holdDeleteButtons}
@@ -3957,6 +3976,21 @@ function adminPanelHtml(key, sellers) {
         table { width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
         th, td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--border-light); font-size:13px; vertical-align:top; }
         th { background:var(--bg); color:var(--muted); font-weight:600; font-size:12px; }
+        /* Same stacked-card treatment as /customers, so the seller list is
+           usable on a phone instead of clipping its own columns. */
+        @media (max-width: 760px) {
+          .wrap { margin: 20px auto; padding: 0 14px; }
+          table { background: transparent; box-shadow: none; }
+          thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+          tbody tr { display: block; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; padding: 10px 12px; background: #fff; }
+          tbody td { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 6px 0; border-bottom: 1px solid var(--border-light); text-align: right; }
+          tbody td:last-child { border-bottom: none; }
+          tbody td::before { content: attr(data-label); font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; flex-shrink: 0; }
+          tbody td.cell-primary, tbody td.cell-actions { display: block; text-align: left; }
+          tbody td.cell-primary { font-size: 15px; font-weight: 600; }
+          tbody td.cell-primary::before, tbody td.cell-actions::before { display: block; margin-bottom: 5px; }
+          a.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; }
+        }
         .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; }
         .badge.active { background:var(--success-bg); color:var(--success); }
         .badge.pending { background:var(--warning-bg); color:var(--warning); }
@@ -4142,8 +4176,13 @@ async function getDashboardStats(customers) {
   };
 }
 
-function dashboardHtml(key, sellerId, businessName, businessType) {
+function dashboardHtml(key, sellerId, businessName, businessType, connection) {
   const isBookable = businessType === "bookable";
+  // Real connection state off the seller record -- Amara genuinely cannot
+  // send or receive until both of these exist, so this is a fact worth
+  // showing rather than a reassuring badge.
+  const whatsappConnected = !!(connection && connection.phoneNumberId && connection.whatsappToken);
+  const ownerAlertNumber = (connection && connection.ownerPhoneNumber) || "";
   // The admin key (and, when viewing a seller other than seller1, that
   // seller's id) gets embedded into the page's own JS so its fetch calls
   // can authenticate, same trust boundary as the ?key= on the page itself
@@ -4613,6 +4652,20 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .seg-control button { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: background .15s, color .15s, box-shadow .15s; }
         .seg-control button:hover { color: var(--text); }
         .seg-control button.seg-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
+        .swatches { display: flex; gap: 7px; flex-shrink: 0; }
+        .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(15,23,42,0.12); cursor: pointer; padding: 0; transition: transform .15s ease, box-shadow .15s ease; }
+        .swatch:hover { transform: scale(1.12); }
+        .swatch-active { border-color: var(--surface); box-shadow: 0 0 0 2px var(--text); }
+        /* Compact density: the same layout, tightened. Only spacing changes —
+           nothing is hidden, so nothing becomes undiscoverable. */
+        [data-density="compact"] .list-item { padding-top: 9px; padding-bottom: 9px; }
+        [data-density="compact"] .stat-tile { padding: 10px 14px; }
+        [data-density="compact"] .catalog-card { padding: 15px; margin-bottom: 14px; }
+        [data-density="compact"] .setting-row { padding: 10px 0; }
+        [data-density="compact"] .thread { padding: 16px; }
+        [data-density="compact"] .msg-row.group-end { margin-bottom: 10px; }
+        [data-density="compact"] .detail-pane { padding: 12px; gap: 10px; }
+        [data-density="compact"] .product-grid { gap: 10px; }
         .switch { position: relative; width: 42px; height: 24px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-3); cursor: pointer; flex-shrink: 0; padding: 0; transition: background .18s ease, border-color .18s ease; }
         .switch span { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-md); transition: transform .18s cubic-bezier(.4,0,.2,1); }
         .switch.on { background: var(--accent); border-color: var(--accent); }
@@ -4698,7 +4751,20 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           .catalog-form { grid-template-columns: 1fr !important; }
           .fees-row { flex-direction: column; }
           .fees-row div { width: 100%; }
-          .stats-bar { padding: 12px 16px; gap: 10px; }
+          /* Four stacked tiles ate roughly a third of a phone screen before
+             the conversation list even started. On mobile they collapse to
+             one horizontally scrollable strip of compact chips -- same four
+             real numbers, about a quarter of the height. */
+          .stats-bar { padding: 10px 12px; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+          .stats-bar::-webkit-scrollbar { display: none; }
+          .stat-tile { min-width: 0; flex: 0 0 auto; padding: 8px 12px; border-radius: 11px; flex-direction: row-reverse; align-items: center; gap: 9px; }
+          .stat-tile::before { height: 0; }
+          .stat-tile::after { display: none; }
+          .stat-tile .stat-icon { width: 30px; height: 30px; border-radius: 9px; }
+          .stat-tile .stat-icon svg { width: 15px; height: 15px; }
+          .stat-tile .stat-value { font-size: 17px; }
+          .stat-tile .stat-label { font-size: 10.5px; margin-top: 1px; }
+          .stat-tile:hover { transform: none; box-shadow: var(--shadow-sm); }
           body.mobile-thread-open .stats-bar { display: none; }
           .layout.details-on .detail-pane { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
@@ -4999,11 +5065,63 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           </div>
           <div class="setting-row">
             <div class="setting-text">
+              <div class="setting-name">Accent colour</div>
+              <div class="setting-desc">Used for buttons, highlights and Amara's replies in the conversation.</div>
+            </div>
+            <div class="swatches" id="accentSwatches"></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Density</div>
+              <div class="setting-desc">Compact fits more conversations and products on screen at once.</div>
+            </div>
+            <div class="seg-control" id="densitySeg">
+              <button data-density-choice="comfortable" onclick="setDensity('comfortable')">Comfortable</button>
+              <button data-density-choice="compact" onclick="setDensity('compact')">Compact</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
               <div class="setting-name">Customer details panel</div>
               <div class="setting-desc">Show the panel beside a conversation by default on wide screens.</div>
             </div>
             <button class="switch" id="detailsSwitch" role="switch" onclick="toggleDetailDefault()"><span></span></button>
           </div>
+        </div>
+        <div class="catalog-card">
+          <h2>Live updates</h2>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Refresh rate</div>
+              <div class="setting-desc">How often this dashboard checks for new messages. Slower saves mobile data; Off means it only updates when you reload.</div>
+            </div>
+            <div class="seg-control" id="refreshSeg">
+              <button data-refresh-choice="5000" onclick="setRefreshRate(5000)">5s</button>
+              <button data-refresh-choice="15000" onclick="setRefreshRate(15000)">15s</button>
+              <button data-refresh-choice="30000" onclick="setRefreshRate(30000)">30s</button>
+              <button data-refresh-choice="0" onclick="setRefreshRate(0)">Off</button>
+            </div>
+          </div>
+        </div>
+        <div class="catalog-card">
+          <h2>WhatsApp connection</h2>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Status</div>
+              <div class="setting-desc">Amara can only send and receive once your WhatsApp Business number is connected.</div>
+            </div>
+            <span class="thread-status-chip${whatsappConnected ? "" : " is-paused"}"><span class="chip-dot"></span>${whatsappConnected ? "Connected" : "Not connected"}</span>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Alerts go to</div>
+              <div class="setting-desc">The number Amara messages when she hands a conversation back to you.</div>
+            </div>
+            <div class="setting-static">${ownerAlertNumber ? escapeHtmlServer(ownerAlertNumber) : "Not set"}</div>
+          </div>
+          <div class="setting-note">${whatsappConnected
+            ? "Connected numbers are managed by Stafly.AI. Reply to your setup contact if you need to change the number Amara sends from or alerts."
+            : "Your number isn't connected yet, so Amara can't reply to customers. Reply to your Stafly.AI setup contact to finish connecting it."}</div>
         </div>
         <div class="catalog-card">
           <h2>Bank transfer details</h2>
@@ -5047,6 +5165,23 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             </div>
             <button class="catalog-btn small" style="background:transparent;color:var(--danger);padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
             <div class="catalog-msg" id="bank2Msg"></div>
+          </div>
+        </div>
+        <div class="catalog-card">
+          <h2>Your data</h2>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Export customers</div>
+              <div class="setting-desc">Downloads every customer currently loaded here as a CSV &mdash; phone, status, message count, first and last contact, and any payment.</div>
+            </div>
+            <button class="btn-quiet" onclick="exportCustomersCsv()">Download CSV</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Sign out</div>
+              <div class="setting-desc">Ends this session on this browser. Amara keeps running and keeps replying to customers.</div>
+            </div>
+            <button class="btn-quiet danger-quiet" onclick="signOut()">Sign out</button>
           </div>
         </div>
         <div class="catalog-card">
@@ -6067,6 +6202,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             else localStorage.setItem("stafly-theme", choice);
           } catch (e) {}
           applyThemeChoice(choice);
+          applyAccent(currentAccent()); // accent tokens differ between themes
           syncSettingsControls();
         }
         function currentThemeChoice() {
@@ -6083,6 +6219,95 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           try { saved = localStorage.getItem("stafly-details"); } catch (e) {}
           return saved ? saved === "on" : window.innerWidth > 1280;
         }
+        // ---- Accent colour --------------------------------------------
+        // Overrides the three accent tokens at the document level, so every
+        // component that already reads var(--accent) follows automatically.
+        const ACCENTS = [
+          { id: "indigo", name: "Indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", darkLight: "#1e2440", darkSoft: "#2a3157", darkBase: "#6366f1" },
+          { id: "teal",   name: "Teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", darkLight: "#0f2b2a", darkSoft: "#12403c", darkBase: "#2dd4bf" },
+          { id: "blue",   name: "Blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", darkLight: "#12203c", darkSoft: "#1c3260", darkBase: "#60a5fa" },
+          { id: "violet", name: "Violet", base: "#7c3aed", dark: "#6d28d9", light: "#f5f3ff", soft: "#ede9fe", darkLight: "#241a40", darkSoft: "#38266b", darkBase: "#a78bfa" },
+          { id: "rose",   name: "Rose",   base: "#e11d48", dark: "#be123c", light: "#fff1f3", soft: "#ffe4e8", darkLight: "#33131d", darkSoft: "#551f30", darkBase: "#fb7185" },
+          { id: "amber",  name: "Amber",  base: "#d97706", dark: "#b45309", light: "#fffbeb", soft: "#fde68a", darkLight: "#2c1f0b", darkSoft: "#4a3413", darkBase: "#fbbf24" },
+        ];
+        function currentAccent() {
+          try { return localStorage.getItem("stafly-accent") || "indigo"; } catch (e) { return "indigo"; }
+        }
+        function applyAccent(id) {
+          const a = ACCENTS.find((x) => x.id === id) || ACCENTS[0];
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          const root = document.documentElement.style;
+          root.setProperty("--accent", dark ? a.darkBase : a.base);
+          root.setProperty("--accent-dark", dark ? a.base : a.dark);
+          root.setProperty("--accent-light", dark ? a.darkLight : a.light);
+          root.setProperty("--accent-soft", dark ? a.darkSoft : a.soft);
+          if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
+        }
+        function setAccent(id) {
+          try { localStorage.setItem("stafly-accent", id); } catch (e) {}
+          applyAccent(id);
+          syncSettingsControls();
+        }
+
+        // ---- Density ---------------------------------------------------
+        function currentDensity() {
+          try { return localStorage.getItem("stafly-density") || "comfortable"; } catch (e) { return "comfortable"; }
+        }
+        function applyDensity(mode) {
+          document.documentElement.setAttribute("data-density", mode === "compact" ? "compact" : "comfortable");
+        }
+        function setDensity(mode) {
+          try { localStorage.setItem("stafly-density", mode); } catch (e) {}
+          applyDensity(mode);
+          syncSettingsControls();
+        }
+
+        // ---- Refresh rate ----------------------------------------------
+        // Genuinely rewires the poll -- 0 clears the interval entirely.
+        let pollTimer = null;
+        function currentRefreshRate() {
+          try {
+            const v = localStorage.getItem("stafly-refresh");
+            return v === null ? 5000 : Number(v);
+          } catch (e) { return 5000; }
+        }
+        function applyRefreshRate(ms) {
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+          if (ms > 0) pollTimer = setInterval(loadDashboard, ms);
+        }
+        function setRefreshRate(ms) {
+          try { localStorage.setItem("stafly-refresh", String(ms)); } catch (e) {}
+          applyRefreshRate(ms);
+          syncSettingsControls();
+        }
+
+        // ---- Export + sign out -----------------------------------------
+        function exportCustomersCsv() {
+          const rows = [["phone", "status", "messages", "first_contact", "last_contact", "last_payment_at", "last_payment_amount", "escalation_reason", "note"]];
+          (customersCache || []).forEach((c) => {
+            rows.push([
+              c.phone || "", c.paused === "yes" ? "paused" : "active", c.message_count || 0,
+              c.first_contact || "", c.last_contact || "", c.last_payment_at || "",
+              c.last_payment_amount || "", c.last_escalation_reason || "", c.note || "",
+            ]);
+          });
+          // Quote every field and double any inner quote -- notes and
+          // escalation reasons are free text and will contain commas.
+          const csv = rows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\\r\\n");
+          const blob = new Blob(["\\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "stafly-customers-" + new Date().toISOString().slice(0, 10) + ".csv";
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        async function signOut() {
+          if (!confirm("Sign out of this dashboard? Amara keeps replying to your customers either way.")) return;
+          try { await fetch("/logout", { method: "POST" }); } catch (e) {}
+          window.location.href = "/login";
+        }
+
         function syncSettingsControls() {
           const choice = currentThemeChoice();
           document.querySelectorAll("#themeSeg button").forEach((b) => {
@@ -6094,6 +6319,22 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             sw.classList.toggle("on", on);
             sw.setAttribute("aria-checked", on ? "true" : "false");
           }
+          const dens = currentDensity();
+          document.querySelectorAll("#densitySeg button").forEach((b) => {
+            b.classList.toggle("seg-active", b.dataset.densityChoice === dens);
+          });
+          const rate = String(currentRefreshRate());
+          document.querySelectorAll("#refreshSeg button").forEach((b) => {
+            b.classList.toggle("seg-active", b.dataset.refreshChoice === rate);
+          });
+          const sw2 = document.getElementById("accentSwatches");
+          if (sw2) {
+            const active = currentAccent();
+            sw2.innerHTML = ACCENTS.map((a) =>
+              '<button class="swatch' + (a.id === active ? " swatch-active" : "") + '" title="' + a.name +
+              '" aria-label="' + a.name + '" style="background:' + a.base + '" onclick="setAccent(\\'' + a.id + '\\')"></button>'
+            ).join("");
+          }
         }
 
         function toggleTheme() {
@@ -6102,6 +6343,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           if (nowDark) root.setAttribute("data-theme", "dark");
           else root.removeAttribute("data-theme");
           try { localStorage.setItem("stafly-theme", nowDark ? "dark" : "light"); } catch (e) {}
+          applyAccent(currentAccent()); // accent tokens differ between themes
           syncSettingsControls(); // keep the Settings segmented control honest
           // The chart paints its axes onto a canvas, so unlike everything else
           // it can't follow a CSS variable -- it has to be redrawn.
@@ -7122,9 +7364,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         if (topbarDateEl) topbarDateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
         initDetailPane();
+        applyAccent(currentAccent());
+        applyDensity(currentDensity());
         syncSettingsControls();
         loadDashboard();
-        setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
+        applyRefreshRate(currentRefreshRate()); // owner-controlled poll, default 5s
       </script>
     </body>
     </html>
@@ -7136,7 +7380,11 @@ app.get("/dashboard", async (req, res) => {
   if (!seller) {
     return res.status(403).send("Not authorized. Add ?key=YOUR_ADMIN_KEY to the URL, or log in as a seller.");
   }
-  res.send(dashboardHtml(req.query.key || "", req.query.sellerId || "", seller.businessName, seller.businessType));
+  res.send(dashboardHtml(req.query.key || "", req.query.sellerId || "", seller.businessName, seller.businessType, {
+    phoneNumberId: seller.phoneNumberId,
+    whatsappToken: seller.whatsappToken,
+    ownerPhoneNumber: seller.ownerPhoneNumber,
+  }));
 });
 
 app.get("/api/dashboard-data", async (req, res) => {
