@@ -4081,19 +4081,26 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .sidebar-brand { padding: 20px 20px 16px; }
         .sidebar-section-label { padding: 10px 20px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); }
         .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
-        .topbar { background: white; border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
-        .topbar h1 { font-family: var(--font-heading); font-size: 16px; margin: 0; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .topbar h1 .sep { font-weight: 400; color: var(--muted); }
+        .topbar { background: white; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
+        .topbar h1 { font-family: var(--font-heading); font-size: 17px; margin: 0; font-weight: 700; color: var(--navy); letter-spacing: -0.015em; white-space: nowrap; }
+        /* The business name was a grey "· Name" tacked onto the title; as its
+           own chip it reads as "which shop you're looking at" instead of
+           trailing punctuation. */
+        .topbar-biz { display: inline-flex; align-items: center; gap: 6px; max-width: 230px; padding: 4px 11px 4px 9px; background: var(--accent-light); color: var(--accent); border: 1px solid #e0e7ff; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .topbar-biz svg { width: 13px; height: 13px; flex-shrink: 0; }
+        .topbar-biz span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
-        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: #f8fafc; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+        .topbar-date-chip svg { width: 13px; height: 13px; flex-shrink: 0; }
         .hamburger-btn { display: none; background: transparent; border: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; color: var(--navy); flex-shrink: 0; }
         .hamburger-btn svg { width: 20px; height: 20px; }
         .hamburger-btn:hover { background: #f1f5f9; }
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
-        .topbar-date { font-size: 12px; color: var(--muted); font-weight: 500; }
-        .topbar-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; box-shadow: 0 2px 5px rgba(79,70,229,0.35); }
+        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px rgba(79,70,229,0.35); }
         /* A real profile card at the top of the sidebar -- who's logged
            in and what kind of seller they are, using only real fields
            already passed into dashboardHtml (never fabricated). This is
@@ -4143,23 +4150,29 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .stat-tile.tile-revenue .stat-icon { background: #eef2ff; color: var(--accent-dark); }
         .layout { display: flex; flex: 1; min-height: 0; }
         .list-pane { width: 320px; border-right: 1px solid #e2e8f0; background: white; flex-shrink: 0; display: flex; flex-direction: column; }
-        .search-box { padding: 10px 12px 8px; }
-        .search-box input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
-        .search-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .search-box { padding: 12px 12px 9px; }
+        .search-box-inner { position: relative; display: flex; align-items: center; }
+        .search-box-inner svg { position: absolute; left: 11px; width: 15px; height: 15px; color: #94a3b8; pointer-events: none; }
+        .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--navy); transition: background .15s, border-color .15s, box-shadow .15s; }
+        .search-box input::placeholder { color: #94a3b8; }
+        .search-box input:focus { outline: none; background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         /* Real filters, not decoration -- All/Active/Paused/Starred each map
            to an actual stored field on the customer record (see setTab /
            getFilteredCustomers), the same idea as Fillow's inbox tabs but
            grounded in states this dashboard genuinely tracks. */
-        .list-tabs { display: flex; gap: 4px; padding: 0 10px 10px; border-bottom: 1px solid #f1f5f9; }
-        .list-tab { flex: 1; background: transparent; border: none; padding: 7px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 6px; cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
-        .list-tab:hover { background: #f8fafc; color: var(--navy); }
-        .list-tab.active-list-tab { background: var(--accent-light); color: var(--accent); }
+        .list-tabs { display: flex; gap: 2px; margin: 0 12px 10px; padding: 3px; background: #eef1f6; border-radius: 10px; }
+        .list-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 6px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 8px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; white-space: nowrap; }
+        .list-tab:hover { color: var(--navy); }
+        .list-tab.active-list-tab { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(15,23,42,0.14); }
+        .list-tab-count { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: #dde3ec; color: #64748b; min-width: 17px; }
+        .list-tab.active-list-tab .list-tab-count { background: var(--accent-light); color: var(--accent); }
         .nav-badge { margin-left: auto; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; line-height: 1.5; flex-shrink: 0; }
         .list { flex: 1; overflow-y: auto; }
         .list-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s; }
         .list-item:hover { background: #f8fafc; }
         .list-item.active-row { background: var(--accent-light); }
-        .list-avatar { position: relative; width: 42px; height: 42px; border-radius: 50%; color: #fff; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: 0.2px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; box-shadow: 0 1px 2px rgba(15,23,42,0.15); }
+        .list-avatar { position: relative; width: 42px; height: 42px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; box-shadow: 0 1px 2px rgba(15,23,42,0.15); }
+        .list-avatar svg { width: 22px; height: 22px; opacity: 0.95; }
         .list-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid white; }
         .status-dot.active { background: var(--success); }
         .status-dot.paused { background: var(--warning); }
@@ -4169,25 +4182,29 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .list-item-badges { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .row-star { display: inline-flex; color: #d97706; flex-shrink: 0; }
         .row-star svg { width: 13px; height: 13px; }
-        .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
-        .badge.paused { background: #fef3c7; color: #b45309; }
-        .badge.active { background: #dcfce7; color: #15803d; }
-        .badge.paid { background: #dbeafe; color: #1d4ed8; }
+        .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid transparent; line-height: 1.55; }
+        .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .badge.paused { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .badge.active { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .badge.paid { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
         /* Refines the plain "Paused" badge for the one case that's actually
            actionable right now: paused AND the customer's last message
            still has no reply -- both real, stored facts (see
            last_message_role in saveConversation). */
-        .badge.waiting { background: #fee2e2; color: #b91c1c; font-weight: 600; }
+        .badge.waiting { background: #fef2f2; color: #b91c1c; border-color: #fecaca; font-weight: 700; }
         .snippet { font-size: 12px; color: #64748b; margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .thread-header { padding: 14px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; font-family: var(--font-heading); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .thread-avatar svg { width: 23px; height: 23px; opacity: 0.95; }
         .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid white; }
-        .thread-eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--thread-accent, var(--accent)); line-height: 1; margin-bottom: 3px; }
-        .thread-name { font-family: var(--font-heading); font-size: 16.5px; font-weight: 700; color: var(--navy); letter-spacing: 0.2px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .thread-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-        .thread-sub.is-paused { color: #b45309; font-weight: 600; }
+        .thread-name { font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--navy); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thread-sub-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+        .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px 2px 7px; border-radius: 999px; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; white-space: nowrap; }
+        .thread-status-chip.is-paused { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .thread-status-chip .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .thread-sub { font-size: 12px; color: var(--muted); }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
         .icon-btn svg { width: 16px; height: 16px; }
@@ -4208,6 +4225,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .msg-row.group-end { margin-bottom: 14px; }
         .msg-row.from-assistant { flex-direction: row-reverse; }
         .msg-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .msg-avatar svg { width: 15px; height: 15px; opacity: 0.95; }
         .msg-avatar.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); }
         /* Rows inside a group keep the avatar's footprint so their bubbles
            stay aligned with the one row that actually shows it. */
@@ -4294,10 +4312,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
         .bubble mark { background: #fde68a; color: #1e293b; border-radius: 3px; padding: 0 1px; }
         .msg-row.search-hidden { display: none; }
-        .compose-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 24px 0; background: white; }
-        .compose-toolbar-group { display: flex; align-items: center; gap: 2px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; padding: 3px; }
-        .compose-toolbar-hint { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .toolbar-divider { width: 1px; height: 18px; background: #dde3ec; margin: 0 4px; flex-shrink: 0; }
+        /* The format controls live inside the composer pill, so they line up
+           with the message text itself instead of floating above it in a
+           separate strip on a different left edge. */
+        .compose-tools { display: flex; align-items: center; gap: 2px; margin-top: 2px; }
+        .toolbar-divider { width: 1px; height: 16px; background: #dde3ec; margin: 0 4px; flex-shrink: 0; }
         .icon-btn.small-icon-btn { width: 27px; height: 27px; border-radius: 6px; font-size: 12px; border: none; background: transparent; color: var(--navy); }
         .icon-btn.small-icon-btn:hover { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
         .icon-btn.small-icon-btn svg { width: 14px; height: 14px; }
@@ -4308,10 +4327,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .emoji-picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
         .emoji-picker-grid button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
         .emoji-picker-grid button:hover { background: var(--accent-light); }
-        .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid #e2e8f0; background: white; }
-        .msg-compose-inner { flex: 1; display: flex; align-items: flex-end; border: 1.5px solid #e2e8f0; border-radius: 22px; padding: 5px 6px 5px 16px; background: #f8fafc; transition: border-color .15s, box-shadow .15s, background .15s; }
+        .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 24px 14px; border-top: 1px solid #e2e8f0; background: white; }
+        .msg-compose-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; border: 1.5px solid #e2e8f0; border-radius: 18px; padding: 6px 10px 6px 14px; background: #f8fafc; transition: border-color .15s, box-shadow .15s, background .15s; }
         .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: #fff; }
-        .msg-compose textarea { flex: 1; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.4; padding: 8px 0; max-height: 120px; }
+        .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
         .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px rgba(79,70,229,0.35); transition: transform .15s ease, box-shadow .15s ease; }
         .msg-send-btn svg { width: 17px; height: 17px; }
@@ -4362,10 +4381,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           .stats-bar { padding: 12px 16px; gap: 10px; }
           body.mobile-thread-open .stats-bar { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
-          .compose-toolbar-hint { display: none; }
         }
         @media (max-width: 480px) {
-          .topbar-date { display: none; }
+          .topbar-date-chip { display: none; }
           .topbar h1 { font-size: 14px; }
         }
       </style>
@@ -4401,22 +4419,25 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </aside>
       <div class="main-column">
       <header class="topbar">
-        <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-        <h1>Live Dashboard${businessName ? `<span class="sep">&middot; ${businessName}</span>` : ""}</h1>
+        <div class="topbar-left">
+          <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <h1>Live Dashboard</h1>
+          ${businessName ? `<span class="topbar-biz" title="${escapeHtmlServer(businessName)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg><span>${escapeHtmlServer(businessName)}</span></span>` : ""}
+        </div>
         <div class="topbar-right">
-          <span class="topbar-date" id="topbarDate"></span>
+          <span class="topbar-date-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg><span id="topbarDate"></span></span>
           <span class="topbar-avatar" title="${escapeHtmlServer(businessName || "Your business")}">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span>
         </div>
       </header>
       <div class="stats-bar" id="stats"></div>
       <div class="layout" id="conversationsView">
         <div class="list-pane">
-          <div class="search-box"><input id="searchBox" placeholder="Search by phone or escalation reason..." oninput="applyFilter()"></div>
+          <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by phone or reason..." oninput="applyFilter()"></div></div>
           <div class="list-tabs">
-            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')">All</button>
-            <button class="list-tab" id="tab-active" onclick="setTab('active')">Active</button>
-            <button class="list-tab" id="tab-paused" onclick="setTab('paused')">Paused</button>
-            <button class="list-tab" id="tab-starred" onclick="setTab('starred')">&#9733; Starred</button>
+            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')"><span class="list-tab-label">All</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-active" onclick="setTab('active')"><span class="list-tab-label">Active</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-paused" onclick="setTab('paused')"><span class="list-tab-label">Paused</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-starred" onclick="setTab('starred')"><span class="list-tab-label">&#9733;</span><span class="list-tab-count">0</span></button>
           </div>
           <div class="list" id="list"><div class="empty"><div class="spinner"></div><div class="empty-title">Loading conversations…</div></div></div>
         </div>
@@ -4706,10 +4727,6 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         function avatarStyleFor(phone) {
           return "background:" + avatarColorFor(phone) + ";";
         }
-        function avatarInitialsFor(phone) {
-          const digits = String(phone || "").replace(/\\D/g, "");
-          return digits.length >= 2 ? digits.slice(-2) : (digits || "?");
-        }
 
         // A raw WhatsApp phone number ("2348087014578") is real data, but as
         // a wall of 13 identical-weight digits it's genuinely hard to scan --
@@ -4801,6 +4818,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
         const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
         const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+        // WhatsApp gives us no profile photo and no name, so a contact chip
+        // shows a person mark rather than repeating digits we already print
+        // as text right beside it -- the per-contact colour is what makes
+        // one customer visually distinct from another.
+        const ICON_PERSON = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8.2" r="4"/><path d="M12 13.6c-4.2 0-7.2 2.3-7.2 5.2 0 .7.5 1.2 1.2 1.2h12c.7 0 1.2-.5 1.2-1.2 0-2.9-3-5.2-7.2-5.2z"/></svg>';
         // Real WhatsApp-sendable unicode emoji, nothing that needs a font or
         // library to render -- inserted straight into the compose textarea.
         const EMOJI_SET = ["😀","😂","😍","👍","🙏","🎉","❤️","😊","🔥","👏","😢","😅","🤔","💯","✅","⏳","📦","💰","🙌","😎"];
@@ -4861,14 +4883,17 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // i.e. genuinely waiting on a reply from the owner, not just "any
         // paused chat" which the Paused stat tile already covers.
         function updateListTabCounts() {
-          const setLabel = (id, label, n) => {
+          // Only the count chip is rewritten -- the label markup stays put,
+          // so the star glyph never gets re-escaped on every poll.
+          const setCount = (id, n) => {
             const el = document.getElementById(id);
-            if (el) el.innerHTML = label + " (" + n + ")";
+            const countEl = el && el.querySelector(".list-tab-count");
+            if (countEl) countEl.textContent = String(n);
           };
-          setLabel("tab-all", "All", customersCache.length);
-          setLabel("tab-active", "Active", customersCache.filter((c) => c.paused !== "yes").length);
-          setLabel("tab-paused", "Paused", customersCache.filter((c) => c.paused === "yes").length);
-          setLabel("tab-starred", "&#9733; Starred", customersCache.filter((c) => c.starred === "yes").length);
+          setCount("tab-all", customersCache.length);
+          setCount("tab-active", customersCache.filter((c) => c.paused !== "yes").length);
+          setCount("tab-paused", customersCache.filter((c) => c.paused === "yes").length);
+          setCount("tab-starred", customersCache.filter((c) => c.starred === "yes").length);
           const needsReply = customersCache.filter((c) => c.paused === "yes" && c.last_message_role === "user").length;
           const badge = document.getElementById("navBadgeConversations");
           if (badge) {
@@ -4903,7 +4928,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               : "";
             const dotClass = c.paused === "yes" ? "paused" : "active";
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
-              '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + escapeHtml(avatarInitialsFor(c.phone)) + '<span class="status-dot ' + dotClass + '"></span></div>' +
+              '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + ICON_PERSON + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
                 '<div class="list-item-top">' +
                   '<span class="phone">' + starIcon + escapeHtml(formatPhoneDisplay(c.phone)) + '</span>' +
@@ -4972,7 +4997,6 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           // that's a brand identity, not a per-contact one, same idea as the
           // sidebar profile mark.
           const userAvatarStyle = avatarStyleFor(selectedPhone);
-          const userInitials = escapeHtml(avatarInitialsFor(selectedPhone));
           const dayKeyOf = (msg) => {
             if (!msg || !msg.at) return null;
             const d = new Date(msg.at);
@@ -4996,7 +5020,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             const isUser = m.role === "user";
             const avatarHtml = endsGroup
               ? (isUser
-                ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + userInitials + '</div>'
+                ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + ICON_PERSON + '</div>'
                 : '<div class="msg-avatar assistant">S</div>')
               : '<div class="msg-avatar-spacer"></div>';
             // The time now sits inside the bubble, bottom-right, the way it
@@ -5044,9 +5068,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const dot = document.querySelector(".thread-avatar .status-dot");
           if (dot) dot.className = "status-dot " + (isPaused ? "paused" : "active");
           const sub = document.querySelector(".thread-sub");
-          if (sub) {
-            sub.className = "thread-sub" + (isPaused ? " is-paused" : "");
-            sub.textContent = threadSubtitle(customer, isPaused);
+          if (sub) sub.textContent = threadSubtitle(customer);
+          const statusChip = document.getElementById("threadStatusChip");
+          if (statusChip) {
+            statusChip.className = "thread-status-chip" + (isPaused ? " is-paused" : "");
+            statusChip.innerHTML = '<span class="chip-dot"></span>' + (isPaused ? "You&#39;re handling this" : "Amara is replying");
           }
           const starBtn = document.getElementById("starBtn");
           if (starBtn && customer) {
@@ -5060,10 +5086,16 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // Real, not invented: paused state and last_contact are both actual
         // stored fields, never a fake "online"/"typing..." claim -- WhatsApp
         // gives us no live presence signal to show one honestly.
-        function threadSubtitle(customer, isPaused) {
-          if (isPaused) return "Paused — you're handling this one";
+        function threadSubtitle(customer) {
           if (customer && customer.last_contact) return "Last message " + timeAgo(customer.last_contact);
           return "New conversation";
+        }
+        // The paused/active state now reads as a real status chip rather than
+        // a run of grey text -- same two states, same stored field.
+        function threadStatusChipHtml(isPaused) {
+          return isPaused
+            ? '<span class="thread-status-chip is-paused" id="threadStatusChip"><span class="chip-dot"></span>You\\'re handling this</span>'
+            : '<span class="thread-status-chip" id="threadStatusChip"><span class="chip-dot"></span>Amara is replying</span>';
         }
 
         function renderThread(phone, history, customer) {
@@ -5073,11 +5105,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             '<div class="thread-header">' +
               '<div class="thread-header-id" style="--thread-accent:' + avatarColorFor(phone) + ';">' +
                 '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
-                '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + escapeHtml(avatarInitialsFor(phone)) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
+                '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + ICON_PERSON + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
                 '<div style="min-width:0;">' +
-                  '<div class="thread-eyebrow">Customer</div>' +
                   '<div class="thread-name">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' +
-                  '<div class="thread-sub' + (isPaused ? ' is-paused' : '') + '">' + threadSubtitle(customer, isPaused) + '</div>' +
+                  '<div class="thread-sub-row">' +
+                    threadStatusChipHtml(isPaused) +
+                    '<span class="thread-sub">' + threadSubtitle(customer) + '</span>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
               '<div class="thread-actions">' +
@@ -5102,26 +5136,23 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               '<button class="icon-btn" onclick="closeThreadSearch()" title="Close search" aria-label="Close search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
             '</div>' +
             '<div class="thread" id="thread"></div>' +
-            '<div class="compose-toolbar">' +
-              '<div class="compose-toolbar-group">' +
-                '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'*\\', \\'*\\')" title="Bold (WhatsApp *text*)"><b>B</b></button>' +
-                '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'_\\', \\'_\\')" title="Italic (WhatsApp _text_)"><i>I</i></button>' +
-                '<span class="toolbar-divider"></span>' +
-                '<div class="emoji-picker-wrap">' +
-                  '<button class="icon-btn small-icon-btn" onclick="toggleEmojiPicker()" title="Emoji">' + ICON_EMOJI + '</button>' +
-                  '<div class="emoji-picker-dropdown" id="emojiPicker">' +
-                    '<div class="emoji-picker-label">Emoji</div>' +
-                    '<div class="emoji-picker-grid">' +
-                      EMOJI_SET.map((e) => '<button onclick="insertAtCursor(\\'' + e + '\\')">' + e + '</button>').join("") +
-                    '</div>' +
-                  '</div>' +
-                '</div>' +
-              '</div>' +
-              '<span class="compose-toolbar-hint">Formatting sends as real WhatsApp markdown</span>' +
-            '</div>' +
             '<div class="msg-compose">' +
               '<div class="msg-compose-inner">' +
                 '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(formatPhoneDisplay(phone)) + ' directly..." oninput="autoGrowCompose(this)" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
+                '<div class="compose-tools">' +
+                  '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'*\\', \\'*\\')" title="Bold — sends as real WhatsApp *text*"><b>B</b></button>' +
+                  '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'_\\', \\'_\\')" title="Italic — sends as real WhatsApp _text_"><i>I</i></button>' +
+                  '<span class="toolbar-divider"></span>' +
+                  '<div class="emoji-picker-wrap">' +
+                    '<button class="icon-btn small-icon-btn" onclick="toggleEmojiPicker()" title="Emoji">' + ICON_EMOJI + '</button>' +
+                    '<div class="emoji-picker-dropdown" id="emojiPicker">' +
+                      '<div class="emoji-picker-label">Emoji</div>' +
+                      '<div class="emoji-picker-grid">' +
+                        EMOJI_SET.map((e) => '<button onclick="insertAtCursor(\\'' + e + '\\')">' + e + '</button>').join("") +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
               '</div>' +
               '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
             '</div>' +
