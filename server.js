@@ -1216,9 +1216,18 @@ async function saveConversation(sellerId, from, history) {
     // real signal the dashboard can read straight off the customer record
     // it already fetches every poll, without ever pulling full conversation
     // history just to answer "did the owner already reply to this?"
+    // ...and a short preview of that message, so the dashboard's conversation
+    // list can show what was actually said instead of a row of metadata. Same
+    // reasoning as last_message_role: one field on a hash the dashboard
+    // already reads every poll, never a full history fetch per row.
     const last = history[history.length - 1];
     if (last?.role) {
-      await redisCommand(["HSET", nsKey(sellerId, `customer:${from}`), "last_message_role", last.role]);
+      const preview = String(last.content || "").replace(/\s+/g, " ").trim().slice(0, 140);
+      await redisCommand([
+        "HSET", nsKey(sellerId, `customer:${from}`),
+        "last_message_role", last.role,
+        "last_message_preview", preview,
+      ]);
     }
   } catch (err) {
     console.error("saveConversation failed:", err);
@@ -4159,9 +4168,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            here is fragile to header height the way the old single-row
            layout was. */
         .app-shell { display: flex; flex-direction: row; height: 100vh; }
-        .sidebar { width: 232px; flex-shrink: 0; background: var(--navy); display: flex; flex-direction: column; height: 100vh; }
+        /* A slight vertical gradient plus a faint accent glow at the top, so
+           the rail reads as a surface with depth rather than a flat block. */
+        .sidebar { position: relative; width: 232px; flex-shrink: 0; background: linear-gradient(180deg, #1b2436 0%, var(--navy) 42%, var(--navy) 100%); display: flex; flex-direction: column; height: 100vh; border-right: 1px solid rgba(255,255,255,0.06); }
+        .sidebar::before { content: ""; position: absolute; top: -80px; left: -40px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(closest-side, rgba(99,102,241,0.30), transparent 72%); pointer-events: none; }
+        .sidebar > * { position: relative; z-index: 1; }
         .sidebar-brand { padding: 20px 20px 16px; }
-        .sidebar-section-label { padding: 10px 20px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); }
+        .sidebar-section-label { padding: 14px 20px 7px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: rgba(255,255,255,0.42); }
         .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
         .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
         .topbar-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
@@ -4195,26 +4208,36 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            the piece that was missing between the bare logo and the nav
            links -- every reference dashboard has an identity anchor
            here, not just a wordmark. */
-        .sidebar-profile { display: flex; align-items: center; gap: 10px; padding: 4px 20px 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+        /* The seller's own card, raised off the rail rather than sitting flat
+           on it, which is what made the top of the sidebar feel empty. */
+        .sidebar-profile { display: flex; align-items: center; gap: 10px; margin: 0 12px 6px; padding: 10px 11px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); }
+        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 15px; font-weight: 700; flex-shrink: 0; box-shadow: 0 3px 10px rgba(79,70,229,0.4); }
         .sidebar-profile-name { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-profile-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
         /* An honest "yes, this is actually refreshing itself" cue -- the
            dashboard really does poll every few seconds (see setInterval
            near the bottom), so this isn't decoration pretending to be
            realtime, it's a label for something that's already true. */
-        .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ok-border); background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.22); padding: 5px 12px; border-radius: 999px; }
+        .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: #86efac; background: rgba(34,197,94,0.13); border: 1px solid rgba(34,197,94,0.24); padding: 5px 12px; border-radius: 999px; }
         .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); animation: liveDotPulse 2s infinite; flex-shrink: 0; }
         @keyframes liveDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
           70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
           100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
         }
-        nav.tabs { display: flex; flex-direction: column; gap: 2px; padding: 4px 12px; }
-        nav.tabs button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; color: rgba(255,255,255,0.65); padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
-        nav.tabs button svg { width: 17px; height: 17px; flex-shrink: 0; }
-        nav.tabs button:hover { background: rgba(255,255,255,0.06); color: white; }
-        nav.tabs button.active-tab { background: var(--accent); color: white; font-weight: 600; }
+        nav.tabs { display: flex; flex-direction: column; gap: 3px; padding: 4px 12px; }
+        /* Each item keeps a fixed icon slot so the labels line up, and the
+           active one is marked by a rail plus a soft tinted fill rather than
+           a solid block of brand colour. */
+        nav.tabs button { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: transparent; border: none; color: rgba(255,255,255,0.62); padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .18s ease, color .18s ease, transform .18s ease; }
+        nav.tabs button::before { content: ""; position: absolute; left: -12px; top: 50%; width: 3px; height: 0; border-radius: 0 3px 3px 0; background: #a5b4fc; transform: translateY(-50%); transition: height .22s cubic-bezier(.4,0,.2,1); }
+        nav.tabs button .nav-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(255,255,255,0.06); transition: background .18s ease, color .18s ease; }
+        nav.tabs button svg { width: 15px; height: 15px; flex-shrink: 0; }
+        nav.tabs button:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        nav.tabs button:hover .nav-icon { background: rgba(255,255,255,0.11); }
+        nav.tabs button.active-tab { background: rgba(99,102,241,0.20); color: #fff; font-weight: 600; }
+        nav.tabs button.active-tab::before { height: 20px; }
+        nav.tabs button.active-tab .nav-icon { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; box-shadow: 0 3px 10px rgba(79,70,229,0.45); }
         .sidebar-footer { margin-top: auto; padding: 16px 12px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
         .sidebar-footer .live-indicator { margin: 0 8px 2px; align-self: flex-start; }
         .sidebar-footer-link { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 8px; color: rgba(255,255,255,0.55); font-size: 12.5px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s; }
@@ -4292,12 +4315,22 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .status-dot.active { background: var(--success); }
         .status-dot.paused { background: var(--warning); }
         .list-item-body { min-width: 0; flex: 1; }
-        .list-item-top { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; }
-        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 500; font-size: 13px; color: var(--text); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
-        .list-item-badges { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .list-item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 13px; color: var(--text); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; }
+        .row-time { font-size: 11px; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        /* Second line: what was actually last said, one line, ellipsised --
+           the thing that turns this from a table of counts into an inbox. */
+        .list-item-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; }
+        .row-preview { font-size: 12.5px; color: var(--muted); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+        .list-item.active-row .row-preview { color: var(--text); }
+        .row-faint { color: var(--muted-2); }
+        .row-escalation { display: inline-flex; align-items: center; gap: 4px; color: var(--warn-fg); font-weight: 500; }
+        .row-escalation svg { width: 12px; height: 12px; flex-shrink: 0; }
+        .row-paid { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok-border); flex-shrink: 0; }
+        .row-paid svg { width: 8px; height: 8px; }
         .row-star { display: inline-flex; color: var(--star); flex-shrink: 0; }
         .row-star svg { width: 13px; height: 13px; }
-        .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid transparent; line-height: 1.55; }
+        .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid transparent; line-height: 1.55; white-space: nowrap; flex-shrink: 0; }
         .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
         .badge.paused { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
         .badge.active { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
@@ -4321,11 +4354,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .detail-avatar svg { width: 28px; height: 28px; opacity: 0.95; }
         .detail-phone { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
         .detail-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; }
-        .detail-card-title { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+        .detail-card-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
         .detail-card-title svg { width: 12px; height: 12px; color: var(--accent); flex-shrink: 0; }
         .detail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 4px 0; }
         .detail-row + .detail-row { border-top: 1px solid var(--border-light); }
-        .detail-label { font-size: 12px; color: var(--muted); }
+        .detail-label { font-size: 12.5px; color: var(--muted); }
         .detail-value { font-size: 12.5px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
         .detail-muted { font-size: 12px; color: var(--muted); line-height: 1.5; }
         .detail-amount { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--ok-fg); letter-spacing: -0.02em; line-height: 1.15; }
@@ -4453,7 +4486,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: var(--border-light); }
         table.catalog-table td.booking-date-header { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 12px; padding-top: 14px; border-bottom: 1px solid var(--border); }
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
-        .catalog-form label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+        .catalog-form label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; background: var(--surface); color: var(--text); font-family: inherit; }
         .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); }
@@ -4469,6 +4502,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-msg.ok { color: var(--ok-fg); }
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
+        /* These fields sit outside .catalog-form, so they were rendering with
+           browser-default label sizing and unstyled inputs -- the one place
+           on the page that still looked like a raw HTML form. */
+        .fees-row label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
+        .fees-row input, .fees-row select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
+        .fees-row input:focus, .fees-row select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         /* Real search over the messages already on the page -- no server
            round trip, no separate index, just a substring match. */
         .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
@@ -4488,7 +4527,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .emoji-picker-wrap { position: relative; }
         .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 8px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.16); padding: 10px; z-index: 20; width: 232px; }
         .emoji-picker-dropdown.open { display: block; }
-        .emoji-picker-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; padding: 0 2px; }
+        .emoji-picker-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 7px; padding: 0 2px; }
         .emoji-picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
         .emoji-picker-grid button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
         .emoji-picker-grid button:hover { background: var(--accent-light); }
@@ -4567,14 +4606,14 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </div>
         <div class="sidebar-section-label">Menu</div>
         <nav class="tabs">
-          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
+          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
           ${
             isBookable
-              ? `<button id="tabServices" onclick="switchTab('services')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Services</button>
-          <button id="tabBookings" onclick="switchTab('bookings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Bookings</button>`
-              : `<button id="tabCatalog" onclick="switchTab('catalog')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Catalog</button>`
+              ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>Services</button>
+          <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>Bookings</button>`
+              : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>Catalog</button>`
           }
-          <button id="tabAnalytics" onclick="switchTab('analytics')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Analytics</button>
+          <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>Analytics</button>
         </nav>
         <div class="sidebar-footer">
           <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
@@ -4676,8 +4715,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <button class="catalog-btn" onclick="addDeliveryState()">Add state</button>
           </div>
           <div class="catalog-msg" id="stateMsg"></div>
-          <div class="fees-row" style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px;">
-            <div>
+          <div class="fees-row" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="width:280px;">
               <label>Fallback fee for any other state (N)</label>
               <input id="feeDefault" type="number" min="0" placeholder="Leave blank = don't deliver there yet">
             </div>
@@ -4989,6 +5028,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
         const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
         const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
+        const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
         // WhatsApp gives us no profile photo and no name, so a contact chip
         // shows a person mark rather than repeating digits we already print
         // as text right beside it -- the per-contact colour is what makes
@@ -5126,25 +5167,39 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               ? ' row-in" style="animation-delay:' + Math.min(rowIndex * 35, 280) + 'ms'
               : '';
             const needsReply = c.paused === "yes" && c.last_message_role === "user";
+            // One badge at most, and only when something is genuinely off --
+            // an ordinary live conversation says so with the green dot on its
+            // avatar rather than repeating the word "Active" down every row.
             const statusBadge = needsReply
               ? '<span class="badge waiting">Waiting on you</span>'
-              : (c.paused === "yes" ? '<span class="badge paused">Paused</span>' : '<span class="badge active">Active</span>');
-            const paidBadge = c.last_payment_at ? '<span class="badge paid">Paid</span>' : "";
-            const starIcon = c.starred === "yes" ? '<span class="row-star">' + ICON_STAR_FILLED + '</span>' : "";
-            const lastContact = c.last_contact ? timeAgo(c.last_contact) : "no messages yet";
-            const escalationLine = c.last_escalation_reason
-              ? '<div class="snippet">⚠ ' + escapeHtml(c.last_escalation_reason) + '</div>'
+              : (c.paused === "yes" ? '<span class="badge paused">Paused</span>' : "");
+            const paidMark = c.last_payment_at
+              ? '<span class="row-paid" title="This customer has paid">' + ICON_CHECK + '</span>'
               : "";
+            const starIcon = c.starred === "yes" ? '<span class="row-star">' + ICON_STAR_FILLED + '</span>' : "";
+            const timeLabel = c.last_contact ? timeAgo(c.last_contact).replace(" ago", "") : "";
+            // The second line carries meaning rather than metadata: why Amara
+            // stepped back if she did, otherwise what was actually last said.
+            // Conversations saved before last_message_preview existed fall
+            // back to the old count instead of showing a guess.
+            const preview = c.last_escalation_reason
+              ? '<span class="row-escalation">' + ICON_ALERT + escapeHtml(c.last_escalation_reason) + '</span>'
+              : (c.last_message_preview
+                ? escapeHtml(c.last_message_preview)
+                : '<span class="row-faint">' + (c.message_count || 0) + ' message' + (Number(c.message_count) === 1 ? '' : 's') + '</span>');
             const dotClass = c.paused === "yes" ? "paused" : "active";
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + rowAnim + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
               '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + ICON_PERSON + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
                 '<div class="list-item-top">' +
-                  '<span class="phone">' + starIcon + escapeHtml(formatPhoneDisplay(c.phone)) + '</span>' +
-                  '<span class="list-item-badges">' + statusBadge + paidBadge + '</span>' +
+                  '<span class="phone">' + starIcon + escapeHtml(formatPhoneDisplay(c.phone)) + paidMark + '</span>' +
+                  // A row that needs attention says so up here instead of
+                  // squeezing the preview line; ordinary rows show the time.
+                  (statusBadge || '<span class="row-time">' + escapeHtml(timeLabel) + '</span>') +
                 '</div>' +
-                '<div class="snippet">' + (c.message_count || 0) + ' messages · ' + lastContact + '</div>' +
-                escalationLine +
+                '<div class="list-item-bottom">' +
+                  '<span class="row-preview">' + preview + '</span>' +
+                '</div>' +
               '</div>' +
               '</div>';
           }).join("");
