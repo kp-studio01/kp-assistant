@@ -3437,6 +3437,11 @@ const BRAND_TOKENS_CSS = `
     --shadow-sm: 0 1px 2px rgba(15,23,42,0.07);
     --shadow-md: 0 1px 3px rgba(15,23,42,0.12);
     --shadow-lg: 0 8px 24px rgba(15,23,42,0.14);
+    /* Tinted glow under accent-coloured controls. Set from the chosen
+       accent at runtime (see applyAccent) so a teal button never keeps
+       an indigo halo. */
+    --accent-shadow: rgba(79,70,229,0.30);
+    --accent-shadow-strong: rgba(79,70,229,0.45);
     --chat-doodle: %23b9c6dc;
   }
   /* Dark theme. Applied by setting data-theme="dark" on <html>; every colour
@@ -3480,6 +3485,8 @@ const BRAND_TOKENS_CSS = `
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.45);
     --shadow-md: 0 2px 6px rgba(0,0,0,0.5);
     --shadow-lg: 0 10px 28px rgba(0,0,0,0.6);
+    --accent-shadow: rgba(99,102,241,0.32);
+    --accent-shadow-strong: rgba(99,102,241,0.48);
     --chat-doodle: %232b3446;
   }
 `;
@@ -3800,8 +3807,8 @@ app.get("/customers", async (req, res) => {
         body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
         header { background: var(--navy); color: white; padding: 18px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
         header .sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top:3px; }
-        header a { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none; box-shadow: 0 2px 6px rgba(79,70,229,0.35); transition: transform .15s ease, box-shadow .15s ease; }
-        header a:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
+        header a { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
+        header a:hover { transform: translateY(-1px); box-shadow: 0 4px 10px var(--accent-shadow-strong); }
         .wrap { max-width: 1160px; margin: 28px auto 48px; padding: 0 24px; }
         .stats-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
         .stat-tile { flex: 1; min-width: 150px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease; }
@@ -4257,7 +4264,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
-        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px rgba(79,70,229,0.35); }
+        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
         /* A real profile card at the top of the sidebar -- who's logged
            in and what kind of seller they are, using only real fields
            already passed into dashboardHtml (never fabricated). This is
@@ -4267,7 +4274,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* The seller's own card, raised off the rail rather than sitting flat
            on it, which is what made the top of the sidebar feel empty. */
         .sidebar-profile { display: flex; align-items: center; gap: 10px; margin: 0 12px 6px; padding: 10px 11px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); }
-        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 15px; font-weight: 700; flex-shrink: 0; box-shadow: 0 3px 10px rgba(79,70,229,0.4); }
+        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 15px; font-weight: 700; flex-shrink: 0; box-shadow: 0 3px 10px var(--accent-shadow); }
         .sidebar-profile-name { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-profile-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
         /* An honest "yes, this is actually refreshing itself" cue -- the
@@ -4293,7 +4300,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         nav.tabs button:hover .nav-icon { background: rgba(255,255,255,0.11); }
         nav.tabs button.active-tab { background: rgba(99,102,241,0.20); color: #fff; font-weight: 600; }
         nav.tabs button.active-tab::before { height: 20px; }
-        nav.tabs button.active-tab .nav-icon { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; box-shadow: 0 3px 10px rgba(79,70,229,0.45); }
+        nav.tabs button.active-tab .nav-icon { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; box-shadow: 0 3px 10px var(--accent-shadow-strong); }
         .sidebar-footer { margin-top: auto; padding: 16px 12px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
         .sidebar-footer .live-indicator { margin: 0 8px 2px; align-self: flex-start; }
         .sidebar-footer-link { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 8px; color: rgba(255,255,255,0.55); font-size: 12.5px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s; }
@@ -4468,8 +4475,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .more-menu { position: relative; }
         .more-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); min-width: 190px; z-index: 20; overflow: hidden; }
         .more-menu-dropdown.open { display: block; }
-        .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--danger); cursor: pointer; }
-        .more-menu-dropdown button:hover { background: var(--dang-bg); }
+        .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--text); cursor: pointer; font-family: inherit; }
+        .more-menu-dropdown button:hover { background: var(--surface-2); }
+        .more-menu-dropdown button.menu-danger { color: var(--danger); border-top: 1px solid var(--border-light); }
+        .more-menu-dropdown button.menu-danger:hover { background: var(--dang-bg); }
+        /* Only shown where the matching icon button has been hidden. */
+        .more-menu-dropdown button.menu-sm-only { display: none; }
         /* A real chat surface rather than a blank page: a soft tinted base
            with a faint tiled pattern behind the bubbles, the thing that
            makes WhatsApp read as a conversation instead of a document.
@@ -4533,7 +4544,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            since the whole bar re-renders every 5s poll, this would replay
            forever and read as a flicker instead of a one-time flourish. */
         /* One visible focus ring for keyboard users, everywhere. */
+        /* Two separate things caused the box that flashed on click:
+           the mobile tap highlight, and a focus ring left behind after a
+           pointer click. Keyboard users still get a clear ring -- only
+           pointer-driven focus is silenced. */
+        * { -webkit-tap-highlight-color: transparent; }
         :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+        :focus:not(:focus-visible) { outline: none; }
         /* Skeleton rows while the first load is in flight -- the list keeps
            its real shape instead of collapsing to a spinner and jumping. */
         @keyframes shimmer { from { background-position: -200px 0; } to { background-position: calc(200px + 100%) 0; } }
@@ -4572,8 +4589,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
         /* Native widgets (date pickers, scrollbars, select arrows) follow this. */
         [data-theme="dark"] { color-scheme: dark; }
-        .catalog-btn { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px rgba(79,70,229,0.3); transition: box-shadow .15s, transform .15s; }
-        .catalog-btn:hover { box-shadow: 0 4px 10px rgba(79,70,229,0.4); transform: translateY(-1px); }
+        .catalog-btn { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px var(--accent-shadow); transition: box-shadow .15s, transform .15s; }
+        .catalog-btn:hover { box-shadow: 0 4px 10px var(--accent-shadow-strong); transform: translateY(-1px); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
@@ -4706,9 +4723,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--surface); }
         .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
-        .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px rgba(79,70,229,0.35); transition: transform .15s ease, box-shadow .15s ease; }
+        .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
         .msg-send-btn svg { width: 17px; height: 17px; }
-        .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
+        .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px var(--accent-shadow-strong); }
         .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
         .notes-box-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
@@ -4765,7 +4782,33 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .stat-tile .stat-value { font-size: 17px; }
           .stat-tile .stat-label { font-size: 10.5px; margin-top: 1px; }
           .stat-tile:hover { transform: none; box-shadow: var(--shadow-sm); }
+          /* On a phone the conversations tab gets its full height: the stat
+             strip belongs to the dashboard-at-a-glance tabs, not to reading
+             and replying to messages. It still shows on every other tab. */
+          body[data-tab="conversations"] .stats-bar { display: none; }
           body.mobile-thread-open .stats-bar { display: none; }
+          /* Topbar on one row, with room to breathe. */
+          .topbar { flex-wrap: nowrap; gap: 8px; padding: 10px 14px; }
+          .topbar-left { gap: 8px; flex: 1; min-width: 0; }
+          .topbar h1 { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+          .topbar-biz { max-width: 40vw; padding: 3px 9px 3px 8px; font-size: 11.5px; }
+          .topbar-right { gap: 8px; flex-shrink: 0; }
+          .theme-toggle { width: 32px; height: 32px; }
+          .topbar-avatar { width: 30px; height: 30px; font-size: 12.5px; box-shadow: 0 2px 6px var(--accent-shadow); }
+          /* Thread header: identity on one line, one primary action beside it.
+             Search, star and details move into the ⋮ menu rather than wrapping
+             onto a second row. */
+          .thread-header { flex-wrap: nowrap; gap: 8px; padding: 10px 14px; }
+          .thread-header-id { gap: 9px; flex: 1; min-width: 0; }
+          .thread-avatar { width: 38px; height: 38px; }
+          .thread-avatar svg { width: 20px; height: 20px; }
+          .thread-name { font-size: 15.5px; }
+          .thread-sub { display: none; }
+          .thread-actions { gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
+          .thread-actions .icon-btn.hide-sm { display: none; }
+          .more-menu-dropdown button.menu-sm-only { display: block; }
+          button.takeover-btn { padding: 7px 12px; font-size: 12.5px; }
+          .compose-hint { display: none; }
           .layout.details-on .detail-pane { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
         }
@@ -5743,9 +5786,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '</div>' +
               '</div>' +
               '<div class="thread-actions">' +
-                '<button class="icon-btn" onclick="toggleThreadSearch()" title="Search in this conversation">' + ICON_SEARCH + '</button>' +
-                '<button class="icon-btn" id="detailToggle" onclick="toggleDetailPane()" title="Customer details">' + ICON_SIDEPANEL + '</button>' +
-                '<button class="icon-btn' + ((customer && customer.starred === "yes") ? " starred" : "") + '" id="starBtn" data-starred="' + ((customer && customer.starred === "yes") ? "yes" : "no") + '" onclick="toggleStar(\\'' + phone + '\\')" title="Star this conversation">' +
+                '<button class="icon-btn hide-sm" onclick="toggleThreadSearch()" title="Search in this conversation">' + ICON_SEARCH + '</button>' +
+                '<button class="icon-btn hide-sm" id="detailToggle" onclick="toggleDetailPane()" title="Customer details">' + ICON_SIDEPANEL + '</button>' +
+                '<button class="icon-btn hide-sm' + ((customer && customer.starred === "yes") ? " starred" : "") + '" id="starBtn" data-starred="' + ((customer && customer.starred === "yes") ? "yes" : "no") + '" onclick="toggleStar(\\'' + phone + '\\')" title="Star this conversation">' +
                   ((customer && customer.starred === "yes") ? ICON_STAR_FILLED : ICON_STAR) +
                 '</button>' +
                 '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
@@ -5754,7 +5797,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div class="more-menu">' +
                   '<button class="icon-btn" id="moreMenuBtn" onclick="toggleMoreMenu()" title="More">' + ICON_MORE + '</button>' +
                   '<div class="more-menu-dropdown" id="moreMenuDropdown">' +
-                    '<button onclick="toggleMoreMenu(); clearConversation(\\'' + phone + '\\');" title="Wipe this conversation and customer record so you can retest from a clean slate">Clear conversation</button>' +
+                    // Mirrors of the icon buttons that are hidden on a narrow
+                    // screen, so nothing becomes unreachable on a phone.
+                    '<button class="menu-sm-only" onclick="toggleMoreMenu(); toggleThreadSearch();">Search this conversation</button>' +
+                    '<button class="menu-sm-only" onclick="toggleMoreMenu(); toggleStar(\\'' + phone + '\\');">' + ((customer && customer.starred === "yes") ? "Remove star" : "Star this conversation") + '</button>' +
+                    '<button onclick="toggleMoreMenu(); clearConversation(\\'' + phone + '\\');" title="Wipe this conversation and customer record so you can retest from a clean slate" class="menu-danger">Clear conversation</button>' +
                   '</div>' +
                 '</div>' +
               '</div>' +
@@ -6074,6 +6121,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // Leaving Conversations must give the stat tiles back on mobile,
           // otherwise they'd stay hidden on every other tab.
           if (tab !== "conversations") document.body.classList.remove("mobile-thread-open");
+          // Which tab is open drives the mobile stats rule below: on a phone
+          // the stat strip is dashboard context, and the conversations tab
+          // needs its full height for the list and the thread.
+          document.body.setAttribute("data-tab", tab);
           closeSidebar(); // no-op on desktop; on the mobile drawer, picking a tab should close it
         }
 
@@ -6241,6 +6292,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           root.setProperty("--accent-dark", dark ? a.base : a.dark);
           root.setProperty("--accent-light", dark ? a.darkLight : a.light);
           root.setProperty("--accent-soft", dark ? a.darkSoft : a.soft);
+          // The glow under accent-coloured buttons has to be derived from the
+          // chosen accent too -- left hardcoded, a teal button kept an indigo
+          // halo and the edges read as wrong.
+          const base = dark ? a.darkBase : a.base;
+          const r = parseInt(base.slice(1, 3), 16);
+          const g = parseInt(base.slice(3, 5), 16);
+          const bl = parseInt(base.slice(5, 7), 16);
+          root.setProperty("--accent-shadow", "rgba(" + r + "," + g + "," + bl + ",0.30)");
+          root.setProperty("--accent-shadow-strong", "rgba(" + r + "," + g + "," + bl + ",0.45)");
           if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
         }
         function setAccent(id) {
@@ -7363,6 +7423,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const topbarDateEl = document.getElementById("topbarDate");
         if (topbarDateEl) topbarDateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
+        document.body.setAttribute("data-tab", "conversations"); // the tab the page opens on
         initDetailPane();
         applyAccent(currentAccent());
         applyDensity(currentDensity());
