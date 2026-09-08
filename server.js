@@ -4198,31 +4198,48 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .more-menu-dropdown.open { display: block; }
         .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--danger); cursor: pointer; }
         .more-menu-dropdown button:hover { background: #fef2f2; }
-        .thread { flex: 1; overflow-y: auto; padding: 24px; }
-        .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 14px; }
+        /* A real chat surface rather than a blank page: a soft tinted base
+           with a faint tiled pattern behind the bubbles, the thing that
+           makes WhatsApp read as a conversation instead of a document.
+           Inlined as a data URI (no external request) for the same
+           reliability reason the fonts and Chart.js are self-hosted. */
+        .thread { flex: 1; overflow-y: auto; padding: 24px; background-color: #f1f4f9; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23b9c6dc' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.26'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 3px; }
+        .msg-row.group-end { margin-bottom: 14px; }
         .msg-row.from-assistant { flex-direction: row-reverse; }
-        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; }
-        .msg-avatar.assistant { background: var(--accent); }
+        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .msg-avatar.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); }
+        /* Rows inside a group keep the avatar's footprint so their bubbles
+           stay aligned with the one row that actually shows it. */
+        .msg-avatar-spacer { width: 28px; flex-shrink: 0; }
         /* .msg-avatar.user gets its background set inline per-contact (see
            avatarStyleFor) so the same customer's initials chip matches the
            one already shown for them in the list and thread header. */
         .bubble-col { display: flex; flex-direction: column; max-width: 68%; }
         .msg-row.from-user .bubble-col { align-items: flex-start; }
         .msg-row.from-assistant .bubble-col { align-items: flex-end; }
-        .bubble { padding: 10px 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 2px rgba(15,23,42,0.06); max-width: 100%; }
-        /* Corner nearest each side's own avatar stays sharp (a small "tail"
-           cue) -- the customer's bubble sits bottom-left flat, Amara's
-           bottom-right flat, the same asymmetric shape real chat apps use
-           instead of a uniform rounded rectangle on every bubble. */
-        .bubble.user { background: #eef2f7; color: var(--navy); border-radius: 3px 16px 16px 16px; }
-        .bubble.assistant { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: 16px 3px 16px 16px; }
+        .bubble { position: relative; padding: 8px 12px 8px 13px; font-size: 14px; line-height: 1.45; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,23,42,0.10); max-width: 100%; }
+        .bubble-text { white-space: pre-wrap; }
+        .bubble.user { background: #ffffff; color: var(--navy); }
+        .bubble.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; }
+        /* Only the last bubble of a group gets a real tail, pointing back at
+           that side's avatar -- same rhythm WhatsApp uses. */
+        .bubble.has-tail.user { border-bottom-left-radius: 2px; }
+        .bubble.has-tail.assistant { border-bottom-right-radius: 2px; }
+        .bubble.has-tail::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 11px; }
+        .bubble.has-tail.user::after { left: -7px; background: #ffffff; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+        .bubble.has-tail.assistant::after { right: -7px; background: var(--accent-dark); clip-path: polygon(0 0, 0 100%, 100% 100%); }
         /* Real per-message time -- only rendered when the stored message
            actually has one (see history.push's "at" field server-side).
            Older messages saved before this existed simply show no time,
-           on purpose, rather than a guessed one. */
-        .bubble-time { font-size: 11px; color: #94a3b8; margin-top: 3px; padding: 0 4px; }
+           on purpose, rather than a guessed one. Floated so the message
+           text wraps around it and it settles bottom-right in the bubble,
+           exactly like WhatsApp, instead of adding another line of text. */
+        .bubble-time { float: right; font-size: 10.5px; line-height: 1; margin: 6px -2px -2px 10px; opacity: 0.75; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .bubble.user .bubble-time { color: #94a3b8; }
+        .bubble.assistant .bubble-time { color: rgba(255,255,255,0.85); }
         .day-divider { display: flex; align-items: center; justify-content: center; margin: 18px 0; }
-        .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: #eef2f7; padding: 4px 12px; border-radius: 999px; }
+        .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,0.92); padding: 5px 14px; border-radius: 999px; box-shadow: 0 1px 3px rgba(15,23,42,0.10); }
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
         button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
@@ -4343,6 +4360,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           .fees-row { flex-direction: column; }
           .fees-row div { width: 100%; }
           .stats-bar { padding: 12px 16px; gap: 10px; }
+          body.mobile-thread-open .stats-bar { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
           .compose-toolbar-hint { display: none; }
         }
@@ -4908,6 +4926,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             // show side by side.
             const layoutEl = document.getElementById("conversationsView");
             if (layoutEl) layoutEl.classList.add("thread-open");
+            // On a phone the conversation should own the screen -- the stat
+            // tiles above it are dashboard context, not part of reading a
+            // thread (the media query below is what actually hides them, so
+            // this class does nothing on a wide screen).
+            document.body.classList.add("mobile-thread-open");
           }
           try {
             const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&" + ADMIN_QS);
@@ -4950,27 +4973,42 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           // sidebar profile mark.
           const userAvatarStyle = avatarStyleFor(selectedPhone);
           const userInitials = escapeHtml(avatarInitialsFor(selectedPhone));
+          const dayKeyOf = (msg) => {
+            if (!msg || !msg.at) return null;
+            const d = new Date(msg.at);
+            return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+          };
           let html = "";
           let lastDayKey = null;
-          history.forEach((m) => {
-            if (m.at) {
-              const d = new Date(m.at);
-              const dayKey = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
-              if (dayKey !== lastDayKey) {
-                html += '<div class="day-divider"><span>' + formatDayDivider(m.at) + '</span></div>';
-                lastDayKey = dayKey;
-              }
+          history.forEach((m, i) => {
+            const dayKey = dayKeyOf(m);
+            if (dayKey && dayKey !== lastDayKey) {
+              html += '<div class="day-divider"><span>' + formatDayDivider(m.at) + '</span></div>';
+              lastDayKey = dayKey;
             }
+            // Consecutive messages from the same side are grouped the way
+            // WhatsApp groups them: one avatar and one tail per group, tight
+            // spacing inside a group and a real gap between groups, instead
+            // of repeating an avatar on every single line.
+            const next = history[i + 1];
+            const nextDayKey = dayKeyOf(next);
+            const endsGroup = !next || next.role !== m.role || (!!nextDayKey && nextDayKey !== lastDayKey);
             const isUser = m.role === "user";
-            const avatarHtml = isUser
-              ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + userInitials + '</div>'
-              : '<div class="msg-avatar assistant">S</div>';
-            const timeHtml = m.at ? '<div class="bubble-time">' + formatBubbleTime(m.at) + '</div>' : "";
-            html += '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + '">' +
+            const avatarHtml = endsGroup
+              ? (isUser
+                ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + userInitials + '</div>'
+                : '<div class="msg-avatar assistant">S</div>')
+              : '<div class="msg-avatar-spacer"></div>';
+            // The time now sits inside the bubble, bottom-right, the way it
+            // does in WhatsApp -- it stays outside .bubble-text so search
+            // never matches or overwrites it (see filterThreadSearch).
+            const timeHtml = m.at ? '<span class="bubble-time">' + formatBubbleTime(m.at) + '</span>' : "";
+            html += '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + (endsGroup ? " group-end" : "") + '">' +
               avatarHtml +
               '<div class="bubble-col">' +
-                '<div class="bubble ' + (isUser ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>' +
-                timeHtml +
+                '<div class="bubble ' + (isUser ? "user" : "assistant") + (endsGroup ? " has-tail" : "") + '">' +
+                  '<span class="bubble-text">' + escapeHtml(m.content) + '</span>' + timeHtml +
+                '</div>' +
               '</div>' +
               '</div>';
           });
@@ -5221,7 +5259,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           clearThreadHighlights();
         }
         function clearThreadHighlights() {
-          document.querySelectorAll(".thread .bubble mark").forEach((m) => {
+          document.querySelectorAll(".thread .bubble-text mark").forEach((m) => {
             const parent = m.parentNode;
             if (parent) {
               parent.replaceChild(document.createTextNode(m.textContent), m);
@@ -5250,7 +5288,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           if (!q) return;
           const rows = Array.from(document.querySelectorAll(".thread .msg-row"));
           rows.forEach((row) => {
-            const bubble = row.querySelector(".bubble");
+            // .bubble-text, not .bubble -- the in-bubble timestamp must never
+            // be searchable text, nor get wiped when a match is highlighted.
+            const bubble = row.querySelector(".bubble-text");
             if (!bubble) return;
             if ((bubble.textContent || "").toLowerCase().indexOf(q) === -1) {
               row.classList.add("search-hidden");
@@ -5372,6 +5412,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           if (tab === "catalog") loadCatalog();
           if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
+          // Leaving Conversations must give the stat tiles back on mobile,
+          // otherwise they'd stay hidden on every other tab.
+          if (tab !== "conversations") document.body.classList.remove("mobile-thread-open");
           closeSidebar(); // no-op on desktop; on the mobile drawer, picking a tab should close it
         }
 
@@ -5389,6 +5432,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // panes are simply shown side by side there already).
         function closeThreadMobile() {
           document.getElementById("conversationsView")?.classList.remove("thread-open");
+          document.body.classList.remove("mobile-thread-open");
         }
 
         async function loadAnalytics() {
