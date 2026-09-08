@@ -4086,6 +4086,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .topbar h1 .sep { font-weight: 400; color: var(--muted); }
         .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
         .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .hamburger-btn { display: none; background: transparent; border: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; color: var(--navy); flex-shrink: 0; }
+        .hamburger-btn svg { width: 20px; height: 20px; }
+        .hamburger-btn:hover { background: #f1f5f9; }
+        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
+        .sidebar-backdrop.open { display: block; }
+        button.mobile-back-btn.icon-btn { display: none; }
         .topbar-date { font-size: 12px; color: var(--muted); font-weight: 500; }
         .topbar-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; box-shadow: 0 2px 5px rgba(79,70,229,0.35); }
         /* A real profile card at the top of the sidebar -- who's logged
@@ -4260,6 +4266,22 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-msg.ok { color: #15803d; }
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
+        /* Real search over the messages already on the page -- no server
+           round trip, no separate index, just a substring match. */
+        .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid #e2e8f0; background: #fafbff; }
+        .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .thread-search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+        .bubble mark { background: #fde68a; color: #1e293b; border-radius: 3px; padding: 0 1px; }
+        .msg-row.search-hidden { display: none; }
+        .compose-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 24px 0; background: white; }
+        .icon-btn.small-icon-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 12px; }
+        .icon-btn.small-icon-btn svg { width: 14px; height: 14px; }
+        .emoji-picker-wrap { position: relative; }
+        .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); padding: 8px; z-index: 20; width: 220px; }
+        .emoji-picker-dropdown.open { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+        .emoji-picker-dropdown button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
+        .emoji-picker-dropdown button:hover { background: #f1f5f9; }
         .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid #e2e8f0; background: white; }
         .msg-compose-inner { flex: 1; display: flex; align-items: flex-end; border: 1.5px solid #e2e8f0; border-radius: 22px; padding: 5px 6px 5px 16px; background: #f8fafc; transition: border-color .15s, box-shadow .15s, background .15s; }
         .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: #fff; }
@@ -4277,11 +4299,48 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
         .conversion-stat { font-family: var(--font-heading); font-size: 32px; font-weight: 700; color: var(--navy); }
         .conversion-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+        /* ---------- Responsive ----------
+           Below 1000px the fixed-width sidebar becomes an off-canvas drawer
+           (hamburger-toggled, closes on an outside click) instead of
+           squeezing three fixed-width columns into a shrinking viewport --
+           the thing that made this "a mess" on anything narrower than a
+           laptop. Below 700px the conversation list and the open thread
+           become a real single-pane master/detail (like a phone's own
+           Messages app, and the same back-arrow pattern Vora's own mobile
+           chat view uses) instead of both trying to share a width that
+           can't fit either one legibly. */
+        @media (max-width: 1000px) {
+          .hamburger-btn { display: flex; }
+          .sidebar { position: fixed; left: 0; top: 0; z-index: 30; transform: translateX(-100%); transition: transform .2s ease; }
+          .sidebar.open { transform: translateX(0); box-shadow: 8px 0 24px rgba(15,23,42,0.3); }
+          .list-pane { width: 260px; }
+        }
+        @media (max-width: 700px) {
+          .list-pane { width: 100%; }
+          .layout { position: relative; overflow: hidden; }
+          .layout:not(.thread-open) .main { display: none; }
+          .layout.thread-open .list-pane { display: none; }
+          button.mobile-back-btn.icon-btn { display: flex; }
+          .thread-header { flex-wrap: wrap; gap: 10px; }
+          .thread-actions { flex-wrap: wrap; }
+          .bubble-col { max-width: 85%; }
+          .catalog-form { grid-template-columns: 1fr !important; }
+          .fees-row { flex-direction: column; }
+          .fees-row div { width: 100%; }
+          .stats-bar { padding: 12px 16px; gap: 10px; }
+          .stat-tile { min-width: 140px; padding: 12px 14px; }
+        }
+        @media (max-width: 480px) {
+          .topbar-date { display: none; }
+          .topbar h1 { font-size: 14px; }
+        }
       </style>
     </head>
     <body>
     <div class="app-shell">
-      <aside class="sidebar">
+      <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+      <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">${brandMark({ dark: true, size: "small" })}</div>
         <div class="sidebar-profile">
           <div class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</div>
@@ -4309,6 +4368,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </aside>
       <div class="main-column">
       <header class="topbar">
+        <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
         <h1>Live Dashboard${businessName ? `<span class="sep">&middot; ${businessName}</span>` : ""}</h1>
         <div class="topbar-right">
           <span class="topbar-date" id="topbarDate"></span>
@@ -4683,6 +4743,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
         const ICON_STAR_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
         const ICON_MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
+        const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+        const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
+        // Real WhatsApp-sendable unicode emoji, nothing that needs a font or
+        // library to render -- inserted straight into the compose textarea.
+        const EMOJI_SET = ["😀","😂","😍","👍","🙏","🎉","❤️","😊","🔥","👏","😢","😅","🤔","💯","✅","⏳","📦","💰","🙌","😎"];
 
         function statTile(cls, icon, value, label) {
           return '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div><div class="stat-icon">' + icon + '</div></div>';
@@ -4794,7 +4859,15 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
 
         async function loadConversation(phone, isClick) {
           selectedPhone = phone;
-          if (isClick) renderList(getFilteredCustomers()); // re-highlight the selected row immediately
+          if (isClick) {
+            renderList(getFilteredCustomers()); // re-highlight the selected row immediately
+            // On a narrow screen this is a real navigation, list -> thread
+            // (see the .layout.thread-open rule in the mobile media query) --
+            // on a wide screen this class does nothing, both panes already
+            // show side by side.
+            const layoutEl = document.getElementById("conversationsView");
+            if (layoutEl) layoutEl.classList.add("thread-open");
+          }
           try {
             const res = await fetch("/api/conversation?phone=" + encodeURIComponent(phone) + "&" + ADMIN_QS);
             const data = await res.json();
@@ -4869,6 +4942,14 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const nearBottom = threadEl.scrollTop + threadEl.clientHeight >= threadEl.scrollHeight - 20;
           threadEl.innerHTML = renderBubblesHtml(history);
           if (nearBottom) threadEl.scrollTop = threadEl.scrollHeight;
+          // A poll rebuilds the bubbles from scratch, which would otherwise
+          // silently wipe an active search's highlights every 5 seconds --
+          // if the search bar is open, just re-run the same filter against
+          // the freshly rendered bubbles instead.
+          const searchBar = document.getElementById("threadSearchBar");
+          if (searchBar && searchBar.style.display !== "none" && document.getElementById("threadSearchInput")?.value) {
+            filterThreadSearch();
+          }
 
           // Keep the header status (avatar dot + subtitle) and the Take
           // over / Hand back button in sync too (e.g. if the owner
@@ -4912,6 +4993,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           main.innerHTML =
             '<div class="thread-header">' +
               '<div class="thread-header-id">' +
+                '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
                 '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + escapeHtml(avatarInitialsFor(phone)) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
                 '<div style="min-width:0;">' +
                   '<div class="thread-name">' + escapeHtml(phone) + '</div>' +
@@ -4919,6 +5001,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 '</div>' +
               '</div>' +
               '<div class="thread-actions">' +
+                '<button class="icon-btn" onclick="toggleThreadSearch()" title="Search in this conversation">' + ICON_SEARCH + '</button>' +
                 '<button class="icon-btn' + ((customer && customer.starred === "yes") ? " starred" : "") + '" id="starBtn" data-starred="' + ((customer && customer.starred === "yes") ? "yes" : "no") + '" onclick="toggleStar(\\'' + phone + '\\')" title="Star this conversation">' +
                   ((customer && customer.starred === "yes") ? ICON_STAR_FILLED : ICON_STAR) +
                 '</button>' +
@@ -4933,7 +5016,22 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 '</div>' +
               '</div>' +
             '</div>' +
+            '<div class="thread-search-bar" id="threadSearchBar" style="display:none;">' +
+              '<input id="threadSearchInput" placeholder="Search in this conversation..." oninput="filterThreadSearch()" onkeydown="if(event.key===\\'Enter\\') jumpToNextMatch(event.shiftKey)">' +
+              '<span class="thread-search-count" id="threadSearchCount"></span>' +
+              '<button class="icon-btn" onclick="closeThreadSearch()" title="Close search" aria-label="Close search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+            '</div>' +
             '<div class="thread" id="thread"></div>' +
+            '<div class="compose-toolbar">' +
+              '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'*\\', \\'*\\')" title="Bold (WhatsApp *text*)"><b>B</b></button>' +
+              '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'_\\', \\'_\\')" title="Italic (WhatsApp _text_)"><i>I</i></button>' +
+              '<div class="emoji-picker-wrap">' +
+                '<button class="icon-btn small-icon-btn" onclick="toggleEmojiPicker()" title="Emoji">' + ICON_EMOJI + '</button>' +
+                '<div class="emoji-picker-dropdown" id="emojiPicker">' +
+                  EMOJI_SET.map((e) => '<button onclick="insertAtCursor(\\'' + e + '\\')">' + e + '</button>').join("") +
+                '</div>' +
+              '</div>' +
+            '</div>' +
             '<div class="msg-compose">' +
               '<div class="msg-compose-inner">' +
                 '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(phone) + ' directly..." oninput="autoGrowCompose(this)" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
@@ -5028,16 +5126,127 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const el = document.getElementById("moreMenuDropdown");
           if (el) el.classList.toggle("open");
         }
-        // Close the more-menu on an outside click -- registered once, not
-        // rebuilt on every renderThread(), so it stays attached across
-        // conversation switches.
+        function toggleEmojiPicker() {
+          const el = document.getElementById("emojiPicker");
+          if (el) el.classList.toggle("open");
+        }
+        // Close the more-menu / emoji picker on an outside click --
+        // registered once, not rebuilt on every renderThread(), so it stays
+        // attached across conversation switches.
         document.addEventListener("click", function (e) {
           const menu = document.getElementById("moreMenuDropdown");
           const trigger = document.getElementById("moreMenuBtn");
           if (menu && menu.classList.contains("open") && !menu.contains(e.target) && e.target !== trigger && !trigger?.contains(e.target)) {
             menu.classList.remove("open");
           }
+          const emoji = document.getElementById("emojiPicker");
+          if (emoji && emoji.classList.contains("open") && !emoji.parentElement?.contains(e.target)) {
+            emoji.classList.remove("open");
+          }
         });
+
+        // ---- Search within the currently open conversation ----
+        // Client-side only, over messages already loaded on the page --
+        // there's no separate search index or API call, just a real
+        // substring match against the same text already rendered.
+        let threadSearchMatches = [];
+        let threadSearchIndex = -1;
+        function toggleThreadSearch() {
+          const bar = document.getElementById("threadSearchBar");
+          if (!bar) return;
+          const showing = bar.style.display !== "none";
+          if (showing) {
+            closeThreadSearch();
+          } else {
+            bar.style.display = "flex";
+            document.getElementById("threadSearchInput")?.focus();
+          }
+        }
+        function closeThreadSearch() {
+          const bar = document.getElementById("threadSearchBar");
+          if (bar) bar.style.display = "none";
+          const input = document.getElementById("threadSearchInput");
+          if (input) input.value = "";
+          clearThreadHighlights();
+        }
+        function clearThreadHighlights() {
+          document.querySelectorAll(".thread .bubble mark").forEach((m) => {
+            const parent = m.parentNode;
+            if (parent) {
+              parent.replaceChild(document.createTextNode(m.textContent), m);
+              parent.normalize();
+            }
+          });
+          document.querySelectorAll(".thread .msg-row.search-hidden").forEach((el) => el.classList.remove("search-hidden"));
+          const count = document.getElementById("threadSearchCount");
+          if (count) count.textContent = "";
+          threadSearchMatches = [];
+          threadSearchIndex = -1;
+        }
+        function highlightMatch(bubbleEl, q) {
+          // Rebuilt from the bubble's own plain textContent (never from
+          // stored HTML), then re-escaped -- this can only ever add a
+          // <mark>, never reintroduce markup from message content.
+          const text = bubbleEl.textContent || "";
+          const idx = text.toLowerCase().indexOf(q);
+          if (idx === -1) return;
+          bubbleEl.innerHTML = escapeHtml(text.slice(0, idx)) + "<mark>" + escapeHtml(text.slice(idx, idx + q.length)) + "</mark>" + escapeHtml(text.slice(idx + q.length));
+        }
+        function filterThreadSearch() {
+          clearThreadHighlights();
+          const q = (document.getElementById("threadSearchInput")?.value || "").trim().toLowerCase();
+          const count = document.getElementById("threadSearchCount");
+          if (!q) return;
+          const rows = Array.from(document.querySelectorAll(".thread .msg-row"));
+          rows.forEach((row) => {
+            const bubble = row.querySelector(".bubble");
+            if (!bubble) return;
+            if ((bubble.textContent || "").toLowerCase().indexOf(q) === -1) {
+              row.classList.add("search-hidden");
+            } else {
+              threadSearchMatches.push(row);
+              highlightMatch(bubble, q);
+            }
+          });
+          threadSearchIndex = threadSearchMatches.length > 0 ? 0 : -1;
+          if (count) count.textContent = threadSearchMatches.length > 0 ? (threadSearchIndex + 1) + " of " + threadSearchMatches.length : "No matches";
+          if (threadSearchMatches.length > 0) threadSearchMatches[0].scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+        function jumpToNextMatch(reverse) {
+          if (threadSearchMatches.length === 0) return;
+          threadSearchIndex = reverse
+            ? (threadSearchIndex - 1 + threadSearchMatches.length) % threadSearchMatches.length
+            : (threadSearchIndex + 1) % threadSearchMatches.length;
+          threadSearchMatches[threadSearchIndex].scrollIntoView({ block: "center", behavior: "smooth" });
+          const count = document.getElementById("threadSearchCount");
+          if (count) count.textContent = (threadSearchIndex + 1) + " of " + threadSearchMatches.length;
+        }
+
+        // ---- Real WhatsApp text formatting + emoji in the compose box ----
+        function wrapSelection(prefix, suffix) {
+          const ta = document.getElementById("composeInput");
+          if (!ta) return;
+          const start = ta.selectionStart, end = ta.selectionEnd;
+          const value = ta.value;
+          const selected = value.slice(start, end) || "text";
+          ta.value = value.slice(0, start) + prefix + selected + suffix + value.slice(end);
+          ta.focus();
+          ta.selectionStart = start + prefix.length;
+          ta.selectionEnd = start + prefix.length + selected.length;
+          autoGrowCompose(ta);
+        }
+        function insertAtCursor(text) {
+          const ta = document.getElementById("composeInput");
+          if (!ta) return;
+          const start = ta.selectionStart, end = ta.selectionEnd;
+          const value = ta.value;
+          ta.value = value.slice(0, start) + text + value.slice(end);
+          const pos = start + text.length;
+          ta.focus();
+          ta.selectionStart = ta.selectionEnd = pos;
+          autoGrowCompose(ta);
+          document.getElementById("emojiPicker")?.classList.remove("open");
+        }
 
         async function toggleStar(phone) {
           const btn = document.getElementById("starBtn");
@@ -5112,6 +5321,23 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           if (tab === "catalog") loadCatalog();
           if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
+          closeSidebar(); // no-op on desktop; on the mobile drawer, picking a tab should close it
+        }
+
+        function toggleSidebar() {
+          document.getElementById("sidebar")?.classList.toggle("open");
+          document.getElementById("sidebarBackdrop")?.classList.toggle("open");
+        }
+        function closeSidebar() {
+          document.getElementById("sidebar")?.classList.remove("open");
+          document.getElementById("sidebarBackdrop")?.classList.remove("open");
+        }
+        // Mobile master/detail: leaving the open thread goes back to the
+        // conversation list (see .layout.thread-open in the responsive CSS
+        // -- this class does nothing above the 700px breakpoint, both
+        // panes are simply shown side by side there already).
+        function closeThreadMobile() {
+          document.getElementById("conversationsView")?.classList.remove("thread-open");
         }
 
         async function loadAnalytics() {
