@@ -4248,7 +4248,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
     <html>
     <head>
       <title>Stafly.AI — Dashboard</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+      <!-- interactive-widget=resizes-content is the part that matters for the
+           on-screen keyboard. Without it Android Chrome keeps the layout
+           viewport at full height and simply lets the keyboard cover the
+           bottom of it, which makes the whole page scrollable: the composer
+           could be dragged up and away, and the header scrolled off. With it
+           the layout viewport itself shrinks, so the app is laid out inside
+           the space that is actually visible. -->
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
       <!-- Installed to a phone's home screen this opens with no browser
            chrome at all, which is the only real "full screen" iOS allows --
            the Fullscreen API below covers Android and desktop. -->
@@ -4692,6 +4699,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+        /* The min-height above reserves room so the card doesn't jump when a
+           save message appears. Inside a card header that stacks on mobile,
+           though, an empty status span becomes a visible blank row between the
+           description and the button -- so there it collapses until it has
+           something to say. */
+        .card-head .catalog-msg:empty { display: none; }
         .catalog-msg.error { color: var(--danger); }
         .catalog-msg.ok { color: var(--ok-fg); }
         /* A card header with its own action, instead of a bare <h2> and a
@@ -4915,6 +4928,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              which shrinks when the keyboard opens; 100dvh is the fallback
              where that API isn't available. */
           .app-shell, .main-column, .sidebar { height: var(--vvh, 100dvh); }
+          /* Nothing above the thread is allowed to scroll. The app is a fixed
+             pane the exact size of the visible area, and the only thing that
+             moves inside it is the message list. Without this the page itself
+             scrolls when the keyboard opens -- the composer can be dragged up
+             out of reach and the header disappears. position:fixed is what
+             actually stops iOS Safari, which ignores interactive-widget and
+             will happily scroll the document behind its own keyboard. */
+          html, body { height: var(--vvh, 100dvh); overflow: hidden; overscroll-behavior: none; }
+          body { position: fixed; top: 0; left: 0; right: 0; width: 100%; }
           .topbar { flex-wrap: nowrap; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
           .msg-compose { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
           .sidebar { padding-top: env(safe-area-inset-top); }
@@ -4962,7 +4984,59 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .fees-row div { width: 100% !important; }
           .fees-row .catalog-btn { width: 100%; justify-content: center; }
           .layout.details-on .detail-pane { display: none; }
-          .stat-tile { min-width: 140px; padding: 12px 14px; }
+
+          /* ---- Catalog on a phone ----
+             Was: a full-width card per product with a 4:3 photo, so seven
+             products ran to roughly five screens of scrolling and the card
+             header squeezed its own description into three lines beside the
+             button. Now a two-column grid with square thumbs -- the same
+             shape a phone shopping app uses -- and a header that stacks. */
+          .catalog-card { padding: 15px 13px; margin-bottom: 14px; border-radius: 13px; }
+          .catalog-card h2 { font-size: 14.5px; margin-bottom: 11px; }
+          /* Stacked, but only the action button stretches -- align-items on
+             stretch made every child full width, which turned the "14 days"
+             chip into a full-width bar. */
+          .card-head, .card-head-products { flex-direction: column; align-items: flex-start; gap: 10px; }
+          .card-head > *, .card-head-products > * { max-width: 100%; }
+          .card-head .catalog-btn, .card-head-products .catalog-btn { width: 100%; justify-content: center; padding: 10px 14px; }
+          .card-head-products > div:last-child { width: 100%; }
+          /* The sub-heading right above it already says "over the last 14
+             days", so on a narrow screen the chip is repeating itself. */
+          .card-head .period-chip { display: none; }
+          /* Category chips scroll sideways instead of wrapping onto a second
+             and third row and pushing the products off the screen. */
+          .cat-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+          .cat-filter::-webkit-scrollbar { display: none; }
+          .cat-chip { flex: 0 0 auto; }
+          .product-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+          .product-thumb { aspect-ratio: 1 / 1; }
+          .product-thumb.no-photo::after { font-size: 10.5px; }
+          .product-body { padding: 9px 10px 10px; gap: 3px; }
+          .product-name { font-size: 13px; line-height: 1.3; }
+          .product-price { font-size: 13.5px; }
+          .product-cat { font-size: 10px; padding: 2px 7px; }
+          .product-actions { gap: 6px; }
+          .product-actions .btn-quiet { flex: 1; justify-content: center; text-align: center; padding: 6px 4px; font-size: 11.5px; }
+          .dropzone { padding: 14px; }
+          .dropzone-preview img { max-height: 110px; }
+
+          /* ---- Analytics on a phone ----
+             The KPI tiles were desktop tiles at phone width: icon, big number,
+             label and a sub-line each, four of them, before the chart even
+             started. Halved in height, two per row. */
+          .kpi-row { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+          .kpi-row .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; gap: 9px; }
+          .kpi-row .stat-tile .stat-icon { width: 29px; height: 29px; border-radius: 9px; flex-shrink: 0; }
+          .kpi-row .stat-tile .stat-icon svg { width: 14px; height: 14px; }
+          .kpi-row .stat-tile .stat-value { font-size: 15.5px; letter-spacing: -0.2px; }
+          .kpi-row .stat-tile .stat-label { font-size: 10.5px; }
+          .kpi-row .stat-tile .kpi-sub { font-size: 9.5px; margin-top: 1px; }
+          .trend-chart-wrap { height: 190px; padding-top: 4px; }
+          .seller-row { padding: 10px 0; gap: 10px; }
+          .seller-name { font-size: 13px; }
+          .seller-rev { font-size: 13px; }
+          .seller-units { font-size: 11px; }
+          .conversion-stat { font-size: 30px; }
         }
         @media (max-width: 480px) {
           .topbar-date-chip { display: none; }
@@ -5281,6 +5355,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="setting-desc">Show the panel beside a conversation by default on wide screens.</div>
             </div>
             <button class="switch" id="detailsSwitch" role="switch" onclick="toggleDetailDefault()"><span></span></button>
+          </div>
+          <div class="setting-row" id="hapticsRow">
+            <div class="setting-text">
+              <div class="setting-name">Tap feedback</div>
+              <div class="setting-desc" id="hapticsDesc">A short buzz when you switch tabs or open a conversation.</div>
+            </div>
+            <button class="switch" id="hapticsSwitch" role="switch" onclick="setHaptics(!hapticsEnabled())"><span></span></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">
@@ -5673,6 +5754,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function setTab(tab) {
           currentTab = tab;
           animateNextList = true;
+          tapFeedback();
           document.querySelectorAll(".list-tab").forEach((b) => b.classList.remove("active-list-tab"));
           const btn = document.getElementById("tab-" + tab);
           if (btn) btn.classList.add("active-list-tab");
@@ -6399,6 +6481,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // LIST, not silently reopen whichever thread was last read -- on a
           // phone that made it look like the menu item did nothing.
           if (tab === "conversations" && window.innerWidth <= 700) closeThreadMobile();
+          tapFeedback();
           if (tab === "catalog") loadCatalog();
           if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
@@ -6609,6 +6692,34 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           syncSettingsControls();
         }
 
+        // ---- Haptics -----------------------------------------------------
+        // A very short buzz when you move between tabs or open a thread, so a
+        // tap registers in your hand and not only on the screen. Deliberately
+        // 8ms: long enough to feel, short enough that it reads as a click
+        // rather than a notification.
+        //
+        // navigator.vibrate is Android-only in practice -- iOS Safari has no
+        // Vibration API at all, and there is no way to fake it from a web
+        // page. Rather than ship a switch that does nothing on an iPhone, the
+        // setting hides itself when the browser can't do it and says so.
+        function hapticsSupported() {
+          return typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+        }
+        function hapticsEnabled() {
+          try { return localStorage.getItem("stafly-haptics") !== "off"; } catch (e) { return true; }
+        }
+        function setHaptics(on) {
+          try { localStorage.setItem("stafly-haptics", on ? "on" : "off"); } catch (e) {}
+          if (on) tapFeedback();
+          syncSettingsControls();
+        }
+        function tapFeedback(ms) {
+          if (!hapticsSupported() || !hapticsEnabled()) return;
+          // A page that has never been interacted with can't vibrate, and
+          // some browsers throw rather than returning false.
+          try { navigator.vibrate(ms || 8); } catch (e) {}
+        }
+
         // ---- Refresh rate ----------------------------------------------
         // Genuinely rewires the poll -- 0 clears the interval entirely.
         let pollTimer = null;
@@ -6715,6 +6826,25 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             sw.classList.toggle("on", on);
             sw.setAttribute("aria-checked", on ? "true" : "false");
           }
+          // The switch is only meaningful where the browser can actually
+          // vibrate. On an iPhone it stays visible but reads as unavailable
+          // and says why, rather than pretending to be a working control.
+          const hSw = document.getElementById("hapticsSwitch");
+          if (hSw) {
+            const supported = hapticsSupported();
+            const on = supported && hapticsEnabled();
+            hSw.classList.toggle("on", on);
+            hSw.setAttribute("aria-checked", on ? "true" : "false");
+            hSw.disabled = !supported;
+            hSw.style.opacity = supported ? "" : "0.45";
+            hSw.style.cursor = supported ? "" : "not-allowed";
+            const desc = document.getElementById("hapticsDesc");
+            if (desc) {
+              desc.textContent = supported
+                ? "A short buzz when you switch tabs or open a conversation."
+                : "This browser has no vibration support, so there's nothing to turn on. Android Chrome does.";
+            }
+          }
           const dens = currentDensity();
           document.querySelectorAll("#densitySeg button").forEach((b) => {
             b.classList.toggle("seg-active", b.dataset.densityChoice === dens);
@@ -6748,6 +6878,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
 
         function closeThreadMobile() {
+          tapFeedback();
           document.getElementById("conversationsView")?.classList.remove("thread-open");
           document.body.classList.remove("mobile-thread-open");
         }
@@ -6785,9 +6916,22 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // Chart.js has no built-in "update in place" that's simpler
           // than just rebuilding here.
           if (trendChartInstance) trendChartInstance.destroy();
+          // The chart has to follow the chosen accent. Hardcoded, it stayed
+          // indigo while every other accent-coloured thing on the page turned
+          // teal or rose -- the same mistake the button shadows had.
+          const accentHex = (getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#4f46e5").trim();
+          const rgbOf = (hex) => {
+            const h = hex.replace("#", "");
+            if (h.length !== 6) return "79, 70, 229";
+            return parseInt(h.slice(0, 2), 16) + ", " + parseInt(h.slice(2, 4), 16) + ", " + parseInt(h.slice(4, 6), 16);
+          };
+          const accentRgb = rgbOf(accentHex);
           const gradient = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight || 220);
-          gradient.addColorStop(0, "rgba(79, 70, 229, 0.28)");
-          gradient.addColorStop(1, "rgba(79, 70, 229, 0)");
+          gradient.addColorStop(0, "rgba(" + accentRgb + ", 0.28)");
+          gradient.addColorStop(1, "rgba(" + accentRgb + ", 0)");
+          // A phone is a third of the width, so it gets a third of the labels:
+          // 14 rotated dates crammed under a 340px chart is unreadable.
+          const narrow = window.innerWidth <= 700;
           trendChartInstance = new Chart(ctx, {
             type: "line",
             data: {
@@ -6795,14 +6939,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               datasets: [{
                 label: "Revenue",
                 data: values,
-                borderColor: "#4f46e5",
-                borderWidth: 2.5,
+                borderColor: accentHex,
+                borderWidth: narrow ? 2 : 2.5,
                 backgroundColor: gradient,
                 fill: true,
                 tension: 0.35,
                 pointRadius: 0,
                 pointHoverRadius: 5,
-                pointHoverBackgroundColor: "#4f46e5",
+                pointHoverBackgroundColor: accentHex,
                 pointHoverBorderColor: "#fff",
                 pointHoverBorderWidth: 2,
               }],
@@ -6828,14 +6972,27 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 },
               },
               scales: {
-                x: { grid: { display: false }, ticks: { color: axisColor, font: { family: "Inter", size: 11 } } },
+                x: {
+                  grid: { display: false },
+                  ticks: {
+                    color: axisColor,
+                    font: { family: "Inter", size: narrow ? 10 : 11 },
+                    maxRotation: 0,
+                    minRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: narrow ? 4 : 8,
+                  },
+                },
                 y: {
                   beginAtZero: true,
                   grid: { color: gridColor },
+                  border: { display: false },
                   ticks: {
                     color: axisColor,
-                    font: { family: "Inter", size: 11 },
-                    callback: (v) => v >= 1000 ? "N" + (v / 1000) + "k" : "N" + v,
+                    font: { family: "Inter", size: narrow ? 10 : 11 },
+                    maxTicksLimit: narrow ? 4 : 6,
+                    padding: narrow ? 4 : 8,
+                    callback: (v) => v >= 1000 ? "N" + Math.round(v / 1000) + "k" : "N" + v,
                   },
                 },
               },
@@ -8901,8 +9058,32 @@ app.post("/paystack-webhook", async (req, res) => {
 });
 
 // ---------- Health check (visit in browser to see server is alive) ----------
+// Which build is actually live. Render deploys on a push, so "I changed
+// that" and "that change is running" are two different facts, and there was
+// no way to tell them apart from the outside -- a missing customer name
+// looks identical whether the code is wrong or simply not deployed yet.
+// The hash is taken from this file's own bytes at boot, so it can't drift
+// out of date the way a hand-maintained version string does.
+const BUILD_ROUND = "Round 21";
+let BUILD_HASH = "unknown";
+try {
+  BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
+} catch (err) {
+  console.error("Could not hash own source for build id:", err.message);
+}
+const BOOTED_AT = new Date().toISOString();
+
 app.get("/", (req, res) => {
-  res.send("Stafly.AI engine is running ✓");
+  res.send(`Stafly.AI engine is running ✓ (${BUILD_ROUND}, build ${BUILD_HASH})`);
+});
+
+app.get("/version", (req, res) => {
+  res.json({
+    round: BUILD_ROUND,
+    build: BUILD_HASH,
+    bootedAt: BOOTED_AT,
+    uptimeSeconds: Math.round(process.uptime()),
+  });
 });
 
 const PORT = process.env.PORT || 3000;
