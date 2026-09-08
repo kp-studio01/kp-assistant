@@ -4164,10 +4164,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .status-dot.active { background: var(--success); }
         .status-dot.paused { background: var(--warning); }
         .list-item-body { min-width: 0; flex: 1; }
-        .list-item .phone { font-weight: 600; font-size: 14px; }
-        .row-star { display: inline-flex; color: #d97706; margin-right: 5px; vertical-align: -2px; }
+        .list-item-top { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; }
+        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 500; font-size: 13px; color: var(--navy); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+        .list-item-badges { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .row-star { display: inline-flex; color: #d97706; flex-shrink: 0; }
         .row-star svg { width: 13px; height: 13px; }
-        .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+        .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
         .badge.paused { background: #fef3c7; color: #b45309; }
         .badge.active { background: #dcfce7; color: #15803d; }
         .badge.paid { background: #dbeafe; color: #1d4ed8; }
@@ -4182,8 +4184,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; font-family: var(--font-heading); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
         .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid white; }
-        .thread-name { font-size: 15px; font-weight: 700; color: var(--navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .thread-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .thread-eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--thread-accent, var(--accent)); line-height: 1; margin-bottom: 3px; }
+        .thread-name { font-family: var(--font-heading); font-size: 16.5px; font-weight: 700; color: var(--navy); letter-spacing: 0.2px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thread-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
         .thread-sub.is-paused { color: #b45309; font-weight: 600; }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
@@ -4274,14 +4277,20 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
         .bubble mark { background: #fde68a; color: #1e293b; border-radius: 3px; padding: 0 1px; }
         .msg-row.search-hidden { display: none; }
-        .compose-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 24px 0; background: white; }
-        .icon-btn.small-icon-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 12px; }
+        .compose-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 24px 0; background: white; }
+        .compose-toolbar-group { display: flex; align-items: center; gap: 2px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; padding: 3px; }
+        .compose-toolbar-hint { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .toolbar-divider { width: 1px; height: 18px; background: #dde3ec; margin: 0 4px; flex-shrink: 0; }
+        .icon-btn.small-icon-btn { width: 27px; height: 27px; border-radius: 6px; font-size: 12px; border: none; background: transparent; color: var(--navy); }
+        .icon-btn.small-icon-btn:hover { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
         .icon-btn.small-icon-btn svg { width: 14px; height: 14px; }
         .emoji-picker-wrap { position: relative; }
-        .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); padding: 8px; z-index: 20; width: 220px; }
-        .emoji-picker-dropdown.open { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
-        .emoji-picker-dropdown button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
-        .emoji-picker-dropdown button:hover { background: #f1f5f9; }
+        .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 8px); background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.16); padding: 10px; z-index: 20; width: 232px; }
+        .emoji-picker-dropdown.open { display: block; }
+        .emoji-picker-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; padding: 0 2px; }
+        .emoji-picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+        .emoji-picker-grid button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
+        .emoji-picker-grid button:hover { background: var(--accent-light); }
         .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid #e2e8f0; background: white; }
         .msg-compose-inner { flex: 1; display: flex; align-items: flex-end; border: 1.5px solid #e2e8f0; border-radius: 22px; padding: 5px 6px 5px 16px; background: #f8fafc; transition: border-color .15s, box-shadow .15s, background .15s; }
         .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: #fff; }
@@ -4291,9 +4300,14 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .msg-send-btn svg { width: 17px; height: 17px; }
         .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
         .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
-        .notes-box { padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #fdfdfd; }
-        .notes-box label { font-size: 11px; color: #64748b; display: block; margin-bottom: 4px; }
-        .notes-box textarea { width: 100%; min-height: 46px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
+        .notes-box { padding: 14px 24px 16px; border-top: 1px solid #e2e8f0; background: #fafbfc; }
+        .notes-box-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .notes-box-head svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
+        .notes-box-title { font-size: 12.5px; font-weight: 700; color: var(--navy); }
+        .notes-box-sub { font-size: 11px; color: var(--muted); }
+        .notes-box textarea { width: 100%; min-height: 52px; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: inherit; line-height: 1.45; resize: vertical; background: #fff; transition: border-color .15s, box-shadow .15s; }
+        .notes-box textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .notes-box-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
         .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
         .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
@@ -4330,6 +4344,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           .fees-row div { width: 100%; }
           .stats-bar { padding: 12px 16px; gap: 10px; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
+          .compose-toolbar-hint { display: none; }
         }
         @media (max-width: 480px) {
           .topbar-date { display: none; }
@@ -4664,15 +4679,37 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // reads as genuinely distinct people, the same pattern Slack/Gmail
         // use for contacts without a picture.
         const AVATAR_PALETTE = ["#4f46e5", "#0891b2", "#be185d", "#b45309", "#15803d", "#7c3aed", "#0f766e", "#c2410c", "#1d4ed8", "#a21caf"];
-        function avatarStyleFor(phone) {
+        function avatarColorFor(phone) {
           const str = String(phone || "");
           let hash = 0;
           for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
-          return "background:" + AVATAR_PALETTE[hash % AVATAR_PALETTE.length] + ";";
+          return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+        }
+        function avatarStyleFor(phone) {
+          return "background:" + avatarColorFor(phone) + ";";
         }
         function avatarInitialsFor(phone) {
           const digits = String(phone || "").replace(/\\D/g, "");
           return digits.length >= 2 ? digits.slice(-2) : (digits || "?");
+        }
+
+        // A raw WhatsApp phone number ("2348087014578") is real data, but as
+        // a wall of 13 identical-weight digits it's genuinely hard to scan --
+        // this only re-groups the SAME real digits for readability, never
+        // invents or hides any of them.
+        function formatPhoneDisplay(phone) {
+          const digits = String(phone || "").replace(/\\D/g, "");
+          if (!digits) return phone || "";
+          if (digits.length === 13 && digits.startsWith("234")) {
+            return "+234 " + digits.slice(3, 6) + " " + digits.slice(6, 9) + " " + digits.slice(9);
+          }
+          if (digits.length === 11) {
+            return digits.slice(0, 4) + " " + digits.slice(4, 7) + " " + digits.slice(7);
+          }
+          if (digits.length > 7) {
+            return "+" + digits.slice(0, digits.length - 7) + " " + digits.slice(-7, -4) + " " + digits.slice(-4);
+          }
+          return digits;
         }
 
         // Relative time for real timestamps we actually store (last_contact)
@@ -4745,6 +4782,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
         const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
         const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
+        const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
         // Real WhatsApp-sendable unicode emoji, nothing that needs a font or
         // library to render -- inserted straight into the compose textarea.
         const EMOJI_SET = ["😀","😂","😍","👍","🙏","🎉","❤️","😊","🔥","👏","😢","😅","🤔","💯","✅","⏳","📦","💰","🙌","😎"];
@@ -4849,7 +4887,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
               '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + escapeHtml(avatarInitialsFor(c.phone)) + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
-                '<div class="phone">' + starIcon + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
+                '<div class="list-item-top">' +
+                  '<span class="phone">' + starIcon + escapeHtml(formatPhoneDisplay(c.phone)) + '</span>' +
+                  '<span class="list-item-badges">' + statusBadge + paidBadge + '</span>' +
+                '</div>' +
                 '<div class="snippet">' + (c.message_count || 0) + ' messages · ' + lastContact + '</div>' +
                 escalationLine +
               '</div>' +
@@ -4992,11 +5033,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const main = document.getElementById("main");
           main.innerHTML =
             '<div class="thread-header">' +
-              '<div class="thread-header-id">' +
+              '<div class="thread-header-id" style="--thread-accent:' + avatarColorFor(phone) + ';">' +
                 '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
                 '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + escapeHtml(avatarInitialsFor(phone)) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
                 '<div style="min-width:0;">' +
-                  '<div class="thread-name">' + escapeHtml(phone) + '</div>' +
+                  '<div class="thread-eyebrow">Customer</div>' +
+                  '<div class="thread-name">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' +
                   '<div class="thread-sub' + (isPaused ? ' is-paused' : '') + '">' + threadSubtitle(customer, isPaused) + '</div>' +
                 '</div>' +
               '</div>' +
@@ -5023,26 +5065,35 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             '</div>' +
             '<div class="thread" id="thread"></div>' +
             '<div class="compose-toolbar">' +
-              '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'*\\', \\'*\\')" title="Bold (WhatsApp *text*)"><b>B</b></button>' +
-              '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'_\\', \\'_\\')" title="Italic (WhatsApp _text_)"><i>I</i></button>' +
-              '<div class="emoji-picker-wrap">' +
-                '<button class="icon-btn small-icon-btn" onclick="toggleEmojiPicker()" title="Emoji">' + ICON_EMOJI + '</button>' +
-                '<div class="emoji-picker-dropdown" id="emojiPicker">' +
-                  EMOJI_SET.map((e) => '<button onclick="insertAtCursor(\\'' + e + '\\')">' + e + '</button>').join("") +
+              '<div class="compose-toolbar-group">' +
+                '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'*\\', \\'*\\')" title="Bold (WhatsApp *text*)"><b>B</b></button>' +
+                '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'_\\', \\'_\\')" title="Italic (WhatsApp _text_)"><i>I</i></button>' +
+                '<span class="toolbar-divider"></span>' +
+                '<div class="emoji-picker-wrap">' +
+                  '<button class="icon-btn small-icon-btn" onclick="toggleEmojiPicker()" title="Emoji">' + ICON_EMOJI + '</button>' +
+                  '<div class="emoji-picker-dropdown" id="emojiPicker">' +
+                    '<div class="emoji-picker-label">Emoji</div>' +
+                    '<div class="emoji-picker-grid">' +
+                      EMOJI_SET.map((e) => '<button onclick="insertAtCursor(\\'' + e + '\\')">' + e + '</button>').join("") +
+                    '</div>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
+              '<span class="compose-toolbar-hint">Formatting sends as real WhatsApp markdown</span>' +
             '</div>' +
             '<div class="msg-compose">' +
               '<div class="msg-compose-inner">' +
-                '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(phone) + ' directly..." oninput="autoGrowCompose(this)" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
+                '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(formatPhoneDisplay(phone)) + ' directly..." oninput="autoGrowCompose(this)" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
               '</div>' +
               '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
             '</div>' +
             '<div class="notes-box">' +
-              '<label>Notes (only visible to you, never sent to the customer or Amara)</label>' +
-              '<textarea id="notesInput">' + escapeHtml((customer && customer.note) || "") + '</textarea><br>' +
-              '<button class="catalog-btn small" onclick="saveNote(\\'' + phone + '\\')" style="margin-top:6px;">Save note</button> ' +
-              '<span class="catalog-msg" id="noteMsg"></span>' +
+              '<div class="notes-box-head">' + ICON_LOCK + '<span class="notes-box-title">Private note</span><span class="notes-box-sub">Only visible to you — never sent to the customer or Amara</span></div>' +
+              '<textarea id="notesInput" placeholder="e.g. Prefers evening delivery, always pays by transfer...">' + escapeHtml((customer && customer.note) || "") + '</textarea>' +
+              '<div class="notes-box-actions">' +
+                '<button class="catalog-btn small" onclick="saveNote(\\'' + phone + '\\')">Save note</button>' +
+                '<span class="catalog-msg" id="noteMsg"></span>' +
+              '</div>' +
             '</div>';
           const threadEl = document.getElementById("thread");
           threadEl.innerHTML = renderBubblesHtml(history);
