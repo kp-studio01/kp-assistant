@@ -1406,12 +1406,40 @@ async function listAllCustomers(sellerId) {
   try {
     const phones = await redisCommand(["SMEMBERS", nsKey(sellerId, "all_customers")]);
     if (!phones || phones.length === 0) return [];
-    const records = await Promise.all(phones.map((phone) => getCustomer(sellerId, phone)));
-    return records.filter(Boolean);
+    const records = (await Promise.all(phones.map((phone) => getCustomer(sellerId, phone)))).filter(Boolean);
+    await reconcileExpiredPauses(sellerId, records);
+    return records;
   } catch (err) {
     console.error("listAllCustomers failed:", err.message);
     return [];
   }
+}
+
+// A pause lives in two places: the `paused:<phone>` key, which expires on
+// its own after 6 hours, and a `paused` field on the customer record, which
+// is what the dashboard reads. Nothing used to clear that field when the key
+// expired, so a forgotten pause kept showing as "You" in the dashboard long
+// after Amara had actually gone back to replying -- the seller would think a
+// customer was waiting on them personally while Amara was already answering.
+// Checking the real key is the source of truth; the record is corrected in
+// place so it stays fixed rather than being patched on every read.
+async function reconcileExpiredPauses(sellerId, records) {
+  const claimedPaused = records.filter((c) => c.paused === "yes");
+  if (claimedPaused.length === 0) return;
+  await Promise.all(
+    claimedPaused.map(async (c) => {
+      try {
+        const stillPaused = await redisCommand(["GET", nsKey(sellerId, `paused:${c.phone}`)]);
+        if (stillPaused) return;
+        c.paused = "no";
+        await upsertCustomer(sellerId, c.phone, { paused: "no" });
+      } catch (err) {
+        // Leave the record as-is on a Redis hiccup: showing a stale pause is
+        // less harmful than wrongly telling the seller Amara has it covered.
+        console.error(`reconcileExpiredPauses failed for ${c.phone}:`, err.message);
+      }
+    })
+  );
 }
 
 // Called on every incoming customer message: keeps first/last contact
@@ -4590,6 +4618,30 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            since the whole bar re-renders every 5s poll, this would replay
            forever and read as a flicker instead of a one-time flourish. */
         /* One visible focus ring for keyboard users, everywhere. */
+        /* Views ease in rather than snapping. Short and slight on purpose --
+           a long or large movement on every tab press stops feeling premium
+           and starts feeling slow. */
+        @keyframes viewEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        .view-enter { animation: viewEnter .26s cubic-bezier(.22,1,.36,1) both; }
+        /* Cards inside a view arrive just behind it, which is what reads as
+           considered rather than one block sliding up. */
+        .view-enter > .catalog-card, .view-enter > .kpi-row { animation: viewEnter .32s cubic-bezier(.22,1,.36,1) both; }
+        .view-enter > .catalog-card:nth-child(2) { animation-delay: .04s; }
+        .view-enter > .catalog-card:nth-child(3) { animation-delay: .08s; }
+        .view-enter > .catalog-card:nth-child(4) { animation-delay: .12s; }
+        .view-enter > .catalog-card:nth-child(n+5) { animation-delay: .15s; }
+        /* A press you can feel, on the nav and on every button-ish control. */
+        nav.tabs button:active { transform: scale(0.975); }
+        .list-tab:active, .cat-chip:active, .seg-control button:active,
+        .catalog-btn:active, .btn-quiet:active, .icon-btn:active,
+        .sidebar-footer-link:active, .swatch:active { transform: scale(0.96); }
+        .sidebar-footer-link { transition: background .15s, color .15s, transform .12s ease; }
+        .cat-chip, .swatch, .btn-quiet, .icon-btn { transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s ease; }
+        @media (prefers-reduced-motion: reduce) {
+          .view-enter, .view-enter > .catalog-card, .view-enter > .kpi-row { animation: none; }
+          nav.tabs button:active, .list-tab:active, .cat-chip:active, .seg-control button:active,
+          .catalog-btn:active, .btn-quiet:active, .icon-btn:active, .sidebar-footer-link:active, .swatch:active { transform: none; }
+        }
         /* Two separate things caused the box that flashed on click:
            the mobile tap highlight, and a focus ring left behind after a
            pointer click. Keyboard users still get a clear ring -- only
@@ -4821,8 +4873,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (max-width: 700px) {
           .list-pane { width: 100%; }
           .layout { position: relative; overflow: hidden; }
+          /* List and thread are a real navigation on a phone, so they move
+             like one: the thread slides in from the right, the list slides
+             back in from the left. */
           .layout:not(.thread-open) .main { display: none; }
           .layout.thread-open .list-pane { display: none; }
+          @keyframes paneInRight { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+          @keyframes paneInLeft { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+          .layout.thread-open .main { animation: paneInRight .26s cubic-bezier(.22,1,.36,1) both; }
+          .layout:not(.thread-open) .list-pane { animation: paneInLeft .24s cubic-bezier(.22,1,.36,1) both; }
           button.mobile-back-btn.icon-btn { display: flex; }
           .thread-header { flex-wrap: wrap; gap: 10px; }
           .thread-actions { flex-wrap: wrap; }
@@ -4852,6 +4911,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           /* Topbar on one row, with room to breathe. */
           /* Respects the notch / home indicator when installed to the home
              screen (viewport-fit=cover is set in the meta tag). */
+          /* --vvh is the real visible height reported by visualViewport,
+             which shrinks when the keyboard opens; 100dvh is the fallback
+             where that API isn't available. */
+          .app-shell, .main-column, .sidebar { height: var(--vvh, 100dvh); }
           .topbar { flex-wrap: nowrap; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
           .msg-compose { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
           .sidebar { padding-top: env(safe-area-inset-top); }
@@ -5978,7 +6041,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '<div class="thread" id="thread"></div>' +
             '<div class="msg-compose">' +
               '<div class="msg-compose-inner">' +
-                '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(formatPhoneDisplay(phone)) + ' directly..." oninput="autoGrowCompose(this)" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
+                '<textarea id="composeInput" rows="1" placeholder="Message ' + escapeHtml(displayNameFor(customer)) + ' directly..." oninput="autoGrowCompose(this)" onfocus="onComposeFocus()" onkeydown="handleComposeKeydown(event, \\'' + phone + '\\')"></textarea>' +
                 '<div class="compose-tools">' +
                   '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'*\\', \\'*\\')" title="Bold — sends as real WhatsApp *text*"><b>B</b></button>' +
                   '<button class="icon-btn small-icon-btn" onclick="wrapSelection(\\'_\\', \\'_\\')" title="Italic — sends as real WhatsApp _text_"><i>I</i></button>' +
@@ -6015,6 +6078,38 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           el.style.height = "auto";
           el.style.height = Math.min(el.scrollHeight, 120) + "px";
         }
+        // ---- Mobile keyboard ------------------------------------------
+        // When the on-screen keyboard opens, the visual viewport shrinks but
+        // the layout viewport often doesn't, so a full-height app keeps its
+        // old height and the composer ends up behind the keyboard. Tracking
+        // visualViewport and driving the app's height from it keeps the
+        // composer sitting directly on top of the keyboard instead.
+        function syncViewportHeight() {
+          const vv = window.visualViewport;
+          if (!vv) return;
+          document.documentElement.style.setProperty("--vvh", Math.round(vv.height) + "px");
+          // iOS scrolls the page itself to reveal a focused field; that moves
+          // the whole app out of frame, so put it back.
+          if (window.scrollY !== 0) window.scrollTo(0, 0);
+        }
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", syncViewportHeight);
+          window.visualViewport.addEventListener("scroll", syncViewportHeight);
+          syncViewportHeight();
+        }
+        // Typing should always show the newest message, not leave you looking
+        // at the middle of the thread with the keyboard over the rest.
+        function onComposeFocus() {
+          const scrollThread = () => {
+            const t = document.getElementById("thread");
+            if (t) t.scrollTop = t.scrollHeight;
+          };
+          scrollThread();
+          // The keyboard animates in, so the useful height isn't known yet.
+          setTimeout(() => { syncViewportHeight(); scrollThread(); }, 180);
+          setTimeout(scrollThread, 420);
+        }
+
         function handleComposeKeydown(event, phone) {
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -6277,13 +6372,33 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const views = { conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView" };
           for (const t in views) {
             const el = document.getElementById(views[t]);
-            if (el) el.style.display = t === tab ? (t === "conversations" ? "flex" : "block") : "none";
+            if (!el) continue;
+            if (t === tab) {
+              el.style.display = t === "conversations" ? "flex" : "block";
+              // Restart the entrance animation on every switch: without
+              // removing the class first the browser reuses the finished
+              // animation and the swap snaps in with no motion at all.
+              el.classList.remove("view-enter");
+              void el.offsetWidth;
+              el.classList.add("view-enter");
+            } else {
+              el.style.display = "none";
+              // Drop the entrance class from the view we're leaving. Left
+              // behind, it stacks up on every view ever opened, and the
+              // staggered card delays then count children across two
+              // containers instead of one.
+              el.classList.remove("view-enter");
+            }
           }
           const tabs = { conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings" };
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
           }
+          // Coming back to Conversations from the menu should land on the
+          // LIST, not silently reopen whichever thread was last read -- on a
+          // phone that made it look like the menu item did nothing.
+          if (tab === "conversations" && window.innerWidth <= 700) closeThreadMobile();
           if (tab === "catalog") loadCatalog();
           if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
