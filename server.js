@@ -1212,6 +1212,14 @@ async function saveConversation(sellerId, from, history) {
   try {
     // EX 2592000 = expire after 30 days of no new messages
     await redisCommand(["SET", nsKey(sellerId, `conv:${from}`), JSON.stringify(history), "EX", "2592000"]);
+    // Piggyback the last message's role onto the customer hash -- a cheap,
+    // real signal the dashboard can read straight off the customer record
+    // it already fetches every poll, without ever pulling full conversation
+    // history just to answer "did the owner already reply to this?"
+    const last = history[history.length - 1];
+    if (last?.role) {
+      await redisCommand(["HSET", nsKey(sellerId, `customer:${from}`), "last_message_role", last.role]);
+    }
   } catch (err) {
     console.error("saveConversation failed:", err);
   }
@@ -2029,14 +2037,14 @@ async function handlePausedCustomerMessage(seller, from, text, messageId) {
     // First message since the pause started: this is a real conversation
     // turn, save it along with the holding note, same as any normal reply.
     let history = await getConversation(seller.sellerId, from);
-    history.push({ role: "user", content: text });
+    history.push({ role: "user", content: text, at: Date.now() });
 
     await markReadAndShowTyping(seller, messageId);
     const holdingNote = "Just a moment, the owner's handling this personally right now.";
     await humanPause(holdingNote);
     await sendWhatsApp(seller, from, holdingNote);
     await markNotifiedPaused(seller.sellerId, from);
-    history.push({ role: "assistant", content: holdingNote });
+    history.push({ role: "assistant", content: holdingNote, at: Date.now() });
     history = history.slice(-10);
     await saveConversation(seller.sellerId, from, history);
     console.log(`Amara -> ${from}: [paused, sent one-time holding note]`);
@@ -2067,7 +2075,7 @@ async function processBufferedTurn(seller, from) {
   try {
     // Load this customer's history from persistent memory
     let history = await getConversation(seller.sellerId, from);
-    history.push({ role: "user", content: combinedText });
+    history.push({ role: "user", content: combinedText, at: Date.now() });
     // keep only last 10 turns to stay light
     history = history.slice(-10);
 
@@ -2089,7 +2097,7 @@ async function processBufferedTurn(seller, from) {
       } else {
         console.log(`Customer ${from} is paused, staying quiet (already notified).`);
       }
-      history.push({ role: "assistant", content: holdingNote || "[paused: owner is handling this personally]" });
+      history.push({ role: "assistant", content: holdingNote || "[paused: owner is handling this personally]", at: Date.now() });
       await saveConversation(seller.sellerId, from, history);
       return;
     }
@@ -2213,7 +2221,7 @@ async function processBufferedTurn(seller, from) {
     // so future context reads naturally. Photo tracking now lives in
     // durable storage (see above), not as a note buried in this text.
     const memoryBody = bubbles.join("\n");
-    history.push({ role: "assistant", content: memoryBody });
+    history.push({ role: "assistant", content: memoryBody, at: Date.now() });
     await saveConversation(seller.sellerId, from, history);
 
     // ---------- 4) REPLY on WhatsApp, one bubble at a time ----------
@@ -2266,7 +2274,7 @@ async function processBufferedTurn(seller, from) {
         const clarifyText = "Already sent that one above, let me know if you want me to send it again!";
         await sendWhatsApp(seller, from, clarifyText);
         let clarifyHistory = await getConversation(seller.sellerId, from);
-        clarifyHistory.push({ role: "assistant", content: clarifyText });
+        clarifyHistory.push({ role: "assistant", content: clarifyText, at: Date.now() });
         clarifyHistory = clarifyHistory.slice(-10);
         await saveConversation(seller.sellerId, from, clarifyHistory);
       } else {
@@ -2369,7 +2377,7 @@ async function processBufferedTurn(seller, from) {
           console.log(`Amara -> ${from}: [sent payment link] ${reference}`);
 
           let paymentHistory = await getConversation(seller.sellerId, from);
-          paymentHistory.push({ role: "assistant", content: linkMessage });
+          paymentHistory.push({ role: "assistant", content: linkMessage, at: Date.now() });
           paymentHistory = paymentHistory.slice(-10);
           await saveConversation(seller.sellerId, from, paymentHistory);
         } else {
@@ -2402,7 +2410,7 @@ async function processBufferedTurn(seller, from) {
           console.log(`Amara -> ${from}: [booking confirmed] ${reference}`);
 
           let bookingHistory = await getConversation(seller.sellerId, from);
-          bookingHistory.push({ role: "assistant", content: confirmMessage });
+          bookingHistory.push({ role: "assistant", content: confirmMessage, at: Date.now() });
           bookingHistory = bookingHistory.slice(-10);
           await saveConversation(seller.sellerId, from, bookingHistory);
         } else {
@@ -2431,7 +2439,7 @@ async function processBufferedTurn(seller, from) {
           console.log(`Amara -> ${from}: [booking conflict, sent apology] ${bookingKey}/${bookingDate}/${bookingTime}`);
 
           let apologyHistory = await getConversation(seller.sellerId, from);
-          apologyHistory.push({ role: "assistant", content: apologyClean });
+          apologyHistory.push({ role: "assistant", content: apologyClean, at: Date.now() });
           apologyHistory = apologyHistory.slice(-10);
           await saveConversation(seller.sellerId, from, apologyHistory);
         }
@@ -2511,7 +2519,12 @@ async function askAI(seller, history, dynamicReminder = "") {
         model: "claude-sonnet-4-6",
         max_tokens: 300,
         system: systemPrompt,
-        messages: history,
+        // Strip down to exactly what Anthropic's API accepts per message --
+        // just role/content. The stored history now also carries a real
+        // "at" timestamp (added so the dashboard can show genuine message
+        // times), and sending that extra field straight through as part of
+        // "messages" would be handing the API a shape it never asked for.
+        messages: history.map((m) => ({ role: m.role, content: m.content })),
       }),
       signal: controller.signal,
     });
@@ -3069,7 +3082,7 @@ async function relayOwnerAnswerToCustomer(seller, pending, ownerText) {
   const delivered = await sendWhatsApp(seller, phone, customerMessage);
   if (delivered) {
     let history = await getConversation(seller.sellerId, phone);
-    history.push({ role: "assistant", content: customerMessage });
+    history.push({ role: "assistant", content: customerMessage, at: Date.now() });
     history = history.slice(-10);
     await saveConversation(seller.sellerId, phone, history);
     console.log(`Amara -> ${phone}: [relayed owner's answer] ${customerMessage}`);
@@ -3198,7 +3211,7 @@ async function handleOwnerCommand(seller, text) {
     const notified = await sendWhatsApp(seller, target, followUp);
     if (notified) {
       let customerHistory = await getConversation(seller.sellerId, target);
-      customerHistory.push({ role: "assistant", content: followUp });
+      customerHistory.push({ role: "assistant", content: followUp, at: Date.now() });
       customerHistory = customerHistory.slice(-10);
       await saveConversation(seller.sellerId, target, customerHistory);
       console.log(`Amara -> ${target}: [proactive resume notification] ${followUp}`);
@@ -4124,9 +4137,18 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .stat-tile.tile-revenue .stat-icon { background: #eef2ff; color: var(--accent-dark); }
         .layout { display: flex; flex: 1; min-height: 0; }
         .list-pane { width: 320px; border-right: 1px solid #e2e8f0; background: white; flex-shrink: 0; display: flex; flex-direction: column; }
-        .search-box { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+        .search-box { padding: 10px 12px 8px; }
         .search-box input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
         .search-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        /* Real filters, not decoration -- All/Active/Paused/Starred each map
+           to an actual stored field on the customer record (see setTab /
+           getFilteredCustomers), the same idea as Fillow's inbox tabs but
+           grounded in states this dashboard genuinely tracks. */
+        .list-tabs { display: flex; gap: 4px; padding: 0 10px 10px; border-bottom: 1px solid #f1f5f9; }
+        .list-tab { flex: 1; background: transparent; border: none; padding: 7px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 6px; cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
+        .list-tab:hover { background: #f8fafc; color: var(--navy); }
+        .list-tab.active-list-tab { background: var(--accent-light); color: var(--accent); }
+        .nav-badge { margin-left: auto; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; line-height: 1.5; flex-shrink: 0; }
         .list { flex: 1; overflow-y: auto; }
         .list-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s; }
         .list-item:hover { background: #f8fafc; }
@@ -4137,10 +4159,17 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .status-dot.paused { background: var(--warning); }
         .list-item-body { min-width: 0; flex: 1; }
         .list-item .phone { font-weight: 600; font-size: 14px; }
+        .row-star { display: inline-flex; color: #d97706; margin-right: 5px; vertical-align: -2px; }
+        .row-star svg { width: 13px; height: 13px; }
         .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
         .badge.paused { background: #fef3c7; color: #b45309; }
         .badge.active { background: #dcfce7; color: #15803d; }
         .badge.paid { background: #dbeafe; color: #1d4ed8; }
+        /* Refines the plain "Paused" badge for the one case that's actually
+           actionable right now: paused AND the customer's last message
+           still has no reply -- both real, stored facts (see
+           last_message_role in saveConversation). */
+        .badge.waiting { background: #fee2e2; color: #b91c1c; font-weight: 600; }
         .snippet { font-size: 12px; color: #64748b; margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .thread-header { padding: 14px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -4151,6 +4180,15 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .thread-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
         .thread-sub.is-paused { color: #b45309; font-weight: 600; }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
+        .icon-btn svg { width: 16px; height: 16px; }
+        .icon-btn:hover { background: #f8fafc; color: var(--navy); }
+        .icon-btn.starred, .icon-btn.starred:hover { color: #d97706; border-color: #fde68a; background: #fffbeb; }
+        .more-menu { position: relative; }
+        .more-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); min-width: 190px; z-index: 20; overflow: hidden; }
+        .more-menu-dropdown.open { display: block; }
+        .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--danger); cursor: pointer; }
+        .more-menu-dropdown button:hover { background: #fef2f2; }
         .thread { flex: 1; overflow-y: auto; padding: 24px; }
         .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 14px; }
         .msg-row.from-assistant { flex-direction: row-reverse; }
@@ -4159,13 +4197,23 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         /* .msg-avatar.user gets its background set inline per-contact (see
            avatarStyleFor) so the same customer's initials chip matches the
            one already shown for them in the list and thread header. */
-        .bubble { max-width: 68%; padding: 10px 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 2px rgba(15,23,42,0.06); }
+        .bubble-col { display: flex; flex-direction: column; max-width: 68%; }
+        .msg-row.from-user .bubble-col { align-items: flex-start; }
+        .msg-row.from-assistant .bubble-col { align-items: flex-end; }
+        .bubble { padding: 10px 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 2px rgba(15,23,42,0.06); max-width: 100%; }
         /* Corner nearest each side's own avatar stays sharp (a small "tail"
            cue) -- the customer's bubble sits bottom-left flat, Amara's
            bottom-right flat, the same asymmetric shape real chat apps use
            instead of a uniform rounded rectangle on every bubble. */
         .bubble.user { background: #eef2f7; color: var(--navy); border-radius: 3px 16px 16px 16px; }
         .bubble.assistant { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: 16px 3px 16px 16px; }
+        /* Real per-message time -- only rendered when the stored message
+           actually has one (see history.push's "at" field server-side).
+           Older messages saved before this existed simply show no time,
+           on purpose, rather than a guessed one. */
+        .bubble-time { font-size: 11px; color: #94a3b8; margin-top: 3px; padding: 0 4px; }
+        .day-divider { display: flex; align-items: center; justify-content: center; margin: 18px 0; }
+        .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: #eef2f7; padding: 4px 12px; border-radius: 999px; }
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
         button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
@@ -4244,7 +4292,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </div>
         <div class="sidebar-section-label">Menu</div>
         <nav class="tabs">
-          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Conversations</button>
+          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
           ${
             isBookable
               ? `<button id="tabServices" onclick="switchTab('services')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Services</button>
@@ -4271,6 +4319,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       <div class="layout" id="conversationsView">
         <div class="list-pane">
           <div class="search-box"><input id="searchBox" placeholder="Search by phone or escalation reason..." oninput="applyFilter()"></div>
+          <div class="list-tabs">
+            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')">All</button>
+            <button class="list-tab" id="tab-active" onclick="setTab('active')">Active</button>
+            <button class="list-tab" id="tab-paused" onclick="setTab('paused')">Paused</button>
+            <button class="list-tab" id="tab-starred" onclick="setTab('starred')">&#9733; Starred</button>
+          </div>
           <div class="list" id="list"><div class="empty"><div class="spinner"></div><div class="empty-title">Loading conversations…</div></div></div>
         </div>
         <div class="main" id="main"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><div class="empty-title">Select a conversation</div><div class="empty-sub">Pick a customer from the list on the left to see the full thread.</div></div></div>
@@ -4578,6 +4632,28 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           return new Date(dateStr).toLocaleDateString();
         }
 
+        // Every NEW message from this round forward carries a real "at"
+        // timestamp (see history.push(...) call sites in the server code --
+        // stamped the moment it's actually added to the conversation).
+        // Messages saved before this change won't have one, and that's
+        // shown honestly as no time at all rather than a guessed one --
+        // see renderBubblesHtml below.
+        function isSameCalendarDay(a, b) {
+          return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+        }
+        function formatDayDivider(ts) {
+          const d = new Date(ts);
+          const now = new Date();
+          if (isSameCalendarDay(d, now)) return "Today";
+          const yesterday = new Date(now);
+          yesterday.setDate(now.getDate() - 1);
+          if (isSameCalendarDay(d, yesterday)) return "Yesterday";
+          return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+        }
+        function formatBubbleTime(ts) {
+          return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        }
+
         async function loadDashboard() {
           try {
             const res = await fetch("/api/dashboard-data?" + ADMIN_QS);
@@ -4585,6 +4661,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             if (data.error) return;
             customersCache = data.customers;
             renderStats(data.stats);
+            updateListTabCounts();
             renderList(getFilteredCustomers());
             if (selectedPhone) loadConversation(selectedPhone, false);
           } catch (err) {
@@ -4603,6 +4680,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>';
         const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
         const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+        const ICON_STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+        const ICON_STAR_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+        const ICON_MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
 
         function statTile(cls, icon, value, label) {
           return '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div><div class="stat-icon">' + icon + '</div></div>';
@@ -4623,10 +4703,25 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             statTile("tile-revenue" + inCls, ICON_WALLET, "N" + stats.revenueTodayNaira.toLocaleString(), stats.paymentsToday + " order" + (stats.paymentsToday === 1 ? "" : "s") + " today");
         }
 
+        // Which list-tab is active -- each one maps to a real stored field
+        // (paused / starred), never a fabricated bucket.
+        let currentTab = "all";
+        function setTab(tab) {
+          currentTab = tab;
+          document.querySelectorAll(".list-tab").forEach((b) => b.classList.remove("active-list-tab"));
+          const btn = document.getElementById("tab-" + tab);
+          if (btn) btn.classList.add("active-list-tab");
+          renderList(getFilteredCustomers());
+        }
+
         function getFilteredCustomers() {
+          let list = customersCache;
+          if (currentTab === "active") list = list.filter((c) => c.paused !== "yes");
+          else if (currentTab === "paused") list = list.filter((c) => c.paused === "yes");
+          else if (currentTab === "starred") list = list.filter((c) => c.starred === "yes");
           const q = (document.getElementById("searchBox").value || "").trim().toLowerCase();
-          if (!q) return customersCache;
-          return customersCache.filter((c) =>
+          if (!q) return list;
+          return list.filter((c) =>
             (c.phone || "").toLowerCase().indexOf(q) !== -1 ||
             (c.last_escalation_reason || "").toLowerCase().indexOf(q) !== -1
           );
@@ -4636,18 +4731,51 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           renderList(getFilteredCustomers());
         }
 
+        // Real counts on every tab (like Fillow's "Inbox (2,456)"), plus the
+        // sidebar's red badge -- both computed from data already on the
+        // page, nothing fetched separately. The badge specifically counts
+        // customers who are BOTH paused (the owner took over) AND whose
+        // last message was from the customer (last_message_role, stamped by
+        // saveConversation on the server every time a message is saved) --
+        // i.e. genuinely waiting on a reply from the owner, not just "any
+        // paused chat" which the Paused stat tile already covers.
+        function updateListTabCounts() {
+          const setLabel = (id, label, n) => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = label + " (" + n + ")";
+          };
+          setLabel("tab-all", "All", customersCache.length);
+          setLabel("tab-active", "Active", customersCache.filter((c) => c.paused !== "yes").length);
+          setLabel("tab-paused", "Paused", customersCache.filter((c) => c.paused === "yes").length);
+          setLabel("tab-starred", "&#9733; Starred", customersCache.filter((c) => c.starred === "yes").length);
+          const needsReply = customersCache.filter((c) => c.paused === "yes" && c.last_message_role === "user").length;
+          const badge = document.getElementById("navBadgeConversations");
+          if (badge) {
+            badge.textContent = needsReply > 0 ? String(needsReply) : "";
+            badge.style.display = needsReply > 0 ? "inline-block" : "none";
+          }
+        }
+
+        const TAB_EMPTY_TEXT = {
+          all: "Once someone messages your WhatsApp number, they'll show up here.",
+          active: "No active conversations right now.",
+          paused: "Nothing's paused right now -- Amara is handling every conversation.",
+          starred: "Star a conversation from its thread header to pin it here.",
+        };
         function renderList(customers) {
           const list = document.getElementById("list");
           if (customers.length === 0) {
-            list.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_USERS + '</div><div class="empty-title">No customers yet</div><div class="empty-sub">Once someone messages your WhatsApp number, they\\'ll show up here.</div></div>';
+            list.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_USERS + '</div><div class="empty-title">No ' + (currentTab === "all" ? "customers" : currentTab) + ' yet</div><div class="empty-sub">' + (TAB_EMPTY_TEXT[currentTab] || TAB_EMPTY_TEXT.all) + '</div></div>';
             return;
           }
           list.innerHTML = customers.map((c) => {
             const isActiveRow = c.phone === selectedPhone;
-            const statusBadge = c.paused === "yes"
-              ? '<span class="badge paused">Paused</span>'
-              : '<span class="badge active">Active</span>';
+            const needsReply = c.paused === "yes" && c.last_message_role === "user";
+            const statusBadge = needsReply
+              ? '<span class="badge waiting">Waiting on you</span>'
+              : (c.paused === "yes" ? '<span class="badge paused">Paused</span>' : '<span class="badge active">Active</span>');
             const paidBadge = c.last_payment_at ? '<span class="badge paid">Paid</span>' : "";
+            const starIcon = c.starred === "yes" ? '<span class="row-star">' + ICON_STAR_FILLED + '</span>' : "";
             const lastContact = c.last_contact ? timeAgo(c.last_contact) : "no messages yet";
             const escalationLine = c.last_escalation_reason
               ? '<div class="snippet">⚠ ' + escapeHtml(c.last_escalation_reason) + '</div>'
@@ -4656,7 +4784,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
               '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + escapeHtml(avatarInitialsFor(c.phone)) + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
-                '<div class="phone">' + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
+                '<div class="phone">' + starIcon + escapeHtml(c.phone) + statusBadge + paidBadge + '</div>' +
                 '<div class="snippet">' + (c.message_count || 0) + ' messages · ' + lastContact + '</div>' +
                 escalationLine +
               '</div>' +
@@ -4708,16 +4836,31 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           // sidebar profile mark.
           const userAvatarStyle = avatarStyleFor(selectedPhone);
           const userInitials = escapeHtml(avatarInitialsFor(selectedPhone));
-          return history.map((m) => {
+          let html = "";
+          let lastDayKey = null;
+          history.forEach((m) => {
+            if (m.at) {
+              const d = new Date(m.at);
+              const dayKey = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+              if (dayKey !== lastDayKey) {
+                html += '<div class="day-divider"><span>' + formatDayDivider(m.at) + '</span></div>';
+                lastDayKey = dayKey;
+              }
+            }
             const isUser = m.role === "user";
             const avatarHtml = isUser
               ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + userInitials + '</div>'
               : '<div class="msg-avatar assistant">S</div>';
-            return '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + '">' +
+            const timeHtml = m.at ? '<div class="bubble-time">' + formatBubbleTime(m.at) + '</div>' : "";
+            html += '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + '">' +
               avatarHtml +
-              '<div class="bubble ' + (isUser ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>' +
+              '<div class="bubble-col">' +
+                '<div class="bubble ' + (isUser ? "user" : "assistant") + '">' + escapeHtml(m.content) + '</div>' +
+                timeHtml +
+              '</div>' +
               '</div>';
-          }).join("");
+          });
+          return html;
         }
 
         function updateThreadMessages(history, customer) {
@@ -4745,6 +4888,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             sub.className = "thread-sub" + (isPaused ? " is-paused" : "");
             sub.textContent = threadSubtitle(customer, isPaused);
           }
+          const starBtn = document.getElementById("starBtn");
+          if (starBtn && customer) {
+            const starred = customer.starred === "yes";
+            starBtn.dataset.starred = starred ? "yes" : "no";
+            starBtn.innerHTML = starred ? ICON_STAR_FILLED : ICON_STAR;
+            starBtn.classList.toggle("starred", starred);
+          }
         }
 
         // Real, not invented: paused state and last_contact are both actual
@@ -4769,10 +4919,18 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 '</div>' +
               '</div>' +
               '<div class="thread-actions">' +
+                '<button class="icon-btn' + ((customer && customer.starred === "yes") ? " starred" : "") + '" id="starBtn" data-starred="' + ((customer && customer.starred === "yes") ? "yes" : "no") + '" onclick="toggleStar(\\'' + phone + '\\')" title="Star this conversation">' +
+                  ((customer && customer.starred === "yes") ? ICON_STAR_FILLED : ICON_STAR) +
+                '</button>' +
                 '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
                   (isPaused ? "Hand back to Amara" : "Take over") +
                 '</button>' +
-                '<button class="catalog-btn danger small" onclick="clearConversation(\\'' + phone + '\\')" title="Wipe this conversation and customer record so you can retest from a clean slate">Clear conversation</button>' +
+                '<div class="more-menu">' +
+                  '<button class="icon-btn" id="moreMenuBtn" onclick="toggleMoreMenu()" title="More">' + ICON_MORE + '</button>' +
+                  '<div class="more-menu-dropdown" id="moreMenuDropdown">' +
+                    '<button onclick="toggleMoreMenu(); clearConversation(\\'' + phone + '\\');" title="Wipe this conversation and customer record so you can retest from a clean slate">Clear conversation</button>' +
+                  '</div>' +
+                '</div>' +
               '</div>' +
             '</div>' +
             '<div class="thread" id="thread"></div>' +
@@ -4863,6 +5021,43 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           } catch (err) {
             msg.textContent = "Network error, please try again.";
             msg.className = "catalog-msg error";
+          }
+        }
+
+        function toggleMoreMenu() {
+          const el = document.getElementById("moreMenuDropdown");
+          if (el) el.classList.toggle("open");
+        }
+        // Close the more-menu on an outside click -- registered once, not
+        // rebuilt on every renderThread(), so it stays attached across
+        // conversation switches.
+        document.addEventListener("click", function (e) {
+          const menu = document.getElementById("moreMenuDropdown");
+          const trigger = document.getElementById("moreMenuBtn");
+          if (menu && menu.classList.contains("open") && !menu.contains(e.target) && e.target !== trigger && !trigger?.contains(e.target)) {
+            menu.classList.remove("open");
+          }
+        });
+
+        async function toggleStar(phone) {
+          const btn = document.getElementById("starBtn");
+          if (!btn) return;
+          const next = btn.dataset.starred !== "yes";
+          btn.dataset.starred = next ? "yes" : "no";
+          btn.innerHTML = next ? ICON_STAR_FILLED : ICON_STAR;
+          btn.classList.toggle("starred", next);
+          const c = customersCache.find((c) => c.phone === phone);
+          if (c) c.starred = next ? "yes" : "no";
+          updateListTabCounts();
+          renderList(getFilteredCustomers());
+          try {
+            await fetch("/api/star?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: phone, starred: next }),
+            });
+          } catch (err) {
+            console.error("star toggle failed", err);
           }
         }
 
@@ -5911,7 +6106,7 @@ app.post("/api/handback", async (req, res) => {
     const notified = await sendWhatsApp(seller, phone, followUp);
     if (notified) {
       let history = await getConversation(seller.sellerId, phone);
-      history.push({ role: "assistant", content: followUp });
+      history.push({ role: "assistant", content: followUp, at: Date.now() });
       history = history.slice(-10);
       await saveConversation(seller.sellerId, phone, history);
     }
@@ -5950,7 +6145,7 @@ app.post("/api/send-message", async (req, res) => {
     const sent = await sendWhatsApp(seller, phone, text);
     if (!sent) return res.status(502).json({ error: "WhatsApp rejected the message, please try again" });
     let history = await getConversation(seller.sellerId, phone);
-    history.push({ role: "assistant", content: text });
+    history.push({ role: "assistant", content: text, at: Date.now() });
     history = history.slice(-10);
     await saveConversation(seller.sellerId, phone, history);
     console.log(`Dashboard manual message: owner messaged ${phone} directly from the dashboard.`);
@@ -5976,6 +6171,25 @@ app.post("/api/note", async (req, res) => {
   } catch (err) {
     console.error("api/note failed:", err.message);
     res.status(500).json({ error: "failed to save note" });
+  }
+});
+
+// Star/pin a conversation -- a real, owner-only flag (same customer hash as
+// note/paused), so the "Starred" filter tab in the dashboard is genuine
+// data, not decoration. Never read by Amara's prompt, never shown to the
+// customer.
+app.post("/api/star", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const phone = req.body?.phone;
+  const starred = req.body?.starred ? "yes" : "no";
+  if (!phone) return res.status(400).json({ error: "missing phone" });
+  try {
+    await upsertCustomer(seller.sellerId, phone, { starred });
+    res.json({ ok: true, starred });
+  } catch (err) {
+    console.error("api/star failed:", err.message);
+    res.status(500).json({ error: "failed to save" });
   }
 });
 
@@ -6797,7 +7011,7 @@ app.post("/paystack-webhook", async (req, res) => {
     await sendWhatsApp(seller, order.phone, confirmationText);
 
     let history = await getConversation(seller.sellerId, order.phone);
-    history.push({ role: "assistant", content: confirmationText });
+    history.push({ role: "assistant", content: confirmationText, at: Date.now() });
     history = history.slice(-10);
     await saveConversation(seller.sellerId, order.phone, history);
 
