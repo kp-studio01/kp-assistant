@@ -4168,11 +4168,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            here is fragile to header height the way the old single-row
            layout was. */
         .app-shell { display: flex; flex-direction: row; height: 100vh; }
-        /* A slight vertical gradient plus a faint accent glow at the top, so
-           the rail reads as a surface with depth rather than a flat block. */
-        .sidebar { position: relative; width: 232px; flex-shrink: 0; background: linear-gradient(180deg, #1b2436 0%, var(--navy) 42%, var(--navy) 100%); display: flex; flex-direction: column; height: 100vh; border-right: 1px solid rgba(255,255,255,0.06); }
-        .sidebar::before { content: ""; position: absolute; top: -80px; left: -40px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(closest-side, rgba(99,102,241,0.30), transparent 72%); pointer-events: none; }
-        .sidebar > * { position: relative; z-index: 1; }
+        /* Depth from a very slight top-to-bottom lift and a hairline edge --
+           an accent glow was tried here and removed: on a rail this narrow it
+           reads as a coloured blob rather than lighting. */
+        .sidebar { position: relative; width: 232px; flex-shrink: 0; background: linear-gradient(180deg, #202b40 0%, var(--navy) 55%); display: flex; flex-direction: column; height: 100vh; border-right: 1px solid rgba(255,255,255,0.07); }
         .sidebar-brand { padding: 20px 20px 16px; }
         .sidebar-section-label { padding: 14px 20px 7px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: rgba(255,255,255,0.42); }
         .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
@@ -4324,22 +4323,36 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .row-preview { font-size: 12.5px; color: var(--muted); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
         .list-item.active-row .row-preview { color: var(--text); }
         .row-faint { color: var(--muted-2); }
-        .row-escalation { display: inline-flex; align-items: center; gap: 4px; color: var(--warn-fg); font-weight: 500; }
-        .row-escalation svg { width: 12px; height: 12px; flex-shrink: 0; }
-        .row-paid { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok-border); flex-shrink: 0; }
-        .row-paid svg { width: 8px; height: 8px; }
+        /* The escalation reason reads in the same muted tone as any other
+           preview line -- only its little icon is coloured, so a busy list
+           doesn't turn into a wall of amber sentences. */
+        .row-escalation { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); min-width: 0; }
+        .row-escalation svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--warning); }
+        .row-paid { display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; color: var(--success); flex-shrink: 0; opacity: 0.85; }
+        .row-paid svg { width: 11px; height: 11px; }
         .row-star { display: inline-flex; color: var(--star); flex-shrink: 0; }
         .row-star svg { width: 13px; height: 13px; }
-        .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid transparent; line-height: 1.55; white-space: nowrap; flex-shrink: 0; }
+        /* Status chips stay quiet: one small coloured dot carries the meaning,
+           the label itself sits in ordinary text colour on a neutral pill.
+           A row that needs a reply should read as informative, not as an
+           alarm going off down the side of the screen. */
+        .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 500; padding: 2px 8px 2px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); line-height: 1.55; white-space: nowrap; flex-shrink: 0; }
         .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-        .badge.paused { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
-        .badge.active { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
-        .badge.paid { background: var(--info-bg); color: var(--info-fg); border-color: var(--info-border); }
+        .badge.paused { color: var(--muted); }
+        .badge.paused::before { background: var(--warning); }
+        .badge.active { color: var(--muted); }
+        .badge.active::before { background: var(--success); }
+        .badge.paid { color: var(--muted); }
+        .badge.paid::before { background: var(--info-fg); }
         /* Refines the plain "Paused" badge for the one case that's actually
            actionable right now: paused AND the customer's last message
            still has no reply -- both real, stored facts (see
            last_message_role in saveConversation). */
-        .badge.waiting { background: var(--dang-bg); color: var(--dang-fg); border-color: var(--dang-border); font-weight: 700; }
+        /* The one row state that's genuinely actionable gets a slightly
+           firmer weight and a red dot -- still on the same neutral pill as
+           everything else, so it reads as "this one" not "danger". */
+        .badge.waiting { color: var(--text); font-weight: 600; }
+        .badge.waiting::before { background: var(--danger); }
         .snippet { font-size: 12px; color: var(--muted); margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         /* Customer details column. Everything it shows is a field the
@@ -4500,6 +4513,46 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
         .catalog-msg.error { color: var(--danger); }
         .catalog-msg.ok { color: var(--ok-fg); }
+        /* A card header with its own action, instead of a bare <h2> and a
+           form permanently open underneath it. */
+        .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+        .card-head h2 { margin: 0; }
+        .card-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+        .catalog-btn svg { flex-shrink: 0; }
+        .catalog-btn { display: inline-flex; align-items: center; gap: 7px; }
+        .btn-quiet { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s; }
+        .btn-quiet:hover { background: var(--surface-2); color: var(--text); }
+        .table-wrap { overflow-x: auto; }
+        /* The add/edit form, revealed on demand, as one coherent grid rather
+           than three stacked half-grids. */
+        .inline-panel { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); animation: panelIn .18s ease-out; }
+        @keyframes panelIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+        .inline-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+        .field-full { grid-column: 1 / -1; }
+        .field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
+        .field-hint { font-size: 11.5px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
+        .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
+        .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .inline-panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+        @media (max-width: 700px) { .field-grid { grid-template-columns: 1fr; } }
+        /* Settings rows: label + explanation on the left, the control on the
+           right. Every control here changes something that genuinely works. */
+        .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
+        .setting-row:last-of-type { border-bottom: none; }
+        .setting-text { min-width: 0; }
+        .setting-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+        .setting-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+        .setting-static { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; flex-shrink: 0; }
+        .setting-note { font-size: 12px; color: var(--muted); line-height: 1.55; margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+        .seg-control { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-3); border-radius: 10px; flex-shrink: 0; }
+        .seg-control button { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: background .15s, color .15s, box-shadow .15s; }
+        .seg-control button:hover { color: var(--text); }
+        .seg-control button.seg-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
+        .switch { position: relative; width: 42px; height: 24px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-3); cursor: pointer; flex-shrink: 0; padding: 0; transition: background .18s ease, border-color .18s ease; }
+        .switch span { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-md); transition: transform .18s cubic-bezier(.4,0,.2,1); }
+        .switch.on { background: var(--accent); border-color: var(--accent); }
+        .switch.on span { transform: translateX(18px); }
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
         /* These fields sit outside .catalog-form, so they were rendering with
@@ -4614,6 +4667,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>Catalog</button>`
           }
           <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>Analytics</button>
+          <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.6.66 1.03 1.28 1.06H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>Settings</button>
         </nav>
         <div class="sidebar-footer">
           <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
@@ -4654,43 +4708,62 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </div>
       <div class="catalog-view" id="catalogView" style="display:none;">
         <div class="catalog-card">
-          <h2>Products</h2>
-          <table class="catalog-table" id="catalogTable">
-            <thead><tr><th></th><th>Name</th><th>Key</th><th>Price</th><th></th></tr></thead>
-            <tbody id="catalogTableBody"></tbody>
-          </table>
-          <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:8px;">
-            Editing "<b id="productEditingName"></b>" -- <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
+          <div class="card-head">
+            <div>
+              <h2>Products</h2>
+              <div class="card-sub">What Amara can quote, describe and sell on your behalf.</div>
+            </div>
+            <button class="catalog-btn" id="addProductBtn" onclick="openProductForm()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add product
+            </button>
           </div>
-          <div class="catalog-form">
+          <div class="table-wrap">
+            <table class="catalog-table" id="catalogTable">
+              <thead><tr><th></th><th>Name</th><th>Key</th><th>Price</th><th></th></tr></thead>
+              <tbody id="catalogTableBody"></tbody>
+            </table>
+          </div>
+          <div class="inline-panel" id="productPanel" style="display:none;">
+            <div class="inline-panel-head">
+              <span id="productPanelTitle">New product</span>
+              <button class="icon-btn small-icon-btn" onclick="closeProductForm()" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:10px;">
+              Editing "<b id="productEditingName"></b>" -- <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
+            </div>
             <input type="hidden" id="pKey">
-            <div>
-              <label>Name</label>
-              <input id="pName" placeholder="e.g. Plain white tee">
+            <div class="field-grid">
+              <div class="field">
+                <label>Name</label>
+                <input id="pName" placeholder="e.g. Plain white tee">
+              </div>
+              <div class="field">
+                <label>Price (N)</label>
+                <input id="pPrice" type="number" min="1" placeholder="7500">
+              </div>
+              <div class="field field-full">
+                <label>Description</label>
+                <div class="field-hint">Materials, sizes, colours &mdash; anything Amara needs to answer questions accurately.</div>
+                <textarea id="pDescription" rows="2" placeholder="e.g. 100% cotton, true to size, available in S-XL, machine washable"></textarea>
+              </div>
+              <div class="field">
+                <label>Upload a photo</label>
+                <div class="field-hint">Max 1.5MB.</div>
+                <input id="pPhotoFile" type="file" accept="image/*">
+              </div>
+              <div class="field">
+                <label>...or paste a photo URL</label>
+                <div class="field-hint">Use this if the image already lives online.</div>
+                <input id="pImageUrl" placeholder="https://...">
+              </div>
             </div>
-            <div>
-              <label>Price (N)</label>
-              <input id="pPrice" type="number" min="1" placeholder="7500">
+            <div class="inline-panel-actions">
+              <button class="catalog-btn" onclick="saveProduct()">Save product</button>
+              <button class="btn-quiet" onclick="closeProductForm()">Cancel</button>
+              <span class="catalog-msg" id="catalogMsg"></span>
             </div>
-            <button class="catalog-btn" onclick="saveProduct()">Save product</button>
           </div>
-          <div class="catalog-form" style="grid-template-columns: 1fr; margin-top:10px;">
-            <div>
-              <label>Description (materials, sizes, colors — anything Amara should know to answer questions accurately)</label>
-              <textarea id="pDescription" rows="2" placeholder="e.g. 100% cotton, true to size, available in S–XL, machine washable"></textarea>
-            </div>
-          </div>
-          <div class="catalog-form" style="grid-template-columns: 1fr 1fr; margin-top:10px;">
-            <div>
-              <label>Upload a photo (max 1.5MB)</label>
-              <input id="pPhotoFile" type="file" accept="image/*">
-            </div>
-            <div>
-              <label>...or paste a photo URL instead</label>
-              <input id="pImageUrl" placeholder="https://...">
-            </div>
-          </div>
-          <div class="catalog-msg" id="catalogMsg"></div>
         </div>
         <div class="catalog-card">
           <h2>Delivery fees</h2>
@@ -4723,50 +4796,6 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <button class="catalog-btn" onclick="saveDeliveryDefaultFee()">Save fallback fee</button>
           </div>
           <div class="catalog-msg" id="feesMsg"></div>
-        </div>
-        <div class="catalog-card">
-          <h2>Bank transfer details</h2>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Offered to a customer only if they specifically ask to pay by bank transfer instead of the payment link.</div>
-          <div class="fees-row">
-            <div>
-              <label>Bank name</label>
-              <input id="bankName" placeholder="e.g. GTBank">
-            </div>
-            <div>
-              <label>Account number</label>
-              <input id="bankAccountNumber" placeholder="0123456789">
-            </div>
-            <div>
-              <label>Account name</label>
-              <input id="bankAccountName" placeholder="e.g. KP Collections">
-            </div>
-            <button class="catalog-btn" onclick="saveBankDetails()">Save</button>
-          </div>
-          <div class="catalog-msg" id="bankMsg"></div>
-
-          <div id="bank2Toggle" style="margin-top:14px;">
-            <button class="catalog-btn small" style="background:transparent;color:var(--accent);padding:4px 0;" onclick="showBank2Form()">+ Add a second account</button>
-          </div>
-          <div id="bank2Form" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">A second option, in case a customer's bank can't send to the first account. Amara only mentions this one if asked for an alternative.</div>
-            <div class="fees-row">
-              <div>
-                <label>Bank name</label>
-                <input id="bank2Name" placeholder="e.g. Kuda">
-              </div>
-              <div>
-                <label>Account number</label>
-                <input id="bank2AccountNumber" placeholder="0123456789">
-              </div>
-              <div>
-                <label>Account name</label>
-                <input id="bank2AccountName" placeholder="e.g. KP Collections">
-              </div>
-              <button class="catalog-btn" onclick="saveBankDetails2()">Save</button>
-            </div>
-            <button class="catalog-btn small" style="background:transparent;color:var(--danger);padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
-            <div class="catalog-msg" id="bank2Msg"></div>
-          </div>
         </div>
       </div>
       <div class="catalog-view" id="servicesView" style="display:none;">
@@ -4872,6 +4901,91 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <thead><tr><th>Date</th><th>Time</th><th>Service</th><th>Customer</th><th>Reference</th><th></th></tr></thead>
             <tbody id="bookingsTableBody"></tbody>
           </table>
+        </div>
+      </div>
+      <div class="catalog-view" id="settingsView" style="display:none;">
+        <div class="catalog-card">
+          <h2>Appearance</h2>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Theme</div>
+              <div class="setting-desc">Applies on this browser. New sessions follow your device setting until you choose.</div>
+            </div>
+            <div class="seg-control" id="themeSeg">
+              <button data-theme-choice="light" onclick="setThemeChoice('light')">Light</button>
+              <button data-theme-choice="dark" onclick="setThemeChoice('dark')">Dark</button>
+              <button data-theme-choice="system" onclick="setThemeChoice('system')">System</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Customer details panel</div>
+              <div class="setting-desc">Show the panel beside a conversation by default on wide screens.</div>
+            </div>
+            <button class="switch" id="detailsSwitch" role="switch" onclick="toggleDetailDefault()"><span></span></button>
+          </div>
+        </div>
+        <div class="catalog-card">
+          <h2>Bank transfer details</h2>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Offered to a customer only if they specifically ask to pay by bank transfer instead of the payment link.</div>
+          <div class="fees-row">
+            <div>
+              <label>Bank name</label>
+              <input id="bankName" placeholder="e.g. GTBank">
+            </div>
+            <div>
+              <label>Account number</label>
+              <input id="bankAccountNumber" placeholder="0123456789">
+            </div>
+            <div>
+              <label>Account name</label>
+              <input id="bankAccountName" placeholder="e.g. KP Collections">
+            </div>
+            <button class="catalog-btn" onclick="saveBankDetails()">Save</button>
+          </div>
+          <div class="catalog-msg" id="bankMsg"></div>
+
+          <div id="bank2Toggle" style="margin-top:14px;">
+            <button class="catalog-btn small" style="background:transparent;color:var(--accent);padding:4px 0;" onclick="showBank2Form()">+ Add a second account</button>
+          </div>
+          <div id="bank2Form" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">A second option, in case a customer's bank can't send to the first account. Amara only mentions this one if asked for an alternative.</div>
+            <div class="fees-row">
+              <div>
+                <label>Bank name</label>
+                <input id="bank2Name" placeholder="e.g. Kuda">
+              </div>
+              <div>
+                <label>Account number</label>
+                <input id="bank2AccountNumber" placeholder="0123456789">
+              </div>
+              <div>
+                <label>Account name</label>
+                <input id="bank2AccountName" placeholder="e.g. KP Collections">
+              </div>
+              <button class="catalog-btn" onclick="saveBankDetails2()">Save</button>
+            </div>
+            <button class="catalog-btn small" style="background:transparent;color:var(--danger);padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
+            <div class="catalog-msg" id="bank2Msg"></div>
+          </div>
+        </div>
+        <div class="catalog-card">
+          <h2>Business</h2>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Business name</div>
+              <div class="setting-desc">Shown to you here, and used by Amara when she introduces your shop.</div>
+            </div>
+            <div class="setting-static">${escapeHtmlServer(businessName || "Not set")}</div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Business type</div>
+              <div class="setting-desc">Decides whether Amara sells products or takes bookings.</div>
+            </div>
+            <div class="setting-static">${isBookable ? "Bookings &amp; services" : "Product seller"}</div>
+          </div>
+          <div class="setting-note">These were set when your account was created. To change either one, reply to your Stafly.AI setup contact &mdash; changing them mid-flight affects how Amara answers live customers, so it isn't a self-serve switch yet.</div>
         </div>
       </div>
       <div class="catalog-view" id="analyticsView" style="display:none;">
@@ -5003,7 +5117,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             customersCache = data.customers;
             renderStats(data.stats);
             updateListTabCounts();
-            renderList(getFilteredCustomers());
+            // The poll runs every 5s whether or not anything changed. Diffing
+            // the rendered rows against a cheap signature means an idle
+            // dashboard does no DOM work at all, instead of rebuilding the
+            // whole list (and dropping any text selection or hover with it)
+            // twelve times a minute.
+            const filtered = getFilteredCustomers();
+            if (listSignature(filtered) !== lastListSignature) renderList(filtered);
             if (selectedPhone) loadConversation(selectedPhone, false);
           } catch (err) {
             console.error("dashboard load failed", err);
@@ -5090,6 +5210,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // (paused / starred), never a fabricated bucket.
         let currentTab = "all";
         let animateNextList = true; // first paint staggers; polls do not
+        let lastListSignature = null; // lets an unchanged poll skip re-rendering
         function setTab(tab) {
           currentTab = tab;
           animateNextList = true;
@@ -5150,7 +5271,16 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           paused: "Nothing's paused right now -- Amara is handling every conversation.",
           starred: "Star a conversation from its thread header to pin it here.",
         };
+        // Cheap fingerprint of everything a rendered row actually shows, so
+        // the 5s poll can skip the DOM entirely when nothing has changed.
+        function listSignature(customers) {
+          return currentTab + "|" + selectedPhone + "|" + customers.map((c) =>
+            [c.phone, c.paused, c.starred, c.last_contact, c.last_payment_at,
+             c.last_escalation_reason, c.last_message_preview, c.message_count].join("~")
+          ).join("|");
+        }
         function renderList(customers) {
+          lastListSignature = listSignature(customers);
           const list = document.getElementById("list");
           if (customers.length === 0) {
             list.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_USERS + '</div><div class="empty-title">No ' + (currentTab === "all" ? "customers" : currentTab) + ' yet</div><div class="empty-sub">' + (TAB_EMPTY_TEXT[currentTab] || TAB_EMPTY_TEXT.all) + '</div></div>';
@@ -5171,7 +5301,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             // an ordinary live conversation says so with the green dot on its
             // avatar rather than repeating the word "Active" down every row.
             const statusBadge = needsReply
-              ? '<span class="badge waiting">Waiting on you</span>'
+              ? '<span class="badge waiting" title="Paused, and the customer spoke last">Needs reply</span>'
               : (c.paused === "yes" ? '<span class="badge paused">Paused</span>' : "");
             const paidMark = c.last_payment_at
               ? '<span class="row-paid" title="This customer has paid">' + ICON_CHECK + '</span>'
@@ -5711,12 +5841,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           // seller never gets tabCatalog. Guarded with optional chaining
           // so this one function works for either businessType without
           // needing its own fork.
-          const views = { conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView" };
+          const views = { conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView" };
           for (const t in views) {
             const el = document.getElementById(views[t]);
             if (el) el.style.display = t === tab ? (t === "conversations" ? "flex" : "block") : "none";
           }
-          const tabs = { conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics" };
+          const tabs = { conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings" };
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
@@ -5724,6 +5854,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           if (tab === "catalog") loadCatalog();
           if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
+          if (tab === "settings") { loadCatalog(); syncSettingsControls(); } // catalog load fills the bank fields
           // Leaving Conversations must give the stat tiles back on mobile,
           // otherwise they'd stay hidden on every other tab.
           if (tab !== "conversations") document.body.classList.remove("mobile-thread-open");
@@ -5838,12 +5969,59 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           setDetailPane(saved ? saved === "on" : window.innerWidth > 1280);
         }
 
+        // ---- Settings controls ---------------------------------------
+        // "system" means: store nothing and follow the device, which is what
+        // the boot script in <head> already does when no choice is saved.
+        function applyThemeChoice(choice) {
+          const root = document.documentElement;
+          const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const dark = choice === "dark" || (choice === "system" && prefersDark);
+          if (dark) root.setAttribute("data-theme", "dark");
+          else root.removeAttribute("data-theme");
+          if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
+        }
+        function setThemeChoice(choice) {
+          try {
+            if (choice === "system") localStorage.removeItem("stafly-theme");
+            else localStorage.setItem("stafly-theme", choice);
+          } catch (e) {}
+          applyThemeChoice(choice);
+          syncSettingsControls();
+        }
+        function currentThemeChoice() {
+          try { return localStorage.getItem("stafly-theme") || "system"; } catch (e) { return "system"; }
+        }
+        function toggleDetailDefault() {
+          const on = !(currentDetailDefault());
+          try { localStorage.setItem("stafly-details", on ? "on" : "off"); } catch (e) {}
+          setDetailPane(on);
+          syncSettingsControls();
+        }
+        function currentDetailDefault() {
+          let saved = null;
+          try { saved = localStorage.getItem("stafly-details"); } catch (e) {}
+          return saved ? saved === "on" : window.innerWidth > 1280;
+        }
+        function syncSettingsControls() {
+          const choice = currentThemeChoice();
+          document.querySelectorAll("#themeSeg button").forEach((b) => {
+            b.classList.toggle("seg-active", b.dataset.themeChoice === choice);
+          });
+          const sw = document.getElementById("detailsSwitch");
+          if (sw) {
+            const on = currentDetailDefault();
+            sw.classList.toggle("on", on);
+            sw.setAttribute("aria-checked", on ? "true" : "false");
+          }
+        }
+
         function toggleTheme() {
           const root = document.documentElement;
           const nowDark = root.getAttribute("data-theme") !== "dark";
           if (nowDark) root.setAttribute("data-theme", "dark");
           else root.removeAttribute("data-theme");
           try { localStorage.setItem("stafly-theme", nowDark ? "dark" : "light"); } catch (e) {}
+          syncSettingsControls(); // keep the Settings segmented control honest
           // The chart paints its axes onto a canvas, so unlike everything else
           // it can't follow a CSS variable -- it has to be redrawn.
           if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
@@ -6103,7 +6281,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           document.getElementById("pPhotoFile").value = "";
           document.getElementById("productEditingName").textContent = p.name;
           document.getElementById("productEditingNote").style.display = "block";
-          document.getElementById("pName").focus();
+          const title = document.getElementById("productPanelTitle");
+          if (title) title.textContent = "Edit product";
+          openProductForm(); // editing has to reveal the panel, not just fill it
           document.getElementById("pName").scrollIntoView({ behavior: "smooth", block: "center" });
         }
 
@@ -6115,6 +6295,26 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           document.getElementById("pImageUrl").value = "";
           document.getElementById("pPhotoFile").value = "";
           document.getElementById("productEditingNote").style.display = "none";
+          const title = document.getElementById("productPanelTitle");
+          if (title) title.textContent = "New product";
+        }
+
+        // The add/edit form is revealed on demand rather than sitting open
+        // under the table -- it was the single biggest block of empty space
+        // on this page when there was nothing to add.
+        function openProductForm() {
+          const panel = document.getElementById("productPanel");
+          if (!panel) return;
+          panel.style.display = "block";
+          const name = document.getElementById("pName");
+          if (name) name.focus();
+        }
+        function closeProductForm() {
+          const panel = document.getElementById("productPanel");
+          if (panel) panel.style.display = "none";
+          cancelEditProduct();
+          const msg = document.getElementById("catalogMsg");
+          if (msg) { msg.textContent = ""; msg.className = "catalog-msg"; }
         }
 
         // Sellers never type or think about an internal "key" -- it's just
@@ -6730,6 +6930,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         if (topbarDateEl) topbarDateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
         initDetailPane();
+        syncSettingsControls();
         loadDashboard();
         setInterval(loadDashboard, 5000); // simple polling stands in for realtime for now
       </script>
