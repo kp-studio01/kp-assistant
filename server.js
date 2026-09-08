@@ -3374,14 +3374,24 @@ const BRAND_TOKENS_CSS = `
   :root {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-heading: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* --navy is a structural dark surface (the sidebar, page headers), NOT a
+       text colour -- it deliberately stays dark in both themes. Text uses
+       --text so it can flip. */
     --navy: #1e293b;
     --accent: #4f46e5;
     --accent-dark: #4338ca;
     --accent-light: #eef2ff;
+    --accent-soft: #e0e7ff;
     --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --surface-3: #eef1f6;
+    --chat-bg: #f1f4f9;
     --border: #e2e8f0;
     --border-light: #f1f5f9;
+    --border-strong: #cbd5e1;
     --muted: #64748b;
+    --muted-2: #94a3b8;
     --text: #1e293b;
     --danger: #dc2626;
     --danger-bg: #fef2f2;
@@ -3389,6 +3399,66 @@ const BRAND_TOKENS_CSS = `
     --success-bg: #dcfce7;
     --warning: #b45309;
     --warning-bg: #fef3c7;
+    --ok-bg: #f0fdf4;
+    --ok-fg: #15803d;
+    --ok-border: #bbf7d0;
+    --warn-bg: #fffbeb;
+    --warn-fg: #b45309;
+    --warn-border: #fde68a;
+    --dang-bg: #fef2f2;
+    --dang-fg: #b91c1c;
+    --dang-border: #fecaca;
+    --info-bg: #eff6ff;
+    --info-fg: #1d4ed8;
+    --info-border: #bfdbfe;
+    --star: #d97706;
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.07);
+    --shadow-md: 0 1px 3px rgba(15,23,42,0.12);
+    --shadow-lg: 0 8px 24px rgba(15,23,42,0.14);
+    --chat-doodle: %23b9c6dc;
+  }
+  /* Dark theme. Applied by setting data-theme="dark" on <html>; every colour
+     below is a token override, so no component needs a dark-specific rule. */
+  [data-theme="dark"] {
+    --navy: #0b0f17;
+    --accent: #6366f1;
+    --accent-dark: #4f46e5;
+    --accent-light: #1e2440;
+    --accent-soft: #2a3157;
+    --bg: #0d1117;
+    --surface: #161b26;
+    --surface-2: #1c2331;
+    --surface-3: #232b3a;
+    --chat-bg: #0f141d;
+    --border: #2a3242;
+    --border-light: #222937;
+    --border-strong: #3a4457;
+    --muted: #94a3b8;
+    --muted-2: #6b7a90;
+    --text: #e6ecf7;
+    --danger: #f87171;
+    --danger-bg: #2a1315;
+    --success: #4ade80;
+    --success-bg: #10241a;
+    --warning: #fbbf24;
+    --warning-bg: #2a1f0d;
+    --ok-bg: #10241a;
+    --ok-fg: #4ade80;
+    --ok-border: #1e4433;
+    --warn-bg: #2a1f0d;
+    --warn-fg: #fbbf24;
+    --warn-border: #4a3413;
+    --dang-bg: #2a1315;
+    --dang-fg: #f87171;
+    --dang-border: #4d1f22;
+    --info-bg: #111e33;
+    --info-fg: #60a5fa;
+    --info-border: #1e3a5f;
+    --star: #fbbf24;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.45);
+    --shadow-md: 0 2px 6px rgba(0,0,0,0.5);
+    --shadow-lg: 0 10px 28px rgba(0,0,0,0.6);
+    --chat-doodle: %232b3446;
   }
 `;
 
@@ -3883,7 +3953,7 @@ function adminPanelHtml(key, sellers) {
         .connect-msg { font-size:12px; margin-top:6px; min-height:14px; }
         .connect-msg.error { color:var(--danger); }
         .connect-msg.ok { color:var(--success); }
-        .empty-note { padding:24px; text-align:center; color:#94a3b8; font-size:13px; }
+        .empty-note { padding:24px; text-align:center; color:var(--muted-2); font-size:13px; }
       </style>
     </head>
     <body>
@@ -4061,6 +4131,18 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
     <head>
       <title>Stafly.AI — Dashboard</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      <script>
+        // Runs before any CSS paints, so a dark-mode user never sees a white
+        // flash on load. Falls back to the OS setting until they pick one.
+        (function () {
+          try {
+            var saved = localStorage.getItem("stafly-theme");
+            var dark = saved ? saved === "dark"
+              : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            if (dark) document.documentElement.setAttribute("data-theme", "dark");
+          } catch (e) { /* private mode / storage blocked: stay on light */ }
+        })();
+      </script>
       ${BRAND_FONT_LINKS}
       <style>
         ${BRAND_TOKENS_CSS}
@@ -4081,22 +4163,28 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .sidebar-brand { padding: 20px 20px 16px; }
         .sidebar-section-label { padding: 10px 20px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); }
         .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
-        .topbar { background: white; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+        .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
         .topbar-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
-        .topbar h1 { font-family: var(--font-heading); font-size: 17px; margin: 0; font-weight: 700; color: var(--navy); letter-spacing: -0.015em; white-space: nowrap; }
+        .topbar h1 { font-family: var(--font-heading); font-size: 17px; margin: 0; font-weight: 700; color: var(--text); letter-spacing: -0.015em; white-space: nowrap; }
         /* The business name was a grey "· Name" tacked onto the title; as its
            own chip it reads as "which shop you're looking at" instead of
            trailing punctuation. */
-        .topbar-biz { display: inline-flex; align-items: center; gap: 6px; max-width: 230px; padding: 4px 11px 4px 9px; background: var(--accent-light); color: var(--accent); border: 1px solid #e0e7ff; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .topbar-biz { display: inline-flex; align-items: center; gap: 6px; max-width: 230px; padding: 4px 11px 4px 9px; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-soft); border-radius: 999px; font-size: 12px; font-weight: 600; }
         .topbar-biz svg { width: 13px; height: 13px; flex-shrink: 0; }
         .topbar-biz span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
         .topbar-right { display: flex; align-items: center; gap: 12px; }
-        .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: #f8fafc; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+        .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
         .topbar-date-chip svg { width: 13px; height: 13px; flex-shrink: 0; }
-        .hamburger-btn { display: none; background: transparent; border: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; color: var(--navy); flex-shrink: 0; }
+        .theme-toggle { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .15s, color .15s, border-color .15s, transform .25s ease; }
+        .theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: rotate(18deg); }
+        .theme-toggle svg { width: 16px; height: 16px; }
+        .theme-toggle .theme-icon-moon { display: none; }
+        [data-theme="dark"] .theme-toggle .theme-icon-sun { display: none; }
+        [data-theme="dark"] .theme-toggle .theme-icon-moon { display: block; }
+        .hamburger-btn { display: none; background: transparent; border: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; color: var(--text); flex-shrink: 0; }
         .hamburger-btn svg { width: 20px; height: 20px; }
-        .hamburger-btn:hover { background: #f1f5f9; }
+        .hamburger-btn:hover { background: var(--border-light); }
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
@@ -4115,8 +4203,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            dashboard really does poll every few seconds (see setInterval
            near the bottom), so this isn't decoration pretending to be
            realtime, it's a label for something that's already true. */
-        .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a7f3d0; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.22); padding: 5px 12px; border-radius: 999px; }
-        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: liveDotPulse 2s infinite; flex-shrink: 0; }
+        .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ok-border); background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.22); padding: 5px 12px; border-radius: 999px; }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); animation: liveDotPulse 2s infinite; flex-shrink: 0; }
         @keyframes liveDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
           70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
@@ -4138,89 +4226,116 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            tiles from the dashboard reference Miji shared, rather than
            the old cramped, same-color pills that all read as one blur. */
         .stats-bar { display: flex; gap: 14px; padding: 16px 24px; background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
-        .stat-tile { flex: 1; min-width: 190px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease; }
-        .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.09); }
-        .stat-tile .stat-value { font-family: var(--font-heading); font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.1; white-space: nowrap; }
-        .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 5px; white-space: nowrap; }
-        .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-tile { flex: 1; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .15s ease, box-shadow .15s ease; }
+        /* Each tile carries its own hue through one --tile/--tile-bg pair, so
+           the four read as a balanced set instead of indigo twice plus two
+           odd ones. Everything below is driven off those two variables. */
+        .stat-tile { position: relative; overflow: hidden; --tile: var(--accent); --tile-bg: var(--accent-light); }
+        .stat-tile.tile-total { --tile: var(--accent); --tile-bg: var(--accent-light); }
+        .stat-tile.tile-active { --tile: var(--ok-fg); --tile-bg: var(--ok-bg); }
+        .stat-tile.tile-paused { --tile: var(--warn-fg); --tile-bg: var(--warn-bg); }
+        .stat-tile.tile-revenue { --tile: var(--info-fg); --tile-bg: var(--info-bg); }
+        .stat-tile::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tile); opacity: 0.85; }
+        .stat-tile > * { position: relative; z-index: 1; }
+        .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tile); }
+        .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+        .stat-tile .stat-label { font-size: 11.5px; color: var(--muted); margin-top: 5px; white-space: nowrap; font-weight: 500; }
+        .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tile-bg); color: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-bg); transition: transform .2s ease; }
+        .stat-tile:hover .stat-icon { transform: scale(1.08) rotate(-4deg); }
         .stat-tile .stat-icon svg { width: 20px; height: 20px; }
-        .stat-tile.tile-total .stat-icon { background: var(--accent-light); color: var(--accent); }
-        .stat-tile.tile-active .stat-icon { background: var(--success-bg); color: var(--success); }
-        .stat-tile.tile-paused .stat-icon { background: var(--warning-bg); color: var(--warning); }
-        .stat-tile.tile-revenue .stat-icon { background: #eef2ff; color: var(--accent-dark); }
         .layout { display: flex; flex: 1; min-height: 0; }
-        .list-pane { width: 320px; border-right: 1px solid #e2e8f0; background: white; flex-shrink: 0; display: flex; flex-direction: column; }
+        .list-pane { width: 320px; border-right: 1px solid var(--border); background: var(--surface); flex-shrink: 0; display: flex; flex-direction: column; }
         .search-box { padding: 12px 12px 9px; }
         .search-box-inner { position: relative; display: flex; align-items: center; }
-        .search-box-inner svg { position: absolute; left: 11px; width: 15px; height: 15px; color: #94a3b8; pointer-events: none; }
-        .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--navy); transition: background .15s, border-color .15s, box-shadow .15s; }
-        .search-box input::placeholder { color: #94a3b8; }
-        .search-box input:focus { outline: none; background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .search-box-inner svg { position: absolute; left: 11px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
+        .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--text); transition: background .15s, border-color .15s, box-shadow .15s; }
+        .search-box input::placeholder { color: var(--muted-2); }
+        .search-box input:focus { outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         /* Real filters, not decoration -- All/Active/Paused/Starred each map
            to an actual stored field on the customer record (see setTab /
            getFilteredCustomers), the same idea as Fillow's inbox tabs but
            grounded in states this dashboard genuinely tracks. */
-        .list-tabs { display: flex; gap: 2px; margin: 0 12px 10px; padding: 3px; background: #eef1f6; border-radius: 10px; }
+        .list-tabs { display: flex; gap: 2px; margin: 0 12px 10px; padding: 3px; background: var(--surface-3); border-radius: 10px; }
         .list-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 6px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 8px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; white-space: nowrap; }
-        .list-tab:hover { color: var(--navy); }
-        .list-tab.active-list-tab { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(15,23,42,0.14); }
-        .list-tab-count { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: #dde3ec; color: #64748b; min-width: 17px; }
+        .list-tab:hover { color: var(--text); }
+        .list-tab.active-list-tab { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,0.14); }
+        .list-tab-count { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; }
         .list-tab.active-list-tab .list-tab-count { background: var(--accent-light); color: var(--accent); }
-        .nav-badge { margin-left: auto; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; line-height: 1.5; flex-shrink: 0; }
+        .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; line-height: 1.5; flex-shrink: 0; }
         .list { flex: 1; overflow-y: auto; }
-        .list-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s; }
-        .list-item:hover { background: #f8fafc; }
-        .list-item.active-row { background: var(--accent-light); }
+        /* The row you click to open a thread. The accent rail on the left is
+           what makes "which conversation am I in" readable at a glance -- it
+           grows in rather than snapping, and hover previews it faintly. */
+        .list-item { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px 13px 18px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background .18s ease, padding-left .18s ease; }
+        .list-item::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); transform: scaleY(0); transform-origin: center; transition: transform .22s cubic-bezier(.4,0,.2,1); }
+        .list-item:hover { background: var(--surface-2); padding-left: 21px; }
+        .list-item:hover::before { transform: scaleY(0.5); opacity: 0.45; }
+        .list-item:active { background: var(--surface-3); }
+        .list-item.active-row { background: var(--accent-light); padding-left: 21px; }
+        .list-item.active-row::before { transform: scaleY(1); opacity: 1; }
+        .list-item .list-avatar { transition: transform .2s ease; }
+        .list-item:hover .list-avatar { transform: scale(1.06); }
+        /* Rows stagger in when the list (re)renders, so switching a filter
+           reads as the list rebuilding rather than snapping. */
+        @keyframes rowIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+        .list-item.row-in { animation: rowIn .26s ease-out backwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .list-item.row-in, .stat-tile.tile-in, .msg-row.bubble-in { animation: none; }
+          .list-item, .list-item::before, .list-avatar, .stat-tile, .stat-icon { transition: none; }
+        }
         .list-avatar { position: relative; width: 42px; height: 42px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; box-shadow: 0 1px 2px rgba(15,23,42,0.15); }
         .list-avatar svg { width: 22px; height: 22px; opacity: 0.95; }
-        .list-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid white; }
+        .list-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--surface); }
         .status-dot.active { background: var(--success); }
         .status-dot.paused { background: var(--warning); }
         .list-item-body { min-width: 0; flex: 1; }
         .list-item-top { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; }
-        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 500; font-size: 13px; color: var(--navy); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 500; font-size: 13px; color: var(--text); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
         .list-item-badges { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-        .row-star { display: inline-flex; color: #d97706; flex-shrink: 0; }
+        .row-star { display: inline-flex; color: var(--star); flex-shrink: 0; }
         .row-star svg { width: 13px; height: 13px; }
         .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid transparent; line-height: 1.55; }
         .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-        .badge.paused { background: #fffbeb; color: #b45309; border-color: #fde68a; }
-        .badge.active { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-        .badge.paid { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .badge.paused { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
+        .badge.active { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
+        .badge.paid { background: var(--info-bg); color: var(--info-fg); border-color: var(--info-border); }
         /* Refines the plain "Paused" badge for the one case that's actually
            actionable right now: paused AND the customer's last message
            still has no reply -- both real, stored facts (see
            last_message_role in saveConversation). */
-        .badge.waiting { background: #fef2f2; color: #b91c1c; border-color: #fecaca; font-weight: 700; }
-        .snippet { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .badge.waiting { background: var(--dang-bg); color: var(--dang-fg); border-color: var(--dang-border); font-weight: 700; }
+        .snippet { font-size: 12px; color: var(--muted); margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .thread-header { padding: 14px 24px; border-bottom: 1px solid #e2e8f0; background: white; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .thread-header { padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
         .thread-avatar svg { width: 23px; height: 23px; opacity: 0.95; }
-        .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid white; }
-        .thread-name { font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--navy); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--surface); }
+        .thread-name { font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .thread-sub-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
-        .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px 2px 7px; border-radius: 999px; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; white-space: nowrap; }
-        .thread-status-chip.is-paused { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px 2px 7px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok-border); white-space: nowrap; }
+        .thread-status-chip.is-paused { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
         .thread-status-chip .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
         .thread-sub { font-size: 12px; color: var(--muted); }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
+        .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
         .icon-btn svg { width: 16px; height: 16px; }
-        .icon-btn:hover { background: #f8fafc; color: var(--navy); }
-        .icon-btn.starred, .icon-btn.starred:hover { color: #d97706; border-color: #fde68a; background: #fffbeb; }
+        .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+        .icon-btn.starred, .icon-btn.starred:hover { color: var(--star); border-color: var(--warn-border); background: var(--warn-bg); }
         .more-menu { position: relative; }
-        .more-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); min-width: 190px; z-index: 20; overflow: hidden; }
+        .more-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); min-width: 190px; z-index: 20; overflow: hidden; }
         .more-menu-dropdown.open { display: block; }
         .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--danger); cursor: pointer; }
-        .more-menu-dropdown button:hover { background: #fef2f2; }
+        .more-menu-dropdown button:hover { background: var(--dang-bg); }
         /* A real chat surface rather than a blank page: a soft tinted base
            with a faint tiled pattern behind the bubbles, the thing that
            makes WhatsApp read as a conversation instead of a document.
            Inlined as a data URI (no external request) for the same
            reliability reason the fonts and Chart.js are self-hosted. */
-        .thread { flex: 1; overflow-y: auto; padding: 24px; background-color: #f1f4f9; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23b9c6dc' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.26'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
+        .thread { flex: 1; overflow-y: auto; padding: 24px; background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23b9c6dc' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.26'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
+        /* Same doodle tile, redrawn in a dark-friendly stroke -- a data URI
+           can't read a CSS variable, so the dark theme swaps the whole image. */
+        [data-theme="dark"] .thread { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%232b3446' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
         .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 3px; }
         .msg-row.group-end { margin-bottom: 14px; }
         .msg-row.from-assistant { flex-direction: row-reverse; }
@@ -4238,14 +4353,14 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .msg-row.from-assistant .bubble-col { align-items: flex-end; }
         .bubble { position: relative; padding: 8px 12px 8px 13px; font-size: 14px; line-height: 1.45; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,23,42,0.10); max-width: 100%; }
         .bubble-text { white-space: pre-wrap; }
-        .bubble.user { background: #ffffff; color: var(--navy); }
+        .bubble.user { background: var(--surface); color: var(--text); }
         .bubble.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; }
         /* Only the last bubble of a group gets a real tail, pointing back at
            that side's avatar -- same rhythm WhatsApp uses. */
         .bubble.has-tail.user { border-bottom-left-radius: 2px; }
         .bubble.has-tail.assistant { border-bottom-right-radius: 2px; }
         .bubble.has-tail::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 11px; }
-        .bubble.has-tail.user::after { left: -7px; background: #ffffff; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+        .bubble.has-tail.user::after { left: -7px; background: var(--surface); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
         .bubble.has-tail.assistant::after { right: -7px; background: var(--accent-dark); clip-path: polygon(0 0, 0 100%, 100% 100%); }
         /* Real per-message time -- only rendered when the stored message
            actually has one (see history.push's "at" field server-side).
@@ -4254,18 +4369,18 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            text wraps around it and it settles bottom-right in the bubble,
            exactly like WhatsApp, instead of adding another line of text. */
         .bubble-time { float: right; font-size: 10.5px; line-height: 1; margin: 6px -2px -2px 10px; opacity: 0.75; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .bubble.user .bubble-time { color: #94a3b8; }
+        .bubble.user .bubble-time { color: var(--muted-2); }
         .bubble.assistant .bubble-time { color: rgba(255,255,255,0.85); }
         .day-divider { display: flex; align-items: center; justify-content: center; margin: 18px 0; }
-        .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,0.92); padding: 5px 14px; border-radius: 999px; box-shadow: 0 1px 3px rgba(15,23,42,0.10); }
+        .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface); padding: 5px 14px; border-radius: 999px; box-shadow: var(--shadow-md); }
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
         button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
         button.takeover-btn.hand { background: linear-gradient(135deg, #16a34a, #15803d); color: white; }
-        .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: #94a3b8; font-size: 14px; padding: 24px; text-align: center; }
+        .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: var(--muted-2); font-size: 14px; padding: 24px; text-align: center; }
         .empty .empty-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; }
         .empty .empty-icon svg { width: 24px; height: 24px; }
-        .empty .empty-title { font-size: 14px; font-weight: 600; color: var(--navy); }
+        .empty .empty-title { font-size: 14px; font-weight: 600; color: var(--text); }
         .empty .empty-sub { font-size: 12px; color: var(--muted); max-width: 240px; line-height: 1.5; }
         .spinner { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--accent-light); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -4276,79 +4391,94 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            forever and read as a flicker instead of a one-time flourish. */
         @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .stat-tile.tile-in { animation: tileIn 0.4s ease-out backwards; }
+        /* A newly arrived message lands from its own side, so you can see
+           where it came from rather than it just appearing. */
+        @keyframes bubbleInLeft { from { opacity: 0; transform: translateY(8px) translateX(-6px); } to { opacity: 1; transform: none; } }
+        @keyframes bubbleInRight { from { opacity: 0; transform: translateY(8px) translateX(6px); } to { opacity: 1; transform: none; } }
+        .msg-row.from-user.bubble-in { animation: bubbleInLeft .28s cubic-bezier(.4,0,.2,1) backwards; }
+        .msg-row.from-assistant.bubble-in { animation: bubbleInRight .28s cubic-bezier(.4,0,.2,1) backwards; }
         .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; width: 100%; }
-        .catalog-card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: box-shadow .15s ease; }
+        .catalog-card { background: var(--surface); border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: box-shadow .15s ease; }
         .catalog-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
         .catalog-card h2 { font-family: var(--font-heading); font-size: 15px; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
-        table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
-        table.catalog-table th { color: #64748b; font-weight: 600; font-size: 12px; background: #f8fafc; }
+        table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-light); font-size: 13px; vertical-align: middle; }
+        table.catalog-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
         table.catalog-table th:first-child { border-top-left-radius: 8px; }
         table.catalog-table th:last-child { border-top-right-radius: 8px; }
         table.catalog-table tbody tr { transition: background .15s; }
-        table.catalog-table tbody tr:hover { background: #fafafe; }
-        table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: #f1f5f9; }
-        table.catalog-table td.booking-date-header { background: #f8fafc; color: #475569; font-weight: 600; font-size: 12px; padding-top: 14px; border-bottom: 1px solid #e2e8f0; }
+        table.catalog-table tbody tr:hover { background: var(--surface-2); }
+        table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: var(--border-light); }
+        table.catalog-table td.booking-date-header { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 12px; padding-top: 14px; border-bottom: 1px solid var(--border); }
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
-        .catalog-form label { font-size: 11px; color: #64748b; display: block; margin-bottom: 3px; }
-        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
+        .catalog-form label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; background: var(--surface); color: var(--text); font-family: inherit; }
         .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
-        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
-        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; }
+        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); }
+        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
+        /* Native widgets (date pickers, scrollbars, select arrows) follow this. */
+        [data-theme="dark"] { color-scheme: dark; }
         .catalog-btn { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px rgba(79,70,229,0.3); transition: box-shadow .15s, transform .15s; }
         .catalog-btn:hover { box-shadow: 0 4px 10px rgba(79,70,229,0.4); transform: translateY(-1px); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
-        .catalog-msg.error { color: #dc2626; }
-        .catalog-msg.ok { color: #15803d; }
+        .catalog-msg.error { color: var(--danger); }
+        .catalog-msg.ok { color: var(--ok-fg); }
         .fees-row { display: flex; gap: 16px; align-items: end; }
         .fees-row div { width: 160px; }
         /* Real search over the messages already on the page -- no server
            round trip, no separate index, just a substring match. */
-        .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid #e2e8f0; background: #fafbff; }
-        .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+        .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+        .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; }
         .thread-search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
-        .bubble mark { background: #fde68a; color: #1e293b; border-radius: 3px; padding: 0 1px; }
+        .bubble mark { background: var(--warn-border); color: #1e293b; border-radius: 3px; padding: 0 1px; }
         .msg-row.search-hidden { display: none; }
         /* The format controls live inside the composer pill, so they line up
            with the message text itself instead of floating above it in a
            separate strip on a different left edge. */
         .compose-tools { display: flex; align-items: center; gap: 2px; margin-top: 2px; }
-        .toolbar-divider { width: 1px; height: 16px; background: #dde3ec; margin: 0 4px; flex-shrink: 0; }
-        .icon-btn.small-icon-btn { width: 27px; height: 27px; border-radius: 6px; font-size: 12px; border: none; background: transparent; color: var(--navy); }
-        .icon-btn.small-icon-btn:hover { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
+        .toolbar-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+        .icon-btn.small-icon-btn { width: 27px; height: 27px; border-radius: 6px; font-size: 12px; border: none; background: transparent; color: var(--text); }
+        .icon-btn.small-icon-btn:hover { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
         .icon-btn.small-icon-btn svg { width: 14px; height: 14px; }
         .emoji-picker-wrap { position: relative; }
-        .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 8px); background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.16); padding: 10px; z-index: 20; width: 232px; }
+        .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 8px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.16); padding: 10px; z-index: 20; width: 232px; }
         .emoji-picker-dropdown.open { display: block; }
         .emoji-picker-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; padding: 0 2px; }
         .emoji-picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
         .emoji-picker-grid button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
         .emoji-picker-grid button:hover { background: var(--accent-light); }
-        .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 24px 14px; border-top: 1px solid #e2e8f0; background: white; }
-        .msg-compose-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; border: 1.5px solid #e2e8f0; border-radius: 18px; padding: 6px 10px 6px 14px; background: #f8fafc; transition: border-color .15s, box-shadow .15s, background .15s; }
-        .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: #fff; }
+        .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 24px 14px; border-top: 1px solid var(--border); background: var(--surface); }
+        .msg-compose-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; border: 1.5px solid var(--border); border-radius: 18px; padding: 6px 10px 6px 14px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s, background .15s; }
+        .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--surface); }
         .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
         .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px rgba(79,70,229,0.35); transition: transform .15s ease, box-shadow .15s ease; }
         .msg-send-btn svg { width: 17px; height: 17px; }
         .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
         .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
-        .notes-box { padding: 14px 24px 16px; border-top: 1px solid #e2e8f0; background: #fafbfc; }
-        .notes-box-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .notes-box-head svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
-        .notes-box-title { font-size: 12.5px; font-weight: 700; color: var(--navy); }
+        .notes-box { border-top: 1px solid var(--border); background: var(--surface-2); flex-shrink: 0; }
+        .notes-box-head { display: flex; align-items: center; gap: 7px; width: 100%; padding: 10px 24px; background: transparent; border: none; cursor: pointer; text-align: left; font-family: inherit; transition: background .15s; }
+        .notes-box-head:hover { background: var(--surface-3); }
+        .notes-box-head > svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
+        .notes-box-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
         .notes-box-sub { font-size: 11px; color: var(--muted); }
-        .notes-box textarea { width: 100%; min-height: 52px; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: inherit; line-height: 1.45; resize: vertical; background: #fff; transition: border-color .15s, box-shadow .15s; }
+        .notes-box-chevron { margin-left: auto; display: flex; color: var(--muted); transition: transform .2s ease; }
+        .notes-box-chevron svg { width: 15px; height: 15px; }
+        .notes-box.open .notes-box-chevron { transform: rotate(180deg); }
+        .notes-box-body { display: none; padding: 0 24px 14px; }
+        .notes-box.open .notes-box-body { display: block; animation: notesOpen .2s ease-out; }
+        @keyframes notesOpen { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+        .notes-box textarea { width: 100%; min-height: 52px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .notes-box textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .notes-box-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
         .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
         .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
-        .conversion-stat { font-family: var(--font-heading); font-size: 32px; font-weight: 700; color: var(--navy); }
-        .conversion-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .conversion-stat { font-family: var(--font-heading); font-size: 32px; font-weight: 700; color: var(--text); }
+        .conversion-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
         /* ---------- Responsive ----------
            Below 1000px the fixed-width sidebar becomes an off-canvas drawer
@@ -4426,6 +4556,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </div>
         <div class="topbar-right">
           <span class="topbar-date-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg><span id="topbarDate"></span></span>
+          <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Switch between light and dark" aria-label="Switch theme">
+            <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
+            <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          </button>
           <span class="topbar-avatar" title="${escapeHtmlServer(businessName || "Your business")}">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span>
         </div>
       </header>
@@ -4450,7 +4584,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <thead><tr><th></th><th>Name</th><th>Key</th><th>Price</th><th></th></tr></thead>
             <tbody id="catalogTableBody"></tbody>
           </table>
-          <div id="productEditingNote" style="display:none;font-size:12px;color:#64748b;margin-bottom:8px;">
+          <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:8px;">
             Editing "<b id="productEditingName"></b>" -- <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
           </div>
           <div class="catalog-form">
@@ -4485,7 +4619,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </div>
         <div class="catalog-card">
           <h2>Delivery fees</h2>
-          <div style="font-size:12px;color:#64748b;margin-bottom:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
             Add the Nigerian states you actually deliver to, each with its own fee. Customers
             outside those states can still be covered by a fallback fee below, or left
             unavailable if you're not ready to ship there yet.
@@ -4517,7 +4651,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </div>
         <div class="catalog-card">
           <h2>Bank transfer details</h2>
-          <div style="font-size:12px;color:#64748b;margin-bottom:10px;">Offered to a customer only if they specifically ask to pay by bank transfer instead of the payment link.</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Offered to a customer only if they specifically ask to pay by bank transfer instead of the payment link.</div>
           <div class="fees-row">
             <div>
               <label>Bank name</label>
@@ -4536,10 +4670,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           <div class="catalog-msg" id="bankMsg"></div>
 
           <div id="bank2Toggle" style="margin-top:14px;">
-            <button class="catalog-btn small" style="background:transparent;color:#4f46e5;padding:4px 0;" onclick="showBank2Form()">+ Add a second account</button>
+            <button class="catalog-btn small" style="background:transparent;color:var(--accent);padding:4px 0;" onclick="showBank2Form()">+ Add a second account</button>
           </div>
           <div id="bank2Form" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
-            <div style="font-size:12px;color:#64748b;margin-bottom:10px;">A second option, in case a customer's bank can't send to the first account. Amara only mentions this one if asked for an alternative.</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">A second option, in case a customer's bank can't send to the first account. Amara only mentions this one if asked for an alternative.</div>
             <div class="fees-row">
               <div>
                 <label>Bank name</label>
@@ -4555,7 +4689,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               </div>
               <button class="catalog-btn" onclick="saveBankDetails2()">Save</button>
             </div>
-            <button class="catalog-btn small" style="background:transparent;color:#dc2626;padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
+            <button class="catalog-btn small" style="background:transparent;color:var(--danger);padding:4px 0;margin-top:6px;" onclick="removeBankDetails2()">Remove second account</button>
             <div class="catalog-msg" id="bank2Msg"></div>
           </div>
         </div>
@@ -4567,7 +4701,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             <thead><tr><th>Name</th><th>Key</th><th>Price</th><th>Duration</th><th>Delivery</th><th></th></tr></thead>
             <tbody id="offeringsTableBody"></tbody>
           </table>
-          <div id="offeringEditingNote" style="display:none;font-size:12px;color:#64748b;margin-bottom:8px;">
+          <div id="offeringEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:8px;">
             Editing "<b id="offeringEditingName"></b>" -- <a href="#" onclick="cancelEditOffering();return false;">cancel, add a new service instead</a>
           </div>
           <div class="catalog-form">
@@ -4607,7 +4741,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </div>
         <div class="catalog-card">
           <h2>Weekly availability</h2>
-          <div style="font-size:12px;color:#64748b;margin-bottom:12px;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
             Set the days and hours you're generally open. This stays live with no daily
             upkeep -- add a blocked date below only when something specific comes up.
           </div>
@@ -4640,7 +4774,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           </div>
           <div class="catalog-msg" id="availabilityMsg"></div>
           <div style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px;">
-            <div style="font-size:12px;color:#64748b;margin-bottom:8px;">Block a specific date (holiday, personal day) without touching the weekly schedule.</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Block a specific date (holiday, personal day) without touching the weekly schedule.</div>
             <table class="catalog-table" style="margin-bottom:14px;">
               <thead><tr><th>Blocked date</th><th></th></tr></thead>
               <tbody id="blockedDatesTableBody"></tbody>
@@ -4831,12 +4965,33 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           return '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div><div class="stat-icon">' + icon + '</div></div>';
         }
 
+        // Counts up to the REAL figure on first paint only -- the end value is
+        // always the true number, this just animates the way there. Respects
+        // prefers-reduced-motion by jumping straight to the final value.
+        function countUp(el, target, prefix) {
+          const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const finalText = (prefix || "") + Math.round(target).toLocaleString();
+          if (reduce || target <= 0) { el.textContent = finalText; return; }
+          const duration = 650;
+          const start = performance.now();
+          function step(now) {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            el.textContent = (prefix || "") + Math.round(target * eased).toLocaleString();
+            if (t < 1) requestAnimationFrame(step);
+            else el.textContent = finalText;
+          }
+          requestAnimationFrame(step);
+        }
+
         // Only the very first render gets the fade-in -- renderStats() runs
         // again on every 5s poll, and replaying the animation every single
         // time would read as a flicker, not a flourish.
         let statsAnimated = false;
         let trendChartInstance = null;
+        let lastRenderedCount = 0; // messages already on screen, for the new-bubble animation
         function renderStats(stats) {
+          const firstPaint = !statsAnimated;
           const inCls = statsAnimated ? "" : " tile-in";
           statsAnimated = true;
           document.getElementById("stats").innerHTML =
@@ -4844,13 +4999,22 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             statTile("tile-active" + inCls, ICON_CHAT, stats.activeToday, "Active today") +
             statTile("tile-paused" + inCls, ICON_PAUSE, stats.pausedNow, "Paused") +
             statTile("tile-revenue" + inCls, ICON_WALLET, "N" + stats.revenueTodayNaira.toLocaleString(), stats.paymentsToday + " order" + (stats.paymentsToday === 1 ? "" : "s") + " today");
+          // Only on the very first paint -- the 5s poll must not re-run the
+          // count-up, or the numbers would visibly churn every few seconds.
+          if (firstPaint) {
+            const vals = document.querySelectorAll("#stats .stat-value");
+            const targets = [stats.totalCustomers, stats.activeToday, stats.pausedNow, stats.revenueTodayNaira];
+            vals.forEach((el, i) => countUp(el, targets[i] || 0, i === 3 ? "N" : ""));
+          }
         }
 
         // Which list-tab is active -- each one maps to a real stored field
         // (paused / starred), never a fabricated bucket.
         let currentTab = "all";
+        let animateNextList = true; // first paint staggers; polls do not
         function setTab(tab) {
           currentTab = tab;
+          animateNextList = true;
           document.querySelectorAll(".list-tab").forEach((b) => b.classList.remove("active-list-tab"));
           const btn = document.getElementById("tab-" + tab);
           if (btn) btn.classList.add("active-list-tab");
@@ -4914,8 +5078,16 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             list.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_USERS + '</div><div class="empty-title">No ' + (currentTab === "all" ? "customers" : currentTab) + ' yet</div><div class="empty-sub">' + (TAB_EMPTY_TEXT[currentTab] || TAB_EMPTY_TEXT.all) + '</div></div>';
             return;
           }
-          list.innerHTML = customers.map((c) => {
+          // Rows only animate when the list genuinely changes shape (first
+          // load, a filter switch, someone new arriving) -- never on the
+          // routine 5s poll, which would strobe the whole list.
+          const stagger = animateNextList;
+          animateNextList = false;
+          list.innerHTML = customers.map((c, rowIndex) => {
             const isActiveRow = c.phone === selectedPhone;
+            const rowAnim = stagger
+              ? ' row-in" style="animation-delay:' + Math.min(rowIndex * 35, 280) + 'ms'
+              : '';
             const needsReply = c.paused === "yes" && c.last_message_role === "user";
             const statusBadge = needsReply
               ? '<span class="badge waiting">Waiting on you</span>'
@@ -4927,7 +5099,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               ? '<div class="snippet">⚠ ' + escapeHtml(c.last_escalation_reason) + '</div>'
               : "";
             const dotClass = c.paused === "yes" ? "paused" : "active";
-            return '<div class="list-item' + (isActiveRow ? " active-row" : "") + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
+            return '<div class="list-item' + (isActiveRow ? " active-row" : "") + rowAnim + '" onclick="loadConversation(\\'' + c.phone + '\\', true)">' +
               '<div class="list-avatar" style="' + avatarStyleFor(c.phone) + '">' + ICON_PERSON + '<span class="status-dot ' + dotClass + '"></span></div>' +
               '<div class="list-item-body">' +
                 '<div class="list-item-top">' +
@@ -5043,7 +5215,18 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const threadEl = document.getElementById("thread");
           if (!threadEl) return; // panel isn't built yet, nothing to update
           const nearBottom = threadEl.scrollTop + threadEl.clientHeight >= threadEl.scrollHeight - 20;
+          // Only genuinely NEW messages animate in. The poll re-renders the
+          // whole thread every 5s, so without this every bubble would replay
+          // its entrance on a loop.
+          const grew = history.length - lastRenderedCount;
+          lastRenderedCount = history.length;
           threadEl.innerHTML = renderBubblesHtml(history);
+          if (grew > 0 && grew <= 5) {
+            const rows = threadEl.querySelectorAll(".msg-row");
+            for (let i = Math.max(0, rows.length - grew); i < rows.length; i++) {
+              rows[i].classList.add("bubble-in");
+            }
+          }
           if (nearBottom) threadEl.scrollTop = threadEl.scrollHeight;
           // A poll rebuilds the bubbles from scratch, which would otherwise
           // silently wipe an active search's highlights every 5 seconds --
@@ -5156,16 +5339,27 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               '</div>' +
               '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
             '</div>' +
-            '<div class="notes-box">' +
-              '<div class="notes-box-head">' + ICON_LOCK + '<span class="notes-box-title">Private note</span><span class="notes-box-sub">Only visible to you — never sent to the customer or Amara</span></div>' +
+            // The note is reference material, not something you read every
+            // time -- collapsed it gives that vertical space back to the
+            // conversation, which is what the panel is actually for. Opens
+            // by default only when there's already a note worth seeing.
+            '<div class="notes-box' + ((customer && customer.note) ? " open" : "") + '" id="notesBox">' +
+              '<button class="notes-box-head" onclick="toggleNotesBox()" aria-expanded="' + ((customer && customer.note) ? "true" : "false") + '">' +
+                ICON_LOCK + '<span class="notes-box-title">Private note</span>' +
+                '<span class="notes-box-sub">Only visible to you</span>' +
+                '<span class="notes-box-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>' +
+              '</button>' +
+              '<div class="notes-box-body">' +
               '<textarea id="notesInput" placeholder="e.g. Prefers evening delivery, always pays by transfer...">' + escapeHtml((customer && customer.note) || "") + '</textarea>' +
               '<div class="notes-box-actions">' +
                 '<button class="catalog-btn small" onclick="saveNote(\\'' + phone + '\\')">Save note</button>' +
                 '<span class="catalog-msg" id="noteMsg"></span>' +
               '</div>' +
+              '</div>' +
             '</div>';
           const threadEl = document.getElementById("thread");
           threadEl.innerHTML = renderBubblesHtml(history);
+          lastRenderedCount = history.length; // baseline for the new-message animation
           threadEl.scrollTop = threadEl.scrollHeight;
         }
 
@@ -5461,6 +5655,29 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         // conversation list (see .layout.thread-open in the responsive CSS
         // -- this class does nothing above the 700px breakpoint, both
         // panes are simply shown side by side there already).
+        // Light / dark. The choice is remembered per browser; until the owner
+        // picks one, the OS preference decides (see the inline script in
+        // <head>, which applies it before first paint).
+        function toggleNotesBox() {
+          const box = document.getElementById("notesBox");
+          if (!box) return;
+          const open = box.classList.toggle("open");
+          const head = box.querySelector(".notes-box-head");
+          if (head) head.setAttribute("aria-expanded", open ? "true" : "false");
+          if (open) { const ta = document.getElementById("notesInput"); if (ta) ta.focus(); }
+        }
+
+        function toggleTheme() {
+          const root = document.documentElement;
+          const nowDark = root.getAttribute("data-theme") !== "dark";
+          if (nowDark) root.setAttribute("data-theme", "dark");
+          else root.removeAttribute("data-theme");
+          try { localStorage.setItem("stafly-theme", nowDark ? "dark" : "light"); } catch (e) {}
+          // The chart paints its axes onto a canvas, so unlike everything else
+          // it can't follow a CSS variable -- it has to be redrawn.
+          if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
+        }
+
         function closeThreadMobile() {
           document.getElementById("conversationsView")?.classList.remove("thread-open");
           document.body.classList.remove("mobile-thread-open");
@@ -5477,7 +5694,15 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           }
         }
 
+        let lastAnalytics = null;
         function renderAnalytics(data) {
+          lastAnalytics = data; // kept so a theme switch can redraw the canvas
+          const themeVar = (name, fallback) => {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            return v || fallback;
+          };
+          const axisColor = themeVar("--muted-2", "#94a3b8");
+          const gridColor = themeVar("--border-light", "#f1f5f9");
           const labels = data.trend.map((d) => new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric" }));
           const values = data.trend.map((d) => d.revenue);
           const orders = data.trend.map((d) => d.orders);
@@ -5534,12 +5759,12 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 },
               },
               scales: {
-                x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { family: "Inter", size: 11 } } },
+                x: { grid: { display: false }, ticks: { color: axisColor, font: { family: "Inter", size: 11 } } },
                 y: {
                   beginAtZero: true,
-                  grid: { color: "#f1f5f9" },
+                  grid: { color: gridColor },
                   ticks: {
-                    color: "#94a3b8",
+                    color: axisColor,
                     font: { family: "Inter", size: 11 },
                     callback: (v) => v >= 1000 ? "N" + (v / 1000) + "k" : "N" + v,
                   },
@@ -5556,7 +5781,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                   '<div class="best-seller-bar-track"><div class="best-seller-bar-fill" style="width:' + Math.round((p.sold / maxSold) * 100) + '%;"></div></div>' +
                 '</td><td>' + p.sold + '</td><td>N' + p.revenue.toLocaleString() + '</td></tr>'
               ).join("")
-            : '<tr><td colspan="3" style="color:#94a3b8;">No sales yet.</td></tr>';
+            : '<tr><td colspan="3" style="color:var(--muted-2);">No sales yet.</td></tr>';
 
           document.getElementById("conversionStat").textContent = data.conversion.conversionPct + "%";
           document.getElementById("conversionSub").textContent =
@@ -5592,7 +5817,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
             ? keys.map((k) => {
                 const p = products[k];
                 const descLine = p.description
-                  ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px;max-width:280px;">' + escapeHtml(p.description) + '</div>'
+                  ? '<div style="font-size:11px;color:var(--muted-2);margin-top:2px;max-width:280px;">' + escapeHtml(p.description) + '</div>'
                   : "";
                 return '<tr>' +
                   '<td><img src="' + escapeHtml(p.imageUrl) + '" alt=""></td>' +
@@ -5605,7 +5830,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                   '</td>' +
                 '</tr>';
               }).join("")
-            : '<tr><td colspan="5" style="color:#94a3b8;">No products yet.</td></tr>';
+            : '<tr><td colspan="5" style="color:var(--muted-2);">No products yet.</td></tr>';
           window.catalogCache = products;
           window.deliveryStatesCache = deliveryStates || {};
 
@@ -5851,7 +6076,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                     '<td><button class="catalog-btn danger" onclick="removeDeliveryState(\\'' + slug + '\\')">Remove</button></td>' +
                   '</tr>'
                 ).join("")
-            : '<tr><td colspan="3" style="color:#94a3b8;">No states added yet -- Amara won\\'t quote delivery to any state until you add at least one, or set a fallback fee below.</td></tr>';
+            : '<tr><td colspan="3" style="color:var(--muted-2);">No states added yet -- Amara won\\'t quote delivery to any state until you add at least one, or set a fallback fee below.</td></tr>';
         }
 
         async function addDeliveryState() {
@@ -5985,7 +6210,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           body.innerHTML = keys.length > 0
             ? keys.map((k) => {
                 const o = offerings[k];
-                const deliveryLabel = DELIVERY_MODE_LABELS[o.deliveryMode] || '<span style="color:#b45309;">Not set</span>';
+                const deliveryLabel = DELIVERY_MODE_LABELS[o.deliveryMode] || '<span style="color:var(--warn-fg);">Not set</span>';
                 return '<tr>' +
                   '<td>' + escapeHtml(o.name) + '</td>' +
                   '<td><code>' + escapeHtml(k) + '</code></td>' +
@@ -5998,7 +6223,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                   '</td>' +
                 '</tr>';
               }).join("")
-            : '<tr><td colspan="6" style="color:#94a3b8;">No services yet.</td></tr>';
+            : '<tr><td colspan="6" style="color:var(--muted-2);">No services yet.</td></tr>';
         }
 
         function editOffering(key) {
@@ -6109,7 +6334,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                     '<td><button class="catalog-btn danger" onclick="removeAvailabilityWindow(\\'' + w.id + '\\')">Remove</button></td>' +
                   '</tr>'
                 ).join("")
-            : '<tr><td colspan="3" style="color:#94a3b8;">No weekly availability set yet.</td></tr>';
+            : '<tr><td colspan="3" style="color:var(--muted-2);">No weekly availability set yet.</td></tr>';
         }
 
         async function addAvailabilityWindow() {
@@ -6160,7 +6385,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 .map((d) =>
                   '<tr><td>' + d + '</td><td><button class="catalog-btn danger" onclick="removeBlockedDate(\\'' + d + '\\')">Unblock</button></td></tr>'
                 ).join("")
-            : '<tr><td colspan="2" style="color:#94a3b8;">No blocked dates.</td></tr>';
+            : '<tr><td colspan="2" style="color:var(--muted-2);">No blocked dates.</td></tr>';
         }
 
         async function addBlockedDate() {
@@ -6223,7 +6448,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const body = document.getElementById("bookingsTableBody");
           const offerings = window.offeringsCache || {};
           if (bookings.length === 0) {
-            body.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;">No upcoming bookings.</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" style="color:var(--muted-2);">No upcoming bookings.</td></tr>';
             return;
           }
 
@@ -6277,7 +6502,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const tr = document.createElement("tr");
           tr.id = "reschedule-" + id;
           tr.innerHTML =
-            '<td colspan="6" style="background:#f8fafc;padding:10px;border-radius:0 0 8px 8px;">' +
+            '<td colspan="6" style="background:var(--surface-2);padding:10px;border-radius:0 0 8px 8px;">' +
               '<div class="fees-row">' +
                 '<div><label>New date</label><input type="date" id="rDate-' + id + '"></div>' +
                 '<button class="catalog-btn small" onclick="loadRescheduleSlots(\\'' + id + '\\', \\'' + offeringKey + '\\')">Check open times</button>' +
@@ -6305,7 +6530,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               ? "Open times: " + slots.map((t) =>
                   '<button class="catalog-btn small" style="margin:2px;" onclick="confirmReschedule(\\'' + id + '\\', \\'' + date + '\\', \\'' + t + '\\')">' + t + '</button>'
                 ).join("")
-              : '<span style="color:#94a3b8;">Nothing open that day. Try another date.</span>';
+              : '<span style="color:var(--muted-2);">Nothing open that day. Try another date.</span>';
           } catch (err) {
             slotsEl.textContent = "Network error, please try again.";
           }
