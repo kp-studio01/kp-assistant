@@ -38,6 +38,18 @@ app.get("/vendor/chart.js", (req, res) => {
   res.sendFile(path.join(__dirname, "node_modules", "chart.js", "dist", "chart.umd.js"));
 });
 
+// Same two fonts as the public marketing site (see stafly-website's
+// layout.tsx for the full reasoning), self-hosted here too rather than
+// pulled from Google Fonts -- one less external dependency, and it
+// means the seller-facing product and the marketing site are now
+// genuinely one visual family instead of two products that happen to
+// share a name. @fontsource's own CSS files use relative `./files/...`
+// URLs, so serving each package's directory statically at a matching
+// path is all that's needed -- the browser resolves the font files
+// itself, no path-rewriting required.
+app.use("/vendor/fonts/inter", express.static(path.join(__dirname, "node_modules", "@fontsource", "inter")));
+app.use("/vendor/fonts/plus-jakarta-sans", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "plus-jakarta-sans")));
+
 // ---------- SETTINGS (come from environment variables) ----------
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID; // from API Setup page
@@ -3333,19 +3345,22 @@ app.get("/subscribe", async (req, res) => {
 // clickable actions (buttons, active tabs, links, chart bars) so those
 // stand out from the chrome around them instead of everything being the
 // same dark navy.
-// One shared web font (Sora) loaded via Google Fonts on every page, so the
-// whole product reads consistently instead of falling back to whatever
-// system font each visitor's device happens to have. Sora was picked over
-// Bricolage Grotesque for this app specifically because this is a
-// dense, data-heavy UI (tables, small badges, forms) where Sora's plainer,
-// more geometric letterforms stay easy to read at small sizes; Bricolage's
-// more distinctive/quirky character is better suited to a future marketing
-// landing page's big headlines than to a live dashboard.
-const GOOGLE_FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">`;
+// Same two fonts as the public marketing site now, not Sora -- Sora was a
+// reasonable pick when this was the only surface that existed, but once
+// the marketing site landed on Inter (body/UI) + Plus Jakarta Sans
+// (headlines and the logo) for exactly this kind of product, running a
+// third, different font here just made the dashboard read as a separate
+// product again. Self-hosted (see the /vendor/fonts/* static routes
+// above) rather than pulled from Google Fonts, same reasoning as
+// bundling Chart.js locally: no dependency on fonts.googleapis.com being
+// reachable, which this sandbox's own network policy already proved can
+// silently fail.
+const BRAND_FONT_LINKS = `<link rel="stylesheet" href="/vendor/fonts/inter/400.css"><link rel="stylesheet" href="/vendor/fonts/inter/500.css"><link rel="stylesheet" href="/vendor/fonts/inter/600.css"><link rel="stylesheet" href="/vendor/fonts/plus-jakarta-sans/wght.css">`;
 
 const BRAND_TOKENS_CSS = `
   :root {
-    --font-sans: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-heading: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --navy: #1e293b;
     --accent: #4f46e5;
     --accent-dark: #4338ca;
@@ -3368,7 +3383,7 @@ function brandMark({ dark = false, size = "normal" } = {}) {
   const textColor = dark ? "#fff" : "var(--navy)";
   const fontSize = size === "small" ? "13px" : "16px";
   return (
-    `<span style="display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:${fontSize};color:${textColor};">` +
+    `<span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:700;font-size:${fontSize};color:${textColor};">` +
     `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--accent);color:#fff;font-size:13px;flex-shrink:0;">S</span>` +
     `Stafly<span style="color:${dark ? "#a5b4fc" : "var(--accent)"};">.AI</span>` +
     `</span>`
@@ -3382,13 +3397,13 @@ function authPageHtml({ title, heading, formHtml, error }) {
     <head>
       <title>${title} — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      ${GOOGLE_FONT_LINK}
+      ${BRAND_FONT_LINKS}
       <style>
         ${BRAND_TOKENS_CSS}
         body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh; }
         .auth-card { background:white; padding:32px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); width:100%; max-width:360px; }
         .auth-card .brand-row { margin-bottom:20px; }
-        .auth-card h1 { font-size:18px; margin:0 0 4px; }
+        .auth-card h1 { font-family:var(--font-heading); font-size:18px; margin:0 0 4px; }
         .auth-card label { font-size:12px; color:var(--muted); display:block; margin:14px 0 4px; }
         .auth-card input { width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; box-sizing:border-box; }
         .auth-card input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light); }
@@ -3585,7 +3600,7 @@ app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
     <head>
       <title>Seller dashboard — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      ${GOOGLE_FONT_LINK}
+      ${BRAND_FONT_LINKS}
       <style>
         ${BRAND_TOKENS_CSS}
         body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); }
@@ -3628,6 +3643,11 @@ app.get("/customers", async (req, res) => {
   // Most recently contacted first, so the busiest/newest conversations are on top.
   customers.sort((a, b) => new Date(b.last_contact || 0) - new Date(a.last_contact || 0));
 
+  const totalCount = customers.length;
+  const activeCount = customers.filter((c) => c.paused !== "yes").length;
+  const pausedCount = customers.filter((c) => c.paused === "yes").length;
+  const paidCount = customers.filter((c) => c.last_payment_at).length;
+
   const rows = customers
     .map((c) => {
       const pausedBadge =
@@ -3637,16 +3657,22 @@ app.get("/customers", async (req, res) => {
       const paidBadge = c.last_payment_at
         ? `<span class="badge paid">N${Number(c.last_payment_amount || 0).toLocaleString()}</span>`
         : "";
+      const statusDotCls = c.paused === "yes" ? "paused" : "active";
       return `<tr>
-        <td>${c.phone || ""}</td>
+        <td>
+          <div class="phone-cell">
+            <span class="row-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span class="status-dot ${statusDotCls}"></span></span>
+            <span class="phone-num">${escapeHtmlServer(c.phone || "")}</span>
+          </div>
+        </td>
         <td>${pausedBadge}</td>
-        <td>${c.first_contact ? new Date(c.first_contact).toLocaleString() : ""}</td>
-        <td>${c.last_contact ? new Date(c.last_contact).toLocaleString() : ""}</td>
+        <td>${c.first_contact ? new Date(c.first_contact).toLocaleString() : "&mdash;"}</td>
+        <td>${c.last_contact ? new Date(c.last_contact).toLocaleString() : "&mdash;"}</td>
         <td>${c.message_count || 0}</td>
-        <td>${c.last_escalation_reason || ""}</td>
-        <td>${c.last_escalation_at ? new Date(c.last_escalation_at).toLocaleString() : ""}</td>
-        <td>${paidBadge}</td>
-        <td>${c.last_payment_at ? new Date(c.last_payment_at).toLocaleString() : ""}</td>
+        <td>${c.last_escalation_reason ? escapeHtmlServer(c.last_escalation_reason) : "&mdash;"}</td>
+        <td>${c.last_escalation_at ? new Date(c.last_escalation_at).toLocaleString() : "&mdash;"}</td>
+        <td>${paidBadge || "&mdash;"}</td>
+        <td>${c.last_payment_at ? new Date(c.last_payment_at).toLocaleString() : "&mdash;"}</td>
       </tr>`;
     })
     .join("");
@@ -3662,26 +3688,45 @@ app.get("/customers", async (req, res) => {
     <head>
       <title>Stafly.AI - Customers</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      ${GOOGLE_FONT_LINK}
+      ${BRAND_FONT_LINKS}
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
         body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
-        header { background: var(--navy); color: white; padding: 16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
-        header .sub { font-size: 12px; color: rgba(255,255,255,0.7); margin-top:2px; }
-        header a { display:inline-block; padding:7px 14px; background: var(--accent); color: white; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none; }
-        header a:hover { background: var(--accent-dark); }
-        .wrap { max-width: 1080px; margin: 28px auto; padding: 0 24px; }
-        .table-card { background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow: hidden; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-light); font-size: 13px; }
-        th { background: var(--bg); color: var(--muted); font-weight: 600; font-size: 12px; }
-        tr:hover td { background: var(--bg); }
-        .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; white-space:nowrap; font-weight:600; }
+        header { background: var(--navy); color: white; padding: 18px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+        header .sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top:3px; }
+        header a { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none; box-shadow: 0 2px 6px rgba(79,70,229,0.35); transition: transform .15s ease, box-shadow .15s ease; }
+        header a:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(79,70,229,0.45); }
+        .wrap { max-width: 1160px; margin: 28px auto 48px; padding: 0 24px; }
+        .stats-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+        .stat-tile { flex: 1; min-width: 150px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease; }
+        .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.09); }
+        .stat-tile .stat-value { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--navy); line-height: 1.1; }
+        .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+        .table-card { background: white; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); overflow: hidden; }
+        .table-scroll { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; min-width: 920px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-light); font-size: 13px; white-space: nowrap; }
+        th { background: #f8fafc; color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+        tbody tr { transition: background .15s; }
+        tbody tr:hover { background: #fafafe; }
+        tbody tr:last-child td { border-bottom: none; }
+        .phone-cell { display: flex; align-items: center; gap: 10px; }
+        .row-avatar { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .row-avatar svg { width: 14px; height: 14px; }
+        .row-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid white; }
+        .status-dot.active { background: var(--success); }
+        .status-dot.paused { background: var(--warning); }
+        .phone-num { font-weight: 600; font-size: 13.5px; }
+        .badge { display:inline-block; font-size:11px; padding:2px 9px; border-radius:999px; white-space:nowrap; font-weight:600; }
         .badge.paused { background: var(--warning-bg); color: var(--warning); }
         .badge.active { background: var(--success-bg); color: var(--success); }
-        .badge.paid { background: var(--success-bg); color: var(--success); }
-        .empty-note { padding: 32px; text-align: center; color: #94a3b8; font-size: 13px; }
+        .badge.paid { background: #dbeafe; color: #1d4ed8; }
+        .empty-note { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 56px 24px; color: var(--muted); text-align: center; }
+        .empty-note .empty-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+        .empty-note .empty-icon svg { width: 24px; height: 24px; }
+        .empty-note .empty-title { font-family: var(--font-heading); font-size: 14px; font-weight: 600; color: var(--navy); }
+        .empty-note .empty-sub { font-size: 12.5px; max-width: 260px; line-height: 1.5; }
       </style>
     </head>
     <body>
@@ -3693,16 +3738,25 @@ app.get("/customers", async (req, res) => {
         <a href="${dashboardHref}">Open live dashboard →</a>
       </header>
       <div class="wrap">
+        <div class="stats-bar">
+          <div class="stat-tile"><div class="stat-value">${totalCount}</div><div class="stat-label">Total customers</div></div>
+          <div class="stat-tile"><div class="stat-value">${activeCount}</div><div class="stat-label">Active</div></div>
+          <div class="stat-tile"><div class="stat-value">${pausedCount}</div><div class="stat-label">Paused</div></div>
+          <div class="stat-tile"><div class="stat-value">${paidCount}</div><div class="stat-label">Have paid</div></div>
+        </div>
         <div class="table-card">
-          <table>
-            <tr>
+          ${
+            customers.length === 0
+              ? '<div class="empty-note"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="empty-title">No customers yet</div><div class="empty-sub">Once someone messages your WhatsApp number, they’ll show up here.</div></div>'
+              : `<div class="table-scroll"><table>
+            <thead><tr>
               <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
               <th>Messages</th><th>Last escalation</th><th>Escalated at</th>
               <th>Last payment</th><th>Paid at</th>
-            </tr>
-            ${rows}
-          </table>
-          ${customers.length === 0 ? '<div class="empty-note">No customers yet.</div>' : ""}
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`
+          }
         </div>
       </div>
     </body>
@@ -3787,7 +3841,7 @@ function adminPanelHtml(key, sellers) {
     <head>
       <title>Admin — Stafly.AI</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      ${GOOGLE_FONT_LINK}
+      ${BRAND_FONT_LINKS}
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
@@ -3994,7 +4048,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
     <head>
       <title>Stafly.AI — Dashboard</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      ${GOOGLE_FONT_LINK}
+      ${BRAND_FONT_LINKS}
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
@@ -4015,7 +4069,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .sidebar-section-label { padding: 10px 20px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); }
         .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
         .topbar { background: white; border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
-        .topbar h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .topbar h1 { font-family: var(--font-heading); font-size: 16px; margin: 0; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .topbar h1 .sep { font-weight: 400; color: var(--muted); }
         .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
         .topbar-right { display: flex; align-items: center; gap: 16px; }
@@ -4029,14 +4083,14 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            here, not just a wordmark. */
         .sidebar-profile { display: flex; align-items: center; gap: 10px; padding: 4px 20px 16px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
-        .sidebar-profile-name { font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-profile-name { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-profile-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
         /* An honest "yes, this is actually refreshing itself" cue -- the
            dashboard really does poll every few seconds (see setInterval
            near the bottom), so this isn't decoration pretending to be
            realtime, it's a label for something that's already true. */
-        .live-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a7f3d0; }
-        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: liveDotPulse 2s infinite; }
+        .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a7f3d0; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.22); padding: 5px 12px; border-radius: 999px; }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: liveDotPulse 2s infinite; flex-shrink: 0; }
         @keyframes liveDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
           70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
@@ -4047,8 +4101,11 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         nav.tabs button svg { width: 17px; height: 17px; flex-shrink: 0; }
         nav.tabs button:hover { background: rgba(255,255,255,0.06); color: white; }
         nav.tabs button.active-tab { background: var(--accent); color: white; font-weight: 600; }
-        .sidebar-footer { margin-top: auto; padding: 16px 20px 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 9px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer a { color: #c7d2fe; font-size: 12px; }
+        .sidebar-footer { margin-top: auto; padding: 16px 12px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-footer .live-indicator { margin: 0 8px 2px; align-self: flex-start; }
+        .sidebar-footer-link { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 8px; color: rgba(255,255,255,0.55); font-size: 12.5px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s; }
+        .sidebar-footer-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .sidebar-footer-link:hover { background: rgba(255,255,255,0.06); color: white; }
         /* stat tiles -- a light strip of its own between the topbar and
            the working area, each tile a small elevated card with an
            icon-in-a-circle, echoing the "Total Project Handled"-style
@@ -4057,7 +4114,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .stats-bar { display: flex; gap: 14px; padding: 16px 24px; background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
         .stat-tile { flex: 1; min-width: 190px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease; }
         .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.09); }
-        .stat-tile .stat-value { font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.1; white-space: nowrap; }
+        .stat-tile .stat-value { font-family: var(--font-heading); font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.1; white-space: nowrap; }
         .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 5px; white-space: nowrap; }
         .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .stat-tile .stat-icon svg { width: 20px; height: 20px; }
@@ -4119,7 +4176,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; width: 100%; }
         .catalog-card { background: white; border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: box-shadow .15s ease; }
         .catalog-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
-        .catalog-card h2 { font-size: 15px; margin: 0 0 14px; }
+        .catalog-card h2 { font-family: var(--font-heading); font-size: 15px; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
         table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
         table.catalog-table th { color: #64748b; font-weight: 600; font-size: 12px; background: #f8fafc; }
@@ -4153,7 +4210,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
         .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
         .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
-        .conversion-stat { font-size: 32px; font-weight: 700; color: var(--navy); }
+        .conversion-stat { font-family: var(--font-heading); font-size: 32px; font-weight: 700; color: var(--navy); }
         .conversion-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
       </style>
     </head>
@@ -4181,8 +4238,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         </nav>
         <div class="sidebar-footer">
           <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
-          <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">Plain table view</a>
-          ${key ? `<a href="/admin?key=${key}">All sellers →</a>` : ""}
+          <a class="sidebar-footer-link" href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Plain table view</a>
+          ${key ? `<a class="sidebar-footer-link" href="/admin?key=${key}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>All sellers</a>` : ""}
         </div>
       </aside>
       <div class="main-column">
@@ -4801,8 +4858,8 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                   backgroundColor: "#1e293b",
                   padding: 10,
                   cornerRadius: 8,
-                  titleFont: { family: "Sora", weight: "600" },
-                  bodyFont: { family: "Sora" },
+                  titleFont: { family: "Inter", weight: "600" },
+                  bodyFont: { family: "Inter" },
                   callbacks: {
                     label: (item) => {
                       const i = item.dataIndex;
@@ -4812,13 +4869,13 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 },
               },
               scales: {
-                x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { family: "Sora", size: 11 } } },
+                x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { family: "Inter", size: 11 } } },
                 y: {
                   beginAtZero: true,
                   grid: { color: "#f1f5f9" },
                   ticks: {
                     color: "#94a3b8",
-                    font: { family: "Sora", size: 11 },
+                    font: { family: "Inter", size: 11 },
                     callback: (v) => v >= 1000 ? "N" + (v / 1000) + "k" : "N" + v,
                   },
                 },
