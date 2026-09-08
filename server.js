@@ -3988,17 +3988,24 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         * { box-sizing: border-box; }
         html, body { height: 100%; }
         body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
-        /* Everything lives in one full-height flex column now instead of
-           every scrolling panel hardcoding "calc(100vh - 64px)" -- that
-           number quietly assumed the header always renders at exactly
-           64px, which broke the moment the stats moved into their own
-           bar below it. header/stats-bar size themselves naturally and
-           every view below just takes "whatever's left" (flex: 1). */
-        .app-shell { display: flex; flex-direction: column; height: 100vh; }
-        header { background: var(--navy); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
-        header h1 { font-size: 15px; margin: 0; font-weight: 400; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        header h1 .sep { opacity: 0.85; }
-        header a { color: #c7d2fe; font-size: 12px; }
+        /* A real left sidebar now, not just a row of pill buttons in the
+           header -- the single biggest thing separating "a page with
+           some buttons on it" from "a proper SaaS product," per the
+           StackAdmin reference. Structurally: a fixed dark sidebar
+           (brand, nav, footer links) beside a flex-1 main column (light
+           topbar, stats, then whichever view is active) -- both full
+           height, neither one hardcoding the other's size, so nothing
+           here is fragile to header height the way the old single-row
+           layout was. */
+        .app-shell { display: flex; flex-direction: row; height: 100vh; }
+        .sidebar { width: 232px; flex-shrink: 0; background: var(--navy); display: flex; flex-direction: column; height: 100vh; }
+        .sidebar-brand { padding: 20px 20px 16px; }
+        .sidebar-section-label { padding: 10px 20px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); }
+        .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
+        .topbar { background: white; border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+        .topbar h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .topbar h1 .sep { font-weight: 400; color: var(--muted); }
+        .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
         /* An honest "yes, this is actually refreshing itself" cue -- the
            dashboard really does poll every few seconds (see setInterval
            near the bottom), so this isn't decoration pretending to be
@@ -4010,12 +4017,15 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
           100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
         }
-        nav.tabs { display: flex; gap: 4px; }
-        nav.tabs button { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #cbd5e1; padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
-        nav.tabs button:hover { border-color: rgba(255,255,255,0.45); color: white; }
-        nav.tabs button.active-tab { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 6px rgba(79,70,229,0.4); }
-        /* stat tiles -- a light strip of its own between the dark header
-           and the working area, each tile a small elevated card with an
+        nav.tabs { display: flex; flex-direction: column; gap: 2px; padding: 4px 12px; }
+        nav.tabs button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; color: rgba(255,255,255,0.65); padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
+        nav.tabs button svg { width: 17px; height: 17px; flex-shrink: 0; }
+        nav.tabs button:hover { background: rgba(255,255,255,0.06); color: white; }
+        nav.tabs button.active-tab { background: var(--accent); color: white; font-weight: 600; }
+        .sidebar-footer { margin-top: auto; padding: 16px 20px 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 9px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-footer a { color: #c7d2fe; font-size: 12px; }
+        /* stat tiles -- a light strip of its own between the topbar and
+           the working area, each tile a small elevated card with an
            icon-in-a-circle, echoing the "Total Project Handled"-style
            tiles from the dashboard reference Miji shared, rather than
            the old cramped, same-color pills that all read as one blur. */
@@ -4123,19 +4133,28 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
     </head>
     <body>
     <div class="app-shell">
-      <header>
-        <h1>${brandMark({ dark: true, size: "small" })}<span class="sep">— Live Dashboard${businessName ? " &middot; " + businessName : ""}</span> <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">plain table view</a>${key ? ` &nbsp; <a href="/admin?key=${key}">all sellers →</a>` : ""}</h1>
+      <aside class="sidebar">
+        <div class="sidebar-brand">${brandMark({ dark: true, size: "small" })}</div>
+        <div class="sidebar-section-label">Menu</div>
         <nav class="tabs">
-          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')">Conversations</button>
+          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Conversations</button>
           ${
             isBookable
-              ? `<button id="tabServices" onclick="switchTab('services')">Services</button>
-          <button id="tabBookings" onclick="switchTab('bookings')">Bookings</button>`
-              : `<button id="tabCatalog" onclick="switchTab('catalog')">Catalog</button>`
+              ? `<button id="tabServices" onclick="switchTab('services')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Services</button>
+          <button id="tabBookings" onclick="switchTab('bookings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Bookings</button>`
+              : `<button id="tabCatalog" onclick="switchTab('catalog')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Catalog</button>`
           }
-          <button id="tabAnalytics" onclick="switchTab('analytics')">Analytics</button>
+          <button id="tabAnalytics" onclick="switchTab('analytics')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Analytics</button>
         </nav>
-        <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
+        <div class="sidebar-footer">
+          <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
+          <a href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}">Plain table view</a>
+          ${key ? `<a href="/admin?key=${key}">All sellers →</a>` : ""}
+        </div>
+      </aside>
+      <div class="main-column">
+      <header class="topbar">
+        <h1>Live Dashboard${businessName ? `<span class="sep">&middot; ${businessName}</span>` : ""}</h1>
       </header>
       <div class="stats-bar" id="stats"></div>
       <div class="layout" id="conversationsView">
@@ -4384,6 +4403,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           <div class="conversion-stat" id="conversionStat">&mdash;</div>
           <div class="conversion-sub" id="conversionSub"></div>
         </div>
+      </div>
       </div>
     </div>
       <script>
