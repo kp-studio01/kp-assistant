@@ -226,6 +226,10 @@ function ensureCatalogEntry(sellerId) {
       PRODUCT_NAMES: {},
       PRODUCT_IMAGES: {},
       PRODUCT_DESCRIPTIONS: {},
+      // Seller-defined grouping, e.g. "Tees" or "Hoodies" -- free text they
+      // create themselves, no fixed taxonomy. A product without one simply
+      // has no category.
+      PRODUCT_CATEGORIES: {},
       // Per-state delivery fees. Only states a seller explicitly added
       // show up here (that's what "which states do you deliver to" means
       // in practice), keyed by the slugs in NIGERIA_STATES above.
@@ -513,11 +517,14 @@ async function loadCatalogFromRedis(sellerId) {
       for (const key of Object.keys(catalog.PRODUCT_NAMES)) delete catalog.PRODUCT_NAMES[key];
       for (const key of Object.keys(catalog.PRODUCT_IMAGES)) delete catalog.PRODUCT_IMAGES[key];
       for (const key of Object.keys(catalog.PRODUCT_DESCRIPTIONS)) delete catalog.PRODUCT_DESCRIPTIONS[key];
+      for (const key of Object.keys(catalog.PRODUCT_CATEGORIES || {})) delete catalog.PRODUCT_CATEGORIES[key];
       for (const [key, p] of Object.entries(products)) {
         catalog.PRODUCT_PRICES[key] = p.price;
         catalog.PRODUCT_NAMES[key] = p.name;
         catalog.PRODUCT_IMAGES[key] = p.imageUrl || `${BASE_URL}/images/${key}.png`;
         catalog.PRODUCT_DESCRIPTIONS[key] = p.description || "";
+        if (!catalog.PRODUCT_CATEGORIES) catalog.PRODUCT_CATEGORIES = {};
+        catalog.PRODUCT_CATEGORIES[key] = p.category || "";
       }
       console.log(`Catalog loaded from Redis for ${sellerId}: ${Object.keys(catalog.PRODUCT_PRICES).length} product(s).`);
     } else if (sellerId === SELLER1_ID) {
@@ -616,6 +623,7 @@ async function saveCatalogToRedis(sellerId) {
       // from the key on every load, no need to store it explicitly.
       imageUrl: catalog.PRODUCT_IMAGES[key] && catalog.PRODUCT_IMAGES[key] !== selfHostedUrl ? catalog.PRODUCT_IMAGES[key] : undefined,
       description: catalog.PRODUCT_DESCRIPTIONS[key] || undefined,
+      category: (catalog.PRODUCT_CATEGORIES && catalog.PRODUCT_CATEGORIES[key]) || undefined,
     };
   }
   await redisCommand(["SET", nsKey(sellerId, "catalog:products"), JSON.stringify(products)]);
@@ -791,7 +799,12 @@ function buildGoodsShopProfile(seller) {
   const shopName = seller.sellerId === SELLER1_ID ? "KP Collections" : (seller.businessName || "the shop");
   const catalogLines = Object.keys(catalog.PRODUCT_NAMES)
     .map((key, i) => {
-      const line = `${i + 1}. ${catalog.PRODUCT_NAMES[key]} — N${catalog.PRODUCT_PRICES[key].toLocaleString()} (key: ${key})`;
+      // The seller's own category is part of the product line, so Amara can
+      // answer "what hoodies do you have?" from real grouping rather than
+      // guessing from names. It's only ever as good as what they typed --
+      // a product with no category simply doesn't carry one.
+      const category = catalog.PRODUCT_CATEGORIES && catalog.PRODUCT_CATEGORIES[key];
+      const line = `${i + 1}. ${catalog.PRODUCT_NAMES[key]} — N${catalog.PRODUCT_PRICES[key].toLocaleString()} (key: ${key}${category ? `, category: ${category}` : ""})`;
       const description = catalog.PRODUCT_DESCRIPTIONS && catalog.PRODUCT_DESCRIPTIONS[key];
       // Seller-supplied details (material, sizes, colors, etc.) so Amara can
       // answer a customer's specific questions accurately instead of
@@ -4167,14 +4180,19 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            height, neither one hardcoding the other's size, so nothing
            here is fragile to header height the way the old single-row
            layout was. */
-        .app-shell { display: flex; flex-direction: row; height: 100vh; }
+        /* 100dvh, not 100vh: on a phone 100vh is the viewport WITHOUT the
+           browser's collapsible URL bar, so a full-height app renders taller
+           than the screen and the composer ends up below the fold. dvh
+           tracks the real visible height (and shrinks when the keyboard
+           opens). 100vh stays first as the fallback for old browsers. */
+        .app-shell { display: flex; flex-direction: row; height: 100vh; height: 100dvh; }
         /* Depth from a very slight top-to-bottom lift and a hairline edge --
            an accent glow was tried here and removed: on a rail this narrow it
            reads as a coloured blob rather than lighting. */
-        .sidebar { position: relative; width: 232px; flex-shrink: 0; background: linear-gradient(180deg, #202b40 0%, var(--navy) 55%); display: flex; flex-direction: column; height: 100vh; border-right: 1px solid rgba(255,255,255,0.07); }
+        .sidebar { position: relative; width: 232px; flex-shrink: 0; background: linear-gradient(180deg, #202b40 0%, var(--navy) 55%); display: flex; flex-direction: column; height: 100vh; height: 100dvh; border-right: 1px solid rgba(255,255,255,0.07); }
         .sidebar-brand { padding: 20px 20px 16px; }
         .sidebar-section-label { padding: 14px 20px 7px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: rgba(255,255,255,0.42); }
-        .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
+        .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; }
         .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
         .topbar-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
         .topbar h1 { font-family: var(--font-heading); font-size: 17px; margin: 0; font-weight: 700; color: var(--text); letter-spacing: -0.015em; white-space: nowrap; }
@@ -4280,11 +4298,20 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
            to an actual stored field on the customer record (see setTab /
            getFilteredCustomers), the same idea as Fillow's inbox tabs but
            grounded in states this dashboard genuinely tracks. */
-        .list-tabs { display: flex; gap: 2px; margin: 0 12px 10px; padding: 3px; background: var(--surface-3); border-radius: 10px; }
-        .list-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 6px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 8px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; white-space: nowrap; }
-        .list-tab:hover { color: var(--text); }
-        .list-tab.active-list-tab { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,0.14); }
-        .list-tab-count { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; }
+        /* Icon + count on every tab; the label spells itself out only on the
+           one that's selected. You always see four filters and their sizes,
+           but only one word at a time -- descriptive without four labels
+           competing above a list that's already full of text. */
+        .list-tabs { display: flex; gap: 3px; margin: 0 12px 10px; padding: 3px; background: var(--surface-3); border-radius: 11px; }
+        .list-tab { flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 7px 9px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 9px; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; white-space: nowrap; min-width: 0; }
+        .list-tab-icon { display: flex; flex-shrink: 0; }
+        .list-tab-icon svg { width: 14px; height: 14px; }
+        .list-tab-label { display: none; }
+        .list-tab:hover { color: var(--text); background: var(--surface-2); }
+        .list-tab.active-list-tab { flex: 1 1 auto; background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
+        .list-tab.active-list-tab .list-tab-label { display: inline; }
+        .list-tab.active-list-tab .list-tab-icon { color: var(--accent); }
+        .list-tab-count { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; text-align: center; }
         .list-tab.active-list-tab .list-tab-count { background: var(--accent-light); color: var(--accent); }
         .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; line-height: 1.5; flex-shrink: 0; }
         .list { flex: 1; overflow-y: auto; }
@@ -4523,6 +4550,43 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         .btn-quiet { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s; }
         .btn-quiet:hover { background: var(--surface-2); color: var(--text); }
         .table-wrap { overflow-x: auto; }
+        .card-head-products { align-items: center; }
+        .card-head-products > div:last-child { display: flex; align-items: center; }
+        /* Products as cards led by their photo -- that photo is exactly what
+           Amara sends a customer, so it's the thing worth recognising. */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+        .product-card { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+        .product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+        .product-thumb { position: relative; aspect-ratio: 4 / 3; background: var(--surface-3); overflow: hidden; }
+        .product-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* A product with no usable photo shows a calm placeholder rather than
+           a broken-image icon. */
+        .product-thumb.no-photo img { display: none; }
+        .product-thumb.no-photo::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--muted-2); }
+        .product-body { padding: 11px 12px 4px; flex: 1; }
+        .product-cat { display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-soft); padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
+        .product-name { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
+        .product-price { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums; }
+        .product-desc { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .product-actions { display: flex; gap: 6px; padding: 10px 12px 12px; }
+        .btn-tiny { padding: 5px 10px; font-size: 11.5px; }
+        .danger-quiet:hover { background: var(--dang-bg); color: var(--dang-fg); border-color: var(--dang-border); }
+        /* Category chips, built from the categories actually in use. */
+        .cat-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .cat-filter:empty { display: none; }
+        .cat-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+        .cat-chip:hover { color: var(--text); border-color: var(--border-strong); }
+        .cat-chip-active { background: var(--accent-light); color: var(--accent); border-color: var(--accent-soft); }
+        .cat-chip-count { font-size: 10px; font-weight: 700; opacity: 0.75; }
+        /* A real drop target with a preview, instead of a bare file input. */
+        .dropzone { border: 1.5px dashed var(--border-strong); border-radius: 12px; background: var(--surface); padding: 18px; text-align: center; cursor: pointer; transition: border-color .18s ease, background .18s ease; }
+        .dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: var(--accent-light); }
+        .dropzone.dragging { border-color: var(--accent); background: var(--accent-light); }
+        .dropzone-empty svg { width: 28px; height: 28px; color: var(--muted-2); }
+        .dropzone-title { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 8px; }
+        .dropzone-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+        .dropzone-preview img { max-height: 150px; max-width: 100%; border-radius: 10px; display: block; margin: 0 auto; box-shadow: var(--shadow-md); }
+        .dropzone-meta { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
         /* The add/edit form, revealed on demand, as one coherent grid rather
            than three stacked half-grids. */
         .inline-panel { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); animation: panelIn .18s ease-out; }
@@ -4696,10 +4760,10 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         <div class="list-pane">
           <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by phone or reason..." oninput="applyFilter()"></div></div>
           <div class="list-tabs">
-            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')"><span class="list-tab-label">All</span><span class="list-tab-count">0</span></button>
-            <button class="list-tab" id="tab-active" onclick="setTab('active')"><span class="list-tab-label">Active</span><span class="list-tab-count">0</span></button>
-            <button class="list-tab" id="tab-paused" onclick="setTab('paused')"><span class="list-tab-label">Paused</span><span class="list-tab-count">0</span></button>
-            <button class="list-tab" id="tab-starred" onclick="setTab('starred')"><span class="list-tab-label">&#9733;</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')" title="All conversations"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg></span><span class="list-tab-label">All</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-active" onclick="setTab('active')" title="Amara is handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span><span class="list-tab-label">Active</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-paused" onclick="setTab('paused')" title="Paused — you're handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg></span><span class="list-tab-label">Paused</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-starred" onclick="setTab('starred')" title="Starred"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 14.9 8.9 21.5 9.8 16.7 14.4 17.9 21 12 17.9 6.1 21 7.3 14.4 2.5 9.8 9.1 8.9 12 3"/></svg></span><span class="list-tab-label">Starred</span><span class="list-tab-count">0</span></button>
           </div>
           <div class="list" id="list"><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:62%"></div><div class="sk sk-line" style="width:40%"></div></div></div><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:54%"></div><div class="sk sk-line" style="width:34%"></div></div></div><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:58%"></div><div class="sk sk-line" style="width:44%"></div></div></div></div>
         </div>
@@ -4708,22 +4772,19 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
       </div>
       <div class="catalog-view" id="catalogView" style="display:none;">
         <div class="catalog-card">
-          <div class="card-head">
+          <div class="card-head card-head-products">
             <div>
               <h2>Products</h2>
               <div class="card-sub">What Amara can quote, describe and sell on your behalf.</div>
             </div>
+            <span class="catalog-msg" id="catalogStatus" style="margin-right:10px;"></span>
             <button class="catalog-btn" id="addProductBtn" onclick="openProductForm()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add product
             </button>
           </div>
-          <div class="table-wrap">
-            <table class="catalog-table" id="catalogTable">
-              <thead><tr><th></th><th>Name</th><th>Key</th><th>Price</th><th></th></tr></thead>
-              <tbody id="catalogTableBody"></tbody>
-            </table>
-          </div>
+          <div class="cat-filter" id="categoryFilter"></div>
+          <div class="product-grid" id="productGrid"></div>
           <div class="inline-panel" id="productPanel" style="display:none;">
             <div class="inline-panel-head">
               <span id="productPanelTitle">New product</span>
@@ -4743,18 +4804,37 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
                 <input id="pPrice" type="number" min="1" placeholder="7500">
               </div>
               <div class="field field-full">
+                <label>Category</label>
+                <div class="field-hint">Your own grouping &mdash; Amara uses it to answer questions like "what hoodies do you have?". Leave blank if you don't group products.</div>
+                <input id="pCategory" list="categorySuggestions" placeholder="e.g. Tees">
+                <datalist id="categorySuggestions"></datalist>
+              </div>
+              <div class="field field-full">
                 <label>Description</label>
                 <div class="field-hint">Materials, sizes, colours &mdash; anything Amara needs to answer questions accurately.</div>
                 <textarea id="pDescription" rows="2" placeholder="e.g. 100% cotton, true to size, available in S-XL, machine washable"></textarea>
               </div>
-              <div class="field">
-                <label>Upload a photo</label>
-                <div class="field-hint">Max 1.5MB.</div>
-                <input id="pPhotoFile" type="file" accept="image/*">
+              <div class="field field-full">
+                <label>Photo</label>
+                <div class="field-hint">This is the exact image Amara sends a customer who asks to see it. Drag one in, or click to choose. Max 1.5MB.</div>
+                <div class="dropzone" id="photoDrop" tabindex="0" role="button" aria-label="Choose or drop a product photo"
+                     onclick="document.getElementById('pPhotoFile').click()"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('pPhotoFile').click();}">
+                  <input id="pPhotoFile" type="file" accept="image/*" hidden onchange="handlePhotoPick(this.files)">
+                  <div class="dropzone-empty" id="dropEmpty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 15-5-5L6 20"/></svg>
+                    <div class="dropzone-title">Drop a photo here</div>
+                    <div class="dropzone-sub">or click to browse &mdash; PNG or JPG, up to 1.5MB</div>
+                  </div>
+                  <div class="dropzone-preview" id="dropPreview" style="display:none;">
+                    <img id="dropPreviewImg" alt="Selected product photo">
+                    <div class="dropzone-meta"><span id="dropFileName"></span><button type="button" class="btn-quiet btn-tiny" onclick="event.stopPropagation();clearPhotoPick()">Remove</button></div>
+                  </div>
+                </div>
               </div>
-              <div class="field">
-                <label>...or paste a photo URL</label>
-                <div class="field-hint">Use this if the image already lives online.</div>
+              <div class="field field-full">
+                <label>...or paste a photo URL instead</label>
+                <div class="field-hint">Use this if the image already lives online somewhere.</div>
                 <input id="pImageUrl" placeholder="https://...">
               </div>
             </div>
@@ -5149,6 +5229,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
         const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
         const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
         // WhatsApp gives us no profile photo and no name, so a contact chip
         // shows a person mark rather than repeating digits we already print
@@ -6160,26 +6241,46 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
         }
 
         function renderCatalog(products, deliveryStates, deliveryDefaultFee, bankDetails, bankDetails2) {
-          const body = document.getElementById("catalogTableBody");
+          // A visual grid, not a table row with a thumbnail: sellers pick a
+          // product out by its photo, and the photo is also exactly what
+          // Amara sends a customer, so it deserves to be the biggest thing
+          // on the card.
+          const grid = document.getElementById("productGrid");
           const keys = Object.keys(products);
-          body.innerHTML = keys.length > 0
-            ? keys.map((k) => {
+          renderCategoryFilter(products);
+          const visible = keys.filter((k) =>
+            currentCategory === "all" || (products[k].category || "") === currentCategory
+          );
+          grid.innerHTML = keys.length === 0
+            ? '<div class="empty"><div class="empty-icon">' + ICON_BOX + '</div><div class="empty-title">No products yet</div><div class="empty-sub">Add your first product and Amara can start quoting and selling it straight away.</div></div>'
+            : (visible.length === 0
+              ? '<div class="empty"><div class="empty-title">Nothing in this category</div><div class="empty-sub">Pick another category, or clear the filter to see everything.</div></div>'
+              : visible.map((k) => {
                 const p = products[k];
-                const descLine = p.description
-                  ? '<div style="font-size:11px;color:var(--muted-2);margin-top:2px;max-width:280px;">' + escapeHtml(p.description) + '</div>'
-                  : "";
-                return '<tr>' +
-                  '<td><img src="' + escapeHtml(p.imageUrl) + '" alt=""></td>' +
-                  '<td>' + escapeHtml(p.name) + descLine + '</td>' +
-                  '<td><code>' + escapeHtml(k) + '</code></td>' +
-                  '<td>N' + Number(p.price).toLocaleString() + '</td>' +
-                  '<td>' +
-                    '<button class="catalog-btn small" onclick="editProduct(\\'' + k + '\\')">Edit</button> ' +
-                    '<button class="catalog-btn danger" onclick="deleteProduct(\\'' + k + '\\')">Remove</button>' +
-                  '</td>' +
-                '</tr>';
-              }).join("")
-            : '<tr><td colspan="5" style="color:var(--muted-2);">No products yet.</td></tr>';
+                return '<div class="product-card">' +
+                  '<div class="product-thumb"><img src="' + escapeHtml(p.imageUrl) + '" alt="" loading="lazy"></div>' +
+                  '<div class="product-body">' +
+                    (p.category ? '<span class="product-cat">' + escapeHtml(p.category) + '</span>' : '') +
+                    '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+                    '<div class="product-price">N' + Number(p.price).toLocaleString() + '</div>' +
+                    (p.description ? '<div class="product-desc">' + escapeHtml(p.description) + '</div>' : '') +
+                  '</div>' +
+                  '<div class="product-actions">' +
+                    '<button class="btn-quiet btn-tiny" onclick="editProduct(\\'' + k + '\\')">Edit</button>' +
+                    '<button class="btn-quiet btn-tiny danger-quiet" onclick="deleteProduct(\\'' + k + '\\')">Remove</button>' +
+                  '</div>' +
+                '</div>';
+              }).join(""));
+          // Broken/missing photos get a calm "No photo" placeholder instead
+          // of the browser's broken-image glyph. Done with a listener rather
+          // than an inline onerror attribute -- nesting quotes inside an
+          // attribute inside a JS string inside a template literal is exactly
+          // how the last escaping bug got in.
+          grid.querySelectorAll(".product-thumb img").forEach((img) => {
+            const flag = () => { const t = img.closest(".product-thumb"); if (t) t.classList.add("no-photo"); };
+            if (img.complete && img.naturalWidth === 0) flag();
+            img.addEventListener("error", flag);
+          });
           window.catalogCache = products;
           window.deliveryStatesCache = deliveryStates || {};
 
@@ -6278,7 +6379,9 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           // current photo unless you choose a new one").
           document.getElementById("pImageUrl").value =
             (p.imageUrl && p.imageUrl.indexOf("/images/") === -1 && p.imageUrl.indexOf("/catalog-photo/") === -1) ? p.imageUrl : "";
-          document.getElementById("pPhotoFile").value = "";
+          clearPhotoPick();
+          const catEl2 = document.getElementById("pCategory");
+          if (catEl2) catEl2.value = p.category || "";
           document.getElementById("productEditingName").textContent = p.name;
           document.getElementById("productEditingNote").style.display = "block";
           const title = document.getElementById("productPanelTitle");
@@ -6293,10 +6396,95 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           document.getElementById("pPrice").value = "";
           document.getElementById("pDescription").value = "";
           document.getElementById("pImageUrl").value = "";
-          document.getElementById("pPhotoFile").value = "";
+          const catEl = document.getElementById("pCategory");
+          if (catEl) catEl.value = "";
+          clearPhotoPick();
           document.getElementById("productEditingNote").style.display = "none";
           const title = document.getElementById("productPanelTitle");
           if (title) title.textContent = "New product";
+        }
+
+        // ---- Product photo picker -------------------------------------
+        // Shows the seller the actual image before they save it. The file
+        // still goes up through the same multipart POST as before -- this is
+        // presentation over the existing upload, not a new pathway.
+        const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
+        function handlePhotoPick(files) {
+          const file = files && files[0];
+          const msg = document.getElementById("catalogMsg");
+          if (!file) return clearPhotoPick();
+          if (!/^image\\//.test(file.type)) {
+            if (msg) { msg.textContent = "That file isn't an image."; msg.className = "catalog-msg error"; }
+            return clearPhotoPick();
+          }
+          if (file.size > MAX_PHOTO_BYTES) {
+            if (msg) { msg.textContent = "That photo is over 1.5MB. Try a smaller one."; msg.className = "catalog-msg error"; }
+            return clearPhotoPick();
+          }
+          if (msg) { msg.textContent = ""; msg.className = "catalog-msg"; }
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            document.getElementById("dropPreviewImg").src = e.target.result;
+            document.getElementById("dropFileName").textContent = file.name;
+            document.getElementById("dropEmpty").style.display = "none";
+            document.getElementById("dropPreview").style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        }
+        function clearPhotoPick() {
+          const input = document.getElementById("pPhotoFile");
+          if (input) input.value = "";
+          const empty = document.getElementById("dropEmpty");
+          const prev = document.getElementById("dropPreview");
+          if (empty) empty.style.display = "";
+          if (prev) prev.style.display = "none";
+        }
+        function initDropzone() {
+          const dz = document.getElementById("photoDrop");
+          if (!dz || dz.dataset.wired) return;
+          dz.dataset.wired = "1";
+          ["dragenter", "dragover"].forEach((ev) =>
+            dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("dragging"); }));
+          ["dragleave", "drop"].forEach((ev) =>
+            dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("dragging"); }));
+          dz.addEventListener("drop", (e) => {
+            const files = e.dataTransfer && e.dataTransfer.files;
+            if (files && files.length) {
+              document.getElementById("pPhotoFile").files = files;
+              handlePhotoPick(files);
+            }
+          });
+        }
+
+        // ---- Categories -----------------------------------------------
+        // Not a fixed taxonomy: whatever the seller types becomes a category,
+        // and the filter is built from the ones actually in use.
+        let currentCategory = "all";
+        function setCategory(cat) {
+          currentCategory = cat;
+          renderCatalog(window.catalogCache || {}, window.deliveryStatesCache || {});
+        }
+        function renderCategoryFilter(products) {
+          const wrap = document.getElementById("categoryFilter");
+          if (!wrap) return;
+          const cats = [];
+          Object.values(products).forEach((p) => {
+            const c = (p.category || "").trim();
+            if (c && cats.indexOf(c) === -1) cats.push(c);
+          });
+          cats.sort((a, b) => a.localeCompare(b));
+          // Fill the datalist so adding a product suggests categories the
+          // seller already uses, instead of them retyping (and mistyping) one.
+          const dl = document.getElementById("categorySuggestions");
+          if (dl) dl.innerHTML = cats.map((c) => '<option value="' + escapeHtml(c) + '"></option>').join("");
+          if (cats.length === 0) { wrap.innerHTML = ""; return; }
+          if (currentCategory !== "all" && cats.indexOf(currentCategory) === -1) currentCategory = "all";
+          const chip = (val, label, n) =>
+            '<button class="cat-chip' + (currentCategory === val ? " cat-chip-active" : "") + '" onclick="setCategory(\\'' + String(val).replace(/'/g, "\\\\'") + '\\')">' +
+              escapeHtml(label) + '<span class="cat-chip-count">' + n + '</span></button>';
+          wrap.innerHTML =
+            chip("all", "All", Object.keys(products).length) +
+            cats.map((c) => chip(c, c, Object.values(products).filter((p) => (p.category || "") === c).length)).join("");
         }
 
         // The add/edit form is revealed on demand rather than sitting open
@@ -6306,6 +6494,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           const panel = document.getElementById("productPanel");
           if (!panel) return;
           panel.style.display = "block";
+          initDropzone();
           const name = document.getElementById("pName");
           if (name) name.focus();
         }
@@ -6384,6 +6573,7 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
           formData.append("price", document.getElementById("pPrice").value);
           formData.append("description", document.getElementById("pDescription").value);
           formData.append("imageUrl", document.getElementById("pImageUrl").value);
+          formData.append("category", (document.getElementById("pCategory") || {}).value || "");
           if (photoFile) formData.append("photo", photoFile);
           try {
             const res = await fetch("/api/catalog/product?" + ADMIN_QS, {
@@ -6396,15 +6586,17 @@ function dashboardHtml(key, sellerId, businessName, businessType) {
               msg.className = "catalog-msg error";
               return;
             }
-            msg.textContent = data.warning || "Saved.";
-            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
-            document.getElementById("pKey").value = "";
-            document.getElementById("pName").value = "";
-            document.getElementById("pPrice").value = "";
-            document.getElementById("pDescription").value = "";
-            document.getElementById("pImageUrl").value = "";
-            document.getElementById("pPhotoFile").value = "";
-            document.getElementById("productEditingNote").style.display = "none";
+            // The confirmation goes to the status beside "Add product",
+            // which lives OUTSIDE the panel -- otherwise closing the panel
+            // would hide the very message confirming the save worked.
+            cancelEditProduct(); // clears every field, the category and the photo preview
+            closeProductForm();  // a saved product belongs in the grid, not behind an open form
+            const status = document.getElementById("catalogStatus");
+            if (status) {
+              status.textContent = data.warning || "Product saved.";
+              status.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+              setTimeout(() => { if (status.textContent === "Product saved.") status.textContent = ""; }, 4000);
+            }
             loadCatalog();
           } catch (err) {
             msg.textContent = "Network error, please try again.";
@@ -7163,6 +7355,7 @@ app.get("/api/catalog", async (req, res) => {
       price: seller.catalog.PRODUCT_PRICES[key],
       imageUrl: seller.catalog.PRODUCT_IMAGES[key],
       description: seller.catalog.PRODUCT_DESCRIPTIONS[key] || "",
+      category: (seller.catalog.PRODUCT_CATEGORIES && seller.catalog.PRODUCT_CATEGORIES[key]) || "",
     };
   }
   res.json({
@@ -7278,7 +7471,7 @@ app.post("/api/catalog/product", (req, res, next) => {
 }, async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
-  const { key, name, price, imageUrl, description } = req.body || {};
+  const { key, name, price, imageUrl, description, category } = req.body || {};
 
   // Same "code is the guarantee" rule as everywhere else money-adjacent
   // in this file: validate for real here, don't just trust whatever the
@@ -7288,6 +7481,7 @@ app.post("/api/catalog/product", (req, res, next) => {
   const cleanPrice = Number(price);
   const cleanImageUrl = imageUrl ? String(imageUrl).trim() : "";
   const cleanDescription = String(description || "").trim().slice(0, 600);
+  const cleanCategory = String(category || "").trim().slice(0, 60);
 
   if (!cleanKey) {
     return res.status(400).json({ error: "Product key is required (letters, numbers, - and _ only)." });
@@ -7317,6 +7511,8 @@ app.post("/api/catalog/product", (req, res, next) => {
   seller.catalog.PRODUCT_NAMES[cleanKey] = cleanName;
   seller.catalog.PRODUCT_PRICES[cleanKey] = cleanPrice;
   seller.catalog.PRODUCT_DESCRIPTIONS[cleanKey] = cleanDescription;
+  if (!seller.catalog.PRODUCT_CATEGORIES) seller.catalog.PRODUCT_CATEGORIES = {};
+  seller.catalog.PRODUCT_CATEGORIES[cleanKey] = cleanCategory;
 
   if (req.file) {
     // A real photo was uploaded: store it in Redis (base64) next to the
@@ -7367,6 +7563,7 @@ app.delete("/api/catalog/product/:key", async (req, res) => {
   delete seller.catalog.PRODUCT_NAMES[key];
   delete seller.catalog.PRODUCT_IMAGES[key];
   delete seller.catalog.PRODUCT_DESCRIPTIONS[key];
+  if (seller.catalog.PRODUCT_CATEGORIES) delete seller.catalog.PRODUCT_CATEGORIES[key];
   delete sellerPhotoCache[`${seller.sellerId}:${key}`];
   redisCommand(["DEL", nsKey(seller.sellerId, `catalog:photo:${key}`)]).catch((err) =>
     console.error("catalog photo delete: cleanup failed (non-fatal):", err.message)
