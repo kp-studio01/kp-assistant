@@ -3482,11 +3482,14 @@ const BRAND_TOKENS_CSS = `
     --info-fg: #60a5fa;
     --info-border: #1e3a5f;
     --star: #fbbf24;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.45);
-    --shadow-md: 0 2px 6px rgba(0,0,0,0.5);
-    --shadow-lg: 0 10px 28px rgba(0,0,0,0.6);
-    --accent-shadow: rgba(99,102,241,0.32);
-    --accent-shadow-strong: rgba(99,102,241,0.48);
+    /* Dark elevation comes mostly from the surface being lighter than the
+       ground; heavy black shadows just muddy the edges, so these are softer
+       than their light-theme counterparts and paired with a hairline. */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.28);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.34);
+    --shadow-lg: 0 12px 30px rgba(0,0,0,0.42);
+    --accent-shadow: rgba(99,102,241,0.22);
+    --accent-shadow-strong: rgba(99,102,241,0.34);
     --chat-doodle: %232b3446;
   }
 `;
@@ -4198,7 +4201,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
     <html>
     <head>
       <title>Stafly.AI — Dashboard</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+      <!-- Installed to a phone's home screen this opens with no browser
+           chrome at all, which is the only real "full screen" iOS allows --
+           the Fullscreen API below covers Android and desktop. -->
+      <link rel="manifest" href="/manifest.webmanifest">
+      <link rel="icon" href="/icon.svg" type="image/svg+xml">
+      <link rel="apple-touch-icon" href="/icon.svg">
+      <meta name="mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+      <meta name="apple-mobile-web-app-title" content="Stafly.AI">
+      <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+      <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
       <script>
         // Runs before any CSS paints, so a dark-mode user never sees a white
         // flash on load. Falls back to the OS setting until they pick one.
@@ -4461,7 +4476,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
         .thread-avatar svg { width: 23px; height: 23px; opacity: 0.95; }
         .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--surface); }
-        .thread-name { font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thread-name { display: flex; align-items: center; gap: 7px; font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; min-width: 0; }
+        .thread-num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .thread-star-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--star); background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 2px 8px 2px 6px; border-radius: 999px; flex-shrink: 0; white-space: nowrap; }
+        .thread-star-mark svg { width: 11px; height: 11px; }
+        .lbl-short { display: none; }
         .thread-sub-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
         .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px 2px 7px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok-border); white-space: nowrap; }
         .thread-status-chip.is-paused { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
@@ -4788,7 +4807,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           body[data-tab="conversations"] .stats-bar { display: none; }
           body.mobile-thread-open .stats-bar { display: none; }
           /* Topbar on one row, with room to breathe. */
-          .topbar { flex-wrap: nowrap; gap: 8px; padding: 10px 14px; }
+          /* Respects the notch / home indicator when installed to the home
+             screen (viewport-fit=cover is set in the meta tag). */
+          .topbar { flex-wrap: nowrap; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
+          .msg-compose { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+          .sidebar { padding-top: env(safe-area-inset-top); }
           .topbar-left { gap: 8px; flex: 1; min-width: 0; }
           .topbar h1 { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
           .topbar-biz { max-width: 40vw; padding: 3px 9px 3px 8px; font-size: 11.5px; }
@@ -4800,14 +4823,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              onto a second row. */
           .thread-header { flex-wrap: nowrap; gap: 8px; padding: 10px 14px; }
           .thread-header-id { gap: 9px; flex: 1; min-width: 0; }
-          .thread-avatar { width: 38px; height: 38px; }
-          .thread-avatar svg { width: 20px; height: 20px; }
+          .thread-avatar { width: 34px; height: 34px; }
+          .thread-avatar svg { width: 18px; height: 18px; }
+          button.mobile-back-btn.icon-btn { width: 30px; height: 30px; }
+          .thread-header-id { gap: 8px; }
+          /* Icon-only on a phone so the star chip and the status chip stay on
+             one line instead of pushing the header to two rows. */
+          .thread-star-mark .star-word { display: none; }
+          .thread-star-mark { padding: 3px 6px; }
           .thread-name { font-size: 15.5px; }
           .thread-sub { display: none; }
           .thread-actions { gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
           .thread-actions .icon-btn.hide-sm { display: none; }
           .more-menu-dropdown button.menu-sm-only { display: block; }
-          button.takeover-btn { padding: 7px 12px; font-size: 12.5px; }
+          button.takeover-btn { padding: 7px 11px; font-size: 12.5px; max-width: 42vw; }
+          .lbl-full { display: none; }
+          .lbl-short { display: inline; }
+          .thread-name { font-size: 15px; }
+          .thread-header-id > div:last-child { min-width: 0; overflow: hidden; }
           .compose-hint { display: none; }
           .layout.details-on .detail-pane { display: none; }
           .stat-tile { min-width: 140px; padding: 12px 14px; }
@@ -5129,6 +5162,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="setting-desc">Show the panel beside a conversation by default on wide screens.</div>
             </div>
             <button class="switch" id="detailsSwitch" role="switch" onclick="toggleDetailDefault()"><span></span></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Full screen</div>
+              <div class="setting-desc" id="fullscreenDesc">Hides the browser bars so the dashboard fills the screen.</div>
+            </div>
+            <button class="btn-quiet" id="fullscreenBtn" onclick="toggleFullscreen()">Enter full screen</button>
           </div>
         </div>
         <div class="catalog-card">
@@ -5736,7 +5776,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const statusChip = document.getElementById("threadStatusChip");
           if (statusChip) {
             statusChip.className = "thread-status-chip" + (isPaused ? " is-paused" : "");
-            statusChip.innerHTML = '<span class="chip-dot"></span>' + (isPaused ? "You&#39;re handling this" : "Amara is replying");
+            statusChip.innerHTML = '<span class="chip-dot"></span>' + (isPaused
+              ? '<span class="lbl-full">You&#39;re handling this</span><span class="lbl-short">You&#39;re on it</span>'
+              : '<span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara</span>');
           }
           // Keep the details panel current too, but never while the owner is
           // mid-sentence in the note -- re-rendering would wipe what they've
@@ -5751,6 +5793,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             starBtn.dataset.starred = starred ? "yes" : "no";
             starBtn.innerHTML = starred ? ICON_STAR_FILLED : ICON_STAR;
             starBtn.classList.toggle("starred", starred);
+            const mk = document.getElementById("threadStarMark");
+            if (mk) mk.style.display = starred ? "" : "none";
           }
         }
 
@@ -5764,9 +5808,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // The paused/active state now reads as a real status chip rather than
         // a run of grey text -- same two states, same stored field.
         function threadStatusChipHtml(isPaused) {
+          // Long form on desktop, short on a phone -- the full sentence and
+          // the starred chip together wrapped the header onto a second row.
           return isPaused
-            ? '<span class="thread-status-chip is-paused" id="threadStatusChip"><span class="chip-dot"></span>You\\'re handling this</span>'
-            : '<span class="thread-status-chip" id="threadStatusChip"><span class="chip-dot"></span>Amara is replying</span>';
+            ? '<span class="thread-status-chip is-paused" id="threadStatusChip"><span class="chip-dot"></span><span class="lbl-full">You\\'re handling this</span><span class="lbl-short">You\\'re on it</span></span>'
+            : '<span class="thread-status-chip" id="threadStatusChip"><span class="chip-dot"></span><span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara</span></span>';
         }
 
         function renderThread(phone, history, customer) {
@@ -5778,8 +5824,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
                 '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + ICON_PERSON + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
                 '<div style="min-width:0;">' +
-                  '<div class="thread-name">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' +
+                  '<div class="thread-name"><span class="thread-num">' + escapeHtml(formatPhoneDisplay(phone)) + '</span></div>' +
                   '<div class="thread-sub-row">' +
+                    // The star button folds into the ⋮ menu on a phone, so the
+                    // starred state needs its own mark. It sits on this row
+                    // rather than beside the number, which on a 390px screen
+                    // would have pushed the number into an ellipsis.
+                    '<span class="thread-star-mark" id="threadStarMark"' + ((customer && customer.starred === "yes") ? '' : ' style="display:none;"') + ' title="Starred">' + ICON_STAR_FILLED + '<span class="star-word">Starred</span></span>' +
                     threadStatusChipHtml(isPaused) +
                     '<span class="thread-sub">' + threadSubtitle(customer) + '</span>' +
                   '</div>' +
@@ -5792,7 +5843,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   ((customer && customer.starred === "yes") ? ICON_STAR_FILLED : ICON_STAR) +
                 '</button>' +
                 '<button class="takeover-btn ' + (isPaused ? "hand" : "take") + '" onclick="toggleTakeover(\\'' + phone + '\\', ' + (isPaused ? "true" : "false") + ')">' +
-                  (isPaused ? "Hand back to Amara" : "Take over") +
+                  // Two labels, one shown per breakpoint: the full sentence
+                  // doesn't fit beside a phone number on a 390px header, and
+                  // truncating a button is worse than shortening its wording.
+                  (isPaused
+                    ? '<span class="lbl-full">Hand back to Amara</span><span class="lbl-short">Hand back</span>'
+                    : '<span class="lbl-full">Take over</span><span class="lbl-short">Take over</span>') +
                 '</button>' +
                 '<div class="more-menu">' +
                   '<button class="icon-btn" id="moreMenuBtn" onclick="toggleMoreMenu()" title="More">' + ICON_MORE + '</button>' +
@@ -5800,7 +5856,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                     // Mirrors of the icon buttons that are hidden on a narrow
                     // screen, so nothing becomes unreachable on a phone.
                     '<button class="menu-sm-only" onclick="toggleMoreMenu(); toggleThreadSearch();">Search this conversation</button>' +
-                    '<button class="menu-sm-only" onclick="toggleMoreMenu(); toggleStar(\\'' + phone + '\\');">' + ((customer && customer.starred === "yes") ? "Remove star" : "Star this conversation") + '</button>' +
+                    '<button class="menu-sm-only menu-star" onclick="toggleMoreMenu(); toggleStar(\\'' + phone + '\\');">' + ((customer && customer.starred === "yes") ? "Remove star" : "Star this conversation") + '</button>' +
                     '<button onclick="toggleMoreMenu(); clearConversation(\\'' + phone + '\\');" title="Wipe this conversation and customer record so you can retest from a clean slate" class="menu-danger">Clear conversation</button>' +
                   '</div>' +
                 '</div>' +
@@ -6051,6 +6107,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           btn.dataset.starred = next ? "yes" : "no";
           btn.innerHTML = next ? ICON_STAR_FILLED : ICON_STAR;
           btn.classList.toggle("starred", next);
+          // Header indicator and the ⋮ menu wording follow the same state, so
+          // a phone (where the star button itself is hidden) still shows it.
+          const mark = document.getElementById("threadStarMark");
+          if (mark) mark.style.display = next ? "" : "none";
+          const menuStar = document.querySelector("#moreMenuDropdown .menu-star");
+          if (menuStar) menuStar.textContent = next ? "Remove star" : "Star this conversation";
           const c = customersCache.find((c) => c.phone === phone);
           if (c) c.starred = next ? "yes" : "no";
           updateListTabCounts();
@@ -6341,6 +6403,55 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           syncSettingsControls();
         }
 
+        // ---- Full screen -----------------------------------------------
+        // iPhone Safari has no Fullscreen API at all, so rather than offering
+        // a button that silently does nothing there, the control tells the
+        // truth and points at Add to Home Screen (which this app supports via
+        // its manifest, and which gives a better result anyway: no browser
+        // chrome and its own icon).
+        function fullscreenSupported() {
+          const el = document.documentElement;
+          return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+        }
+        function isStandalone() {
+          return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+                 window.navigator.standalone === true;
+        }
+        function toggleFullscreen() {
+          const el = document.documentElement;
+          const current = document.fullscreenElement || document.webkitFullscreenElement;
+          if (current) {
+            (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+          } else {
+            const req = el.requestFullscreen || el.webkitRequestFullscreen;
+            if (req) req.call(el).catch(() => {});
+          }
+          setTimeout(syncFullscreenControl, 150);
+        }
+        function syncFullscreenControl() {
+          const btn = document.getElementById("fullscreenBtn");
+          const desc = document.getElementById("fullscreenDesc");
+          if (!btn || !desc) return;
+          if (isStandalone()) {
+            btn.style.display = "none";
+            desc.textContent = "Already running as an installed app, with no browser bars.";
+            return;
+          }
+          if (!fullscreenSupported()) {
+            btn.style.display = "none";
+            desc.textContent = "This browser has no full-screen mode. On iPhone, use Share \\u2192 Add to Home Screen \\u2014 it opens with no browser bars and its own icon.";
+            return;
+          }
+          btn.style.display = "";
+          const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+          btn.textContent = on ? "Exit full screen" : "Enter full screen";
+          desc.textContent = on
+            ? "Full screen is on. On a phone you can also use Add to Home Screen for the same effect every time you open it."
+            : "Hides the browser bars so the dashboard fills the screen. On a phone, Add to Home Screen does the same thing permanently.";
+        }
+        document.addEventListener("fullscreenchange", syncFullscreenControl);
+        document.addEventListener("webkitfullscreenchange", syncFullscreenControl);
+
         // ---- Export + sign out -----------------------------------------
         function exportCustomersCsv() {
           const rows = [["phone", "status", "messages", "first_contact", "last_contact", "last_payment_at", "last_payment_amount", "escalation_reason", "note"]];
@@ -6387,6 +6498,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           document.querySelectorAll("#refreshSeg button").forEach((b) => {
             b.classList.toggle("seg-active", b.dataset.refreshChoice === rate);
           });
+          syncFullscreenControl();
           const sw2 = document.getElementById("accentSwatches");
           if (sw2) {
             const active = currentAccent();
@@ -7435,6 +7547,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
     </html>
   `;
 }
+
+// Lets a seller install the dashboard to their phone's home screen, where it
+// opens without any browser chrome -- on iOS that's the only route to a real
+// full-screen app, since Safari on iPhone has no Fullscreen API.
+app.get("/manifest.webmanifest", (req, res) => {
+  res.setHeader("Content-Type", "application/manifest+json");
+  res.json({
+    name: "Stafly.AI Dashboard",
+    short_name: "Stafly.AI",
+    description: "Watch and take over the conversations Amara is having with your customers.",
+    start_url: "/dashboard",
+    scope: "/",
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#0d1117",
+    theme_color: "#0d1117",
+    icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
+  });
+});
+
+// The brand mark as a standalone icon, drawn rather than shipped as a binary
+// so there's no build step or asset pipeline for one file.
+app.get("/icon.svg", (req, res) => {
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' +
+      '<rect width="512" height="512" rx="112" fill="#4f46e5"/>' +
+      '<text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" ' +
+      'font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="300" font-weight="700" fill="#ffffff">S</text>' +
+    '</svg>'
+  );
+});
 
 app.get("/dashboard", async (req, res) => {
   const seller = await resolveActingSeller(req);
