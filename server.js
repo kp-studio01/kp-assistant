@@ -323,6 +323,17 @@ async function getSellerContext(sellerId) {
     whatsappToken: creds.whatsappToken,
     ownerPhoneNumber: creds.ownerPhoneNumber,
     catalog: ensureCatalogEntry(sellerId),
+    // Shop identity shown on the Home tab. Optional and seller-written --
+    // absent means absent, never a generated stand-in. The *Version fields
+    // are upload timestamps, used both as "is there a picture" and as the
+    // cache-buster on its URL.
+    tagline: record?.tagline || "",
+    about: record?.about || "",
+    location: record?.location || "",
+    avatarVersion: record?.avatarVersion || "",
+    coverVersion: record?.coverVersion || "",
+    setupDismissed: record?.setupDismissed === "1",
+    createdAt: record?.createdAt || "",
   };
   sellerContextCache[sellerId] = context;
   if (context.phoneNumberId) registerSellerPhoneNumberId(sellerId, context.phoneNumberId);
@@ -483,6 +494,48 @@ app.get("/catalog-photo/:sellerId/:key", async (req, res) => {
   }
   res.set("Content-Type", entry.mime || "image/jpeg");
   res.set("Cache-Control", "public, max-age=86400");
+  res.send(entry.buffer);
+});
+
+// ---------- BRAND PHOTOS (profile picture + cover) ----------
+// Same storage shape as the catalog photos above: base64 in Redis, cached
+// in memory, served from our own URL. Kept in its own key namespace
+// (brand:photo:avatar / brand:photo:cover) rather than reusing the catalog
+// one, so a product can never collide with the shop's own picture.
+//
+// A cover is wider and gets a slightly larger ceiling than a product shot;
+// both are still small enough that Redis stays a reasonable place for them.
+const BRAND_PHOTO_LIMITS = { avatar: 1.5 * 1024 * 1024, cover: 2.5 * 1024 * 1024 };
+const uploadBrand = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: BRAND_PHOTO_LIMITS.cover },
+  fileFilter: (req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+});
+const brandPhotoCache = {};
+
+app.get("/brand-photo/:sellerId/:kind", async (req, res) => {
+  const { sellerId } = req.params;
+  const kind = req.params.kind === "cover" ? "cover" : "avatar";
+  const cacheKey = `${sellerId}:${kind}`;
+  let entry = brandPhotoCache[cacheKey];
+  if (!entry) {
+    try {
+      const raw = await redisCommand(["GET", nsKey(sellerId, `brand:photo:${kind}`)]);
+      if (!raw) return res.status(404).send("Not found");
+      const parsed = JSON.parse(raw);
+      entry = { mime: parsed.mime, buffer: Buffer.from(parsed.data, "base64") };
+      brandPhotoCache[cacheKey] = entry;
+    } catch (err) {
+      console.error("brand-photo fetch failed:", err.message);
+      return res.status(500).send("Failed to load photo");
+    }
+  }
+  res.set("Content-Type", entry.mime || "image/jpeg");
+  // Short cache: unlike a product photo (whose URL changes with its key),
+  // this URL is stable, so a long cache would show the old picture for a
+  // day after the seller changed it. The version query the dashboard adds
+  // is what actually busts it; this is just a floor.
+  res.set("Cache-Control", "public, max-age=60");
   res.send(entry.buffer);
 });
 
@@ -1511,6 +1564,16 @@ async function getSellerById(sellerId) {
     console.error(`getSellerById failed for ${sellerId}:`, err.message);
     return null;
   }
+}
+
+// Partial update of a seller's own record. Only ever writes the fields
+// handed to it, so one caller changing a tagline can't blank a password
+// hash or a connection token it never looked at.
+async function updateSellerRecord(sellerId, fields) {
+  const flat = [];
+  for (const [key, value] of Object.entries(fields)) flat.push(key, String(value));
+  if (flat.length === 0) return;
+  await redisCommand(["HSET", `seller:${sellerId}`, ...flat]);
 }
 
 async function getSellerByEmail(email) {
@@ -4380,7 +4443,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            icon-in-a-circle, echoing the "Total Project Handled"-style
            tiles from the dashboard reference Miji shared, rather than
            the old cramped, same-color pills that all read as one blur. */
-        .stats-bar { display: flex; gap: 14px; padding: 16px 24px; background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; flex-shrink: 0; }
         .stat-tile { flex: 1; min-width: 190px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .15s ease, box-shadow .15s ease; }
         /* Each tile carries its own hue through one --tile/--tile-bg pair, so
            the four read as a balanced set instead of indigo twice plus two
@@ -4883,6 +4945,99 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .layout { position: relative; }
           .layout.details-on .detail-pane { position: absolute; right: 0; top: 0; bottom: 0; z-index: 12; box-shadow: var(--shadow-lg); }
         }
+        /* ---- Home tab ---- */
+        .home-view { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg); }
+        .home-inner { max-width: 900px; margin: 0 auto; }
+        /* Brand header: cover, then an avatar overlapping its bottom edge,
+           the shape people already know from WhatsApp and every social
+           profile -- so it reads as "this is my shop" without a caption. */
+        .brand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 18px; }
+        .brand-cover { position: relative; height: 140px; background: linear-gradient(120deg, var(--accent-light), var(--surface-3)); background-size: cover; background-position: center; }
+        [data-theme="dark"] .brand-cover { background: linear-gradient(120deg, var(--accent-soft), var(--surface-3)); }
+        .brand-cover.has-photo { background-image: var(--cover-img); }
+        .brand-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,0.28)); opacity: 0; transition: opacity .2s ease; }
+        .brand-cover.has-photo::after { opacity: 1; }
+        .photo-btn { position: absolute; display: inline-flex; align-items: center; gap: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; box-shadow: var(--shadow-sm); z-index: 2; transition: background .15s, border-color .15s, transform .12s ease; }
+        .photo-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .photo-btn:active { transform: scale(0.96); }
+        .photo-btn svg { width: 14px; height: 14px; }
+        .cover-photo-btn { right: 14px; bottom: 14px; }
+        .brand-body { padding: 0 22px 20px; position: relative; }
+        .brand-avatar-wrap { position: relative; width: 88px; margin-top: -44px; margin-bottom: 12px; }
+        .brand-avatar { width: 88px; height: 88px; border-radius: 26px; border: 4px solid var(--surface); background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 32px; font-weight: 700; overflow: hidden; box-shadow: var(--shadow-md); }
+        .brand-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .avatar-photo-btn { right: -10px; bottom: -6px; padding: 6px 8px; font-size: 11px; }
+        /* Beside the text on a wide screen, under all of it on a phone. The
+           about paragraph lives inside .brand-text rather than after the row,
+           so the phone layout falls out of the same markup with no reordering
+           and the button can never collide with the cover control above it.  */
+        .brand-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+        .brand-text { min-width: 0; flex: 1; }
+        .brand-edit-btn { flex-shrink: 0; }
+        .brand-name { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--text); margin: 0; line-height: 1.2; }
+        .brand-tagline { font-size: 13.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+        .brand-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 11px; font-size: 12px; color: var(--muted-2); }
+        .brand-meta span { display: inline-flex; align-items: center; gap: 5px; }
+        .brand-meta svg { width: 13px; height: 13px; }
+        .brand-about { font-size: 13px; color: var(--text); line-height: 1.6; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-light); white-space: pre-wrap; }
+        .brand-empty-hint { font-size: 13px; color: var(--muted-2); font-style: italic; margin-top: 5px; }
+
+        /* Setup prompt -- appears until dismissed or completed. */
+        .setup-card { background: var(--surface); border: 1px solid var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+        .setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .setup-title { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text); }
+        .setup-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+        .setup-steps { display: flex; flex-direction: column; gap: 8px; margin-top: 13px; }
+        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
+        .setup-step .tick { width: 19px; height: 19px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .setup-step.done .tick { background: var(--ok-bg); border-color: var(--ok-fg); color: var(--ok-fg); }
+        .setup-step.done { color: var(--muted); }
+        .setup-step .tick svg { width: 11px; height: 11px; opacity: 0; }
+        .setup-step.done .tick svg { opacity: 1; }
+        .setup-actions { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; }
+
+        /* Connection state -- only ever rendered when there is something real
+           to say, so its presence alone means something needs attention. */
+        .home-alert { display: flex; align-items: flex-start; gap: 11px; border-radius: 13px; padding: 14px 16px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; border: 1px solid; }
+        .home-alert svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; }
+        .home-alert.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-fg); }
+        .home-alert.bad { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+        .home-alert b { font-weight: 700; }
+
+        .home-section-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--muted-2); margin: 0 0 10px 2px; }
+        .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+        .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+
+        /* Waiting-on-you rows reuse the conversation row's visual language so
+           tapping one feels like the same object in a different place. */
+        .waiting-row { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background .15s ease, padding-left .15s ease; }
+        .waiting-row:last-child { border-bottom: none; }
+        .waiting-row:hover { background: var(--surface-2); padding-left: 6px; }
+        .waiting-row:active { background: var(--surface-3); }
+        .waiting-avatar { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .waiting-main { min-width: 0; flex: 1; }
+        .waiting-top { display: flex; align-items: baseline; justify-content: space-between; gap: 9px; }
+        .waiting-name { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .waiting-when { font-size: 11px; color: var(--muted-2); flex-shrink: 0; }
+        .waiting-preview { font-size: 12.5px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .waiting-flag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; }
+
+        .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
+        .gap-row:last-child { border-bottom: none; }
+        .gap-label { color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .gap-count { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+        .gap-count.zero { color: var(--ok-fg); }
+        .gap-count.some { color: var(--warn-fg); }
+        .home-empty { font-size: 13px; color: var(--muted); padding: 16px 0; text-align: center; line-height: 1.55; }
+
+        /* Edit-profile form */
+        .profile-form { display: grid; gap: 13px; margin-top: 4px; }
+        .profile-field label { font-size: 12.5px; font-weight: 600; color: var(--text); display: block; margin-bottom: 5px; }
+        .profile-field input, .profile-field textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 9px; font-size: 13.5px; font-family: inherit; background: var(--surface); color: var(--text); }
+        .profile-field textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+        .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .profile-count { font-size: 11px; color: var(--muted-2); margin-top: 4px; text-align: right; }
+
         @media (max-width: 700px) {
           .list-pane { width: 100%; }
           .layout { position: relative; overflow: hidden; }
@@ -4902,25 +5057,31 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .catalog-form { grid-template-columns: 1fr !important; }
           .fees-row { flex-direction: column; }
           .fees-row div { width: 100%; }
-          /* Four stacked tiles ate roughly a third of a phone screen before
-             the conversation list even started. On mobile they collapse to
-             one horizontally scrollable strip of compact chips -- same four
-             real numbers, about a quarter of the height. */
-          .stats-bar { padding: 10px 12px; gap: 8px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-          .stats-bar::-webkit-scrollbar { display: none; }
-          .stat-tile { min-width: 0; flex: 0 0 auto; padding: 8px 12px; border-radius: 11px; flex-direction: row-reverse; align-items: center; gap: 9px; }
+          /* The live numbers are Home's content now, not a band under the
+             topbar on every tab. Two per row, compact. */
+          .home-stats { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 18px; }
+          .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; flex-direction: row-reverse; align-items: center; gap: 9px; }
           .stat-tile::before { height: 0; }
           .stat-tile::after { display: none; }
-          .stat-tile .stat-icon { width: 30px; height: 30px; border-radius: 9px; }
-          .stat-tile .stat-icon svg { width: 15px; height: 15px; }
-          .stat-tile .stat-value { font-size: 17px; }
+          .stat-tile .stat-icon { width: 29px; height: 29px; border-radius: 9px; flex-shrink: 0; }
+          .stat-tile .stat-icon svg { width: 14px; height: 14px; }
+          .stat-tile .stat-value { font-size: 15.5px; letter-spacing: -0.2px; }
           .stat-tile .stat-label { font-size: 10.5px; margin-top: 1px; }
           .stat-tile:hover { transform: none; box-shadow: var(--shadow-sm); }
-          /* On a phone the conversations tab gets its full height: the stat
-             strip belongs to the dashboard-at-a-glance tabs, not to reading
-             and replying to messages. It still shows on every other tab. */
-          body[data-tab="conversations"] .stats-bar { display: none; }
-          body.mobile-thread-open .stats-bar { display: none; }
+          /* Home on a phone: full-bleed cards, a shorter cover, and the two
+             lower cards stacked rather than side by side. */
+          .home-view { padding: 14px 13px 20px; }
+          .home-grid { grid-template-columns: 1fr; gap: 14px; }
+          .brand-cover { height: 104px; }
+          .brand-body { padding: 0 16px 16px; }
+          .brand-avatar-wrap { width: 72px; margin-top: -36px; }
+          .brand-avatar { width: 72px; height: 72px; border-radius: 22px; font-size: 26px; }
+          .brand-name { font-size: 19px; }
+          .brand-head-row { flex-direction: column; gap: 0; }
+          .brand-edit-btn { width: 100%; text-align: center; margin-top: 15px; padding: 9px 14px; }
+          .cover-photo-btn { right: 10px; bottom: 10px; padding: 5px 10px; font-size: 11.5px; }
+          .setup-card { padding: 14px 15px; }
+          .setup-actions .catalog-btn, .setup-actions .btn-quiet { width: 100%; justify-content: center; text-align: center; }
           /* Topbar on one row, with room to breathe. */
           /* Respects the notch / home indicator when installed to the home
              screen (viewport-fit=cover is set in the meta tag). */
@@ -5058,7 +5219,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         </div>
         <div class="sidebar-section-label">Menu</div>
         <nav class="tabs">
-          <button id="tabConversations" class="active-tab" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
+          <button id="tabHome" class="active-tab" onclick="switchTab('home')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>Home</button>
+          <button id="tabConversations" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
           ${
             isBookable
               ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>Services</button>
@@ -5090,8 +5252,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <span class="topbar-avatar" title="${escapeHtmlServer(businessName || "Your business")}">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span>
         </div>
       </header>
-      <div class="stats-bar" id="stats"></div>
-      <div class="layout" id="conversationsView">
+      <div class="home-view" id="homeView"></div>
+      <div class="layout" id="conversationsView" style="display:none;">
         <div class="list-pane">
           <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by name, phone or reason..." oninput="applyFilter()"></div></div>
           <div class="list-tabs">
@@ -5655,6 +5817,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             customersCache = data.customers;
             renderStats(data.stats);
             updateListTabCounts();
+            // Home shows live state too, so it follows the same poll -- but
+            // only while it is the tab on screen, so an open Conversations
+            // view isn't paying for a request it can't show.
+            if (document.body.getAttribute("data-tab") === "home") loadHome();
             // The poll runs every 5s whether or not anything changed. Diffing
             // the rendered rows against a cheap signature means an idle
             // dashboard does no DOM work at all, instead of rebuilding the
@@ -5728,11 +5894,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         let statsAnimated = false;
         let trendChartInstance = null;
         let lastRenderedCount = 0; // messages already on screen, for the new-bubble animation
+        // These four numbers used to sit in a strip under the topbar on every
+        // tab, which put dashboard context above the catalogue and the
+        // settings form where it had nothing to do with the task at hand.
+        // They live on Home now, as content rather than as a header band.
+        // The 5s poll still drives them, so they stay live.
+        let lastStats = null;
         function renderStats(stats) {
+          lastStats = stats;
+          const host = document.getElementById("homeStats");
+          if (!host) return; // Home isn't rendered yet; it reads lastStats when it is
           const firstPaint = !statsAnimated;
           const inCls = statsAnimated ? "" : " tile-in";
           statsAnimated = true;
-          document.getElementById("stats").innerHTML =
+          host.innerHTML =
             statTile("tile-total" + inCls, ICON_USERS, stats.totalCustomers, "Total customers") +
             statTile("tile-active" + inCls, ICON_CHAT, stats.activeToday, "Active today") +
             statTile("tile-paused" + inCls, ICON_PAUSE, stats.pausedNow, "Paused") +
@@ -5740,7 +5915,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // Only on the very first paint -- the 5s poll must not re-run the
           // count-up, or the numbers would visibly churn every few seconds.
           if (firstPaint) {
-            const vals = document.querySelectorAll("#stats .stat-value");
+            const vals = host.querySelectorAll(".stat-value");
             const targets = [stats.totalCustomers, stats.activeToday, stats.pausedNow, stats.revenueTodayNaira];
             vals.forEach((el, i) => countUp(el, targets[i] || 0, i === 3 ? "N" : ""));
           }
@@ -5754,7 +5929,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function setTab(tab) {
           currentTab = tab;
           animateNextList = true;
-          tapFeedback();
           document.querySelectorAll(".list-tab").forEach((b) => b.classList.remove("active-list-tab"));
           const btn = document.getElementById("tab-" + tab);
           if (btn) btn.classList.add("active-list-tab");
@@ -6451,7 +6625,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // seller never gets tabCatalog. Guarded with optional chaining
           // so this one function works for either businessType without
           // needing its own fork.
-          const views = { conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView" };
+          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView" };
           for (const t in views) {
             const el = document.getElementById(views[t]);
             if (!el) continue;
@@ -6472,7 +6646,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               el.classList.remove("view-enter");
             }
           }
-          const tabs = { conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings" };
+          const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings" };
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
@@ -6481,7 +6655,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // LIST, not silently reopen whichever thread was last read -- on a
           // phone that made it look like the menu item did nothing.
           if (tab === "conversations" && window.innerWidth <= 700) closeThreadMobile();
-          tapFeedback();
+          if (tab === "home") loadHome();
           if (tab === "catalog") loadCatalog();
           if (tab === "services" || tab === "bookings") loadBookable();
           if (tab === "analytics") loadAnalytics();
@@ -6713,12 +6887,40 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (on) tapFeedback();
           syncSettingsControls();
         }
+        // navigator.vibrate is a synchronous hop into the platform's vibrator
+        // service, and on Android it can hold the main thread for a few
+        // milliseconds. Firing it from switchTab put that cost inside the very
+        // animation it was meant to accompany, so the motion started late --
+        // measurably: the buzz landed ~24ms in, well before the view had begun
+        // moving at ~51ms, and a dropped frame there is exactly the stutter
+        // that made tab switching feel worse with haptics than without.
+        //
+        // So it moved off the transition entirely and onto the press. A tap
+        // buzzes on pointerdown, before any animation exists to interfere
+        // with, which is both cheaper and closer to how native apps do it:
+        // the tick belongs to the finger, not to the view change.
+        //
+        // The cooldown stops a press that matches several selectors, or a
+        // fast double-tap, from restarting the motor mid-buzz -- which reads
+        // as a rattle rather than a click.
+        let lastTapFeedback = 0;
         function tapFeedback(ms) {
           if (!hapticsSupported() || !hapticsEnabled()) return;
+          const now = Date.now();
+          if (now - lastTapFeedback < 120) return;
+          lastTapFeedback = now;
           // A page that has never been interacted with can't vibrate, and
           // some browsers throw rather than returning false.
-          try { navigator.vibrate(ms || 8); } catch (e) {}
+          try { navigator.vibrate(ms || 6); } catch (e) {}
         }
+
+        // The things worth a tick: navigating, and the controls that change
+        // what is on screen. Not every button on the page -- a buzz on
+        // everything stops meaning anything.
+        const HAPTIC_SELECTOR = "nav.tabs button, .list-tab, .cat-chip, .seg-control button, .mobile-back-btn, .catalog-btn, .swatch, .switch, .photo-btn, .waiting-row, .list-item";
+        document.addEventListener("pointerdown", (e) => {
+          if (e.target.closest && e.target.closest(HAPTIC_SELECTOR)) tapFeedback();
+        }, { passive: true });
 
         // ---- Refresh rate ----------------------------------------------
         // Genuinely rewires the poll -- 0 clears the interval entirely.
@@ -6878,7 +7080,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
 
         function closeThreadMobile() {
-          tapFeedback();
           document.getElementById("conversationsView")?.classList.remove("thread-open");
           document.body.classList.remove("mobile-thread-open");
         }
@@ -7039,6 +7240,350 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           document.getElementById("conversionSub").textContent =
             data.conversion.paidCustomers + " of " + data.conversion.totalCustomers + " conversation" +
             (data.conversion.totalCustomers === 1 ? "" : "s") + " turned into a paid order";
+        }
+
+        // ---- Home tab ----------------------------------------------------
+        // The landing view: who the shop is, what needs the seller now, and
+        // what state the account is actually in. Every number and row here is
+        // read from stored data -- nothing on this page is estimated.
+        let homeData = null;
+        let editingProfile = false;
+
+        const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        const ICON_CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+        const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+        const ICON_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg>';
+
+        async function loadHome() {
+          try {
+            const res = await fetch("/api/home?" + ADMIN_QS);
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            homeData = await res.json();
+            renderHome();
+          } catch (err) {
+            console.error("loadHome failed:", err);
+            const host = document.getElementById("homeView");
+            if (host && !homeData) {
+              host.innerHTML = '<div class="home-inner"><div class="catalog-card"><div class="home-empty">Could not load your dashboard just now. It will retry on the next refresh.</div></div></div>';
+            }
+          }
+        }
+
+        function homeBrandCard(p) {
+          const initial = escapeHtml((p.businessName || "S").trim().charAt(0).toUpperCase());
+          const avatar = p.avatarUrl
+            ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">'
+            : initial;
+          const coverStyle = p.coverUrl
+            ? ' class="brand-cover has-photo" style="--cover-img:url(' + encodeURI(p.coverUrl) + ')"'
+            : ' class="brand-cover"';
+          const meta = [];
+          if (p.location) {
+            meta.push('<span>' + ICON_PIN + escapeHtml(p.location) + '</span>');
+          }
+          if (p.createdAt) {
+            const d = new Date(p.createdAt);
+            if (!isNaN(d)) {
+              meta.push('<span>' + ICON_CAL + 'On Stafly since ' + d.toLocaleDateString(undefined, { month: "long", year: "numeric" }) + '</span>');
+            }
+          }
+          return '' +
+            '<div class="brand-card">' +
+              '<div' + coverStyle + '>' +
+                '<button class="photo-btn cover-photo-btn" data-home-action="pick-cover">' + ICON_CAMERA + (p.coverUrl ? "Change cover" : "Add cover") + '</button>' +
+              '</div>' +
+              '<div class="brand-body">' +
+                '<div class="brand-avatar-wrap">' +
+                  '<div class="brand-avatar" style="background:' + (p.avatarUrl ? "transparent" : "var(--accent)") + '">' + avatar + '</div>' +
+                  '<button class="photo-btn avatar-photo-btn" data-home-action="pick-avatar" title="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
+                '</div>' +
+                '<div class="brand-head-row">' +
+                  '<div class="brand-text">' +
+                    '<h2 class="brand-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' +
+                    (p.tagline
+                      ? '<div class="brand-tagline">' + escapeHtml(p.tagline) + '</div>'
+                      : '<div class="brand-empty-hint">No tagline yet</div>') +
+                    (meta.length ? '<div class="brand-meta">' + meta.join("") + '</div>' : '') +
+                    (p.about ? '<div class="brand-about">' + escapeHtml(p.about) + '</div>' : '') +
+                  '</div>' +
+                  '<button class="btn-quiet brand-edit-btn" data-home-action="edit-profile">Edit profile</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+        }
+
+        function homeProfileForm(p) {
+          return '' +
+            '<div class="brand-card"><div style="padding:20px 22px;">' +
+              '<div class="card-head"><div><h2>Edit profile</h2><div class="card-sub">This is your shop’s own description. Amara never invents any of it.</div></div></div>' +
+              '<div class="profile-form">' +
+                '<div class="profile-field"><label for="pfName">Business name</label>' +
+                  '<input id="pfName" maxlength="60" value="' + escapeHtml(p.businessName || "") + '"></div>' +
+                '<div class="profile-field"><label for="pfTagline">Tagline</label>' +
+                  '<input id="pfTagline" maxlength="90" placeholder="e.g. Ready-to-wear Ankara, made in Lagos" value="' + escapeHtml(p.tagline || "") + '"></div>' +
+                '<div class="profile-field"><label for="pfLocation">Location</label>' +
+                  '<input id="pfLocation" maxlength="60" placeholder="e.g. Lekki, Lagos" value="' + escapeHtml(p.location || "") + '"></div>' +
+                '<div class="profile-field"><label for="pfAbout">About</label>' +
+                  '<textarea id="pfAbout" maxlength="400" placeholder="What you sell, who you sell to, anything a customer should know.">' + escapeHtml(p.about || "") + '</textarea></div>' +
+              '</div>' +
+              '<span class="catalog-msg" id="profileStatus"></span>' +
+              '<div class="setup-actions">' +
+                '<button class="catalog-btn" data-home-action="save-profile">Save changes</button>' +
+                '<button class="btn-quiet" data-home-action="cancel-profile">Cancel</button>' +
+              '</div>' +
+            '</div></div>';
+        }
+
+        function homeSetupCard(d) {
+          const p = d.profile;
+          const steps = [
+            { done: !!p.avatarUrl, label: "Add a profile picture", action: "pick-avatar" },
+            { done: !!p.coverUrl, label: "Add a cover photo", action: "pick-cover" },
+            { done: !!p.tagline, label: "Write a short tagline", action: "edit-profile" },
+            { done: d.catalogue.total > 0, label: "Add your first product", action: "go-catalog" },
+          ];
+          const remaining = steps.filter((s) => !s.done);
+          // Nothing left to prompt about, or the seller already said no.
+          if (remaining.length === 0 || p.setupDismissed) return "";
+          return '' +
+            '<div class="setup-card">' +
+              '<div class="setup-head">' +
+                '<div>' +
+                  '<div class="setup-title">Finish setting up your shop</div>' +
+                  '<div class="setup-sub">Your customers only ever see Amara on WhatsApp, so this is for your own dashboard. You can skip it and add these any time.</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="setup-steps">' +
+                steps.map((s) =>
+                  '<div class="setup-step' + (s.done ? " done" : "") + '"' + (s.done ? "" : ' data-home-action="' + s.action + '" style="cursor:pointer;"') + '>' +
+                    '<span class="tick">' + ICON_TICK + '</span>' + escapeHtml(s.label) +
+                  '</div>'
+                ).join("") +
+              '</div>' +
+              '<div class="setup-actions">' +
+                '<button class="btn-quiet" data-home-action="dismiss-setup">Don’t show this again</button>' +
+              '</div>' +
+            '</div>';
+        }
+
+        function homeAlerts(d) {
+          let out = "";
+          if (d.connection.suspended) {
+            out += '<div class="home-alert bad">' + ICON_ALERT +
+              '<div><b>This account is suspended.</b> Amara is not replying to any customer messages. Contact support to have it reviewed.</div></div>';
+          } else if (!d.connection.connected) {
+            out += '<div class="home-alert warn">' + ICON_ALERT +
+              '<div><b>WhatsApp isn’t connected yet.</b> Amara can’t send or receive messages until your number is linked, so nothing on this dashboard will move until then.</div></div>';
+          }
+          return out;
+        }
+
+        function homeWaitingCard(d) {
+          const rows = d.waiting.map((w) => {
+            const c = { phone: w.phone, wa_name: w.wa_name };
+            const name = escapeHtml(displayNameFor(c));
+            return '' +
+              '<div class="waiting-row" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">' +
+                '<div class="waiting-avatar" style="background:' + avatarColorFor(w.phone) + '">' + escapeHtml(avatarTextFor(c)) + '</div>' +
+                '<div class="waiting-main">' +
+                  '<div class="waiting-top"><span class="waiting-name">' + name + '</span>' +
+                    (w.paused ? '<span class="waiting-flag">You</span>' : '<span class="waiting-when">' + escapeHtml(timeAgo(w.last_contact)) + '</span>') +
+                  '</div>' +
+                  '<div class="waiting-preview">' + escapeHtml(w.preview || "No message text") + '</div>' +
+                '</div>' +
+              '</div>';
+          }).join("");
+          const more = d.waitingTotal > d.waiting.length
+            ? '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-conversations">See all ' + d.waitingTotal + ' in Conversations</button></div>'
+            : "";
+          return '' +
+            '<div class="catalog-card">' +
+              '<div class="card-head"><div><h2>Waiting on a reply</h2>' +
+                '<div class="card-sub">Threads where the customer spoke last. A "You" tag means you took that one over.</div></div></div>' +
+              (d.waiting.length
+                ? rows + more
+                : '<div class="home-empty">Nobody is waiting. Every conversation has had the last word from your side or from Amara.</div>') +
+            '</div>';
+        }
+
+        function homeCatalogueCard(d) {
+          const c = d.catalogue;
+          if (c.total === 0) {
+            return '' +
+              '<div class="catalog-card">' +
+                '<div class="card-head"><div><h2>Your catalogue</h2>' +
+                  '<div class="card-sub">What Amara can quote and sell on your behalf.</div></div></div>' +
+                '<div class="home-empty">No products yet. Until you add one, Amara can answer questions but can’t quote a price.</div>' +
+                '<div class="setup-actions"><button class="catalog-btn" data-home-action="go-catalog">Add your first product</button></div>' +
+              '</div>';
+          }
+          const gap = (label, n) =>
+            '<div class="gap-row"><span class="gap-label">' + label + '</span>' +
+              '<span class="gap-count ' + (n === 0 ? "zero" : "some") + '">' + (n === 0 ? "All set" : n) + '</span></div>';
+          return '' +
+            '<div class="catalog-card">' +
+              '<div class="card-head"><div><h2>Your catalogue</h2>' +
+                '<div class="card-sub">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell.</div></div></div>' +
+              gap("Missing a photo", c.missingPhoto) +
+              gap("Missing a price", c.missingPrice) +
+              gap("Missing a category", c.missingCategory) +
+              '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-catalog">Open catalogue</button></div>' +
+            '</div>';
+        }
+
+        // The 5s poll refreshes Home while it is open. Rebuilding the whole
+        // view on every tick would flicker, restart the count-up, and -- much
+        // worse -- destroy whatever the seller was halfway through typing in
+        // the edit form. So: never re-render underneath an open form, and
+        // otherwise only when something actually changed.
+        let lastHomeSignature = null;
+        function homeSignature(d) {
+          return JSON.stringify([
+            d.profile, d.waitingTotal, d.catalogue, d.connection,
+            d.waiting.map((w) => [w.phone, w.last_contact, w.paused, w.preview]),
+          ]);
+        }
+        function renderHome(force) {
+          const host = document.getElementById("homeView");
+          if (!host || !homeData) return;
+          const d = homeData;
+          if (!force) {
+            if (editingProfile && host.querySelector("#pfName")) return;
+            const sig = homeSignature(d);
+            if (sig === lastHomeSignature && host.querySelector(".home-inner")) return;
+            lastHomeSignature = sig;
+          } else {
+            lastHomeSignature = homeSignature(d);
+          }
+          host.innerHTML = '' +
+            '<div class="home-inner">' +
+              homeAlerts(d) +
+              (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile)) +
+              homeSetupCard(d) +
+              '<div class="home-section-label">Right now</div>' +
+              '<div class="home-stats" id="homeStats"></div>' +
+              '<div class="home-grid">' +
+                homeWaitingCard(d) +
+                homeCatalogueCard(d) +
+              '</div>' +
+              '<div class="catalog-msg" id="homeMsg" style="margin-top:14px;"></div>' +
+            '</div>' +
+            '<input type="file" id="brandPhotoInput" accept="image/*" hidden>';
+          // The live numbers come from the same poll that drives everything
+          // else, so if it has already run we paint them immediately rather
+          // than leaving a gap until the next tick.
+          if (lastStats) renderStats(lastStats);
+          const input = document.getElementById("brandPhotoInput");
+          if (input) input.addEventListener("change", onBrandPhotoPicked);
+        }
+
+        // One delegated listener rather than inline onclick handlers: the
+        // markup above is built by string concatenation, and quoting a phone
+        // number into an inline handler is exactly how this file's page
+        // script has been broken before.
+        let pendingPhotoKind = "avatar";
+        document.addEventListener("click", (e) => {
+          const el = e.target.closest("[data-home-action]");
+          if (!el) return;
+          const action = el.getAttribute("data-home-action");
+          if (action === "pick-avatar" || action === "pick-cover") {
+            pendingPhotoKind = action === "pick-cover" ? "cover" : "avatar";
+            document.getElementById("brandPhotoInput")?.click();
+          } else if (action === "edit-profile") {
+            editingProfile = true;
+            renderHome(true);
+          } else if (action === "cancel-profile") {
+            editingProfile = false;
+            renderHome(true);
+          } else if (action === "save-profile") {
+            saveProfile();
+          } else if (action === "dismiss-setup") {
+            dismissSetup();
+          } else if (action === "go-catalog") {
+            switchTab("catalog");
+          } else if (action === "go-conversations") {
+            switchTab("conversations");
+          } else if (action === "open-thread") {
+            const phone = el.getAttribute("data-phone");
+            if (phone) {
+              switchTab("conversations");
+              loadConversation(phone, true);
+            }
+          }
+        });
+
+        async function saveProfile() {
+          const status = document.getElementById("profileStatus");
+          const body = {
+            businessName: document.getElementById("pfName").value,
+            tagline: document.getElementById("pfTagline").value,
+            location: document.getElementById("pfLocation").value,
+            about: document.getElementById("pfAbout").value,
+          };
+          if (status) { status.className = "catalog-msg"; status.textContent = "Saving..."; }
+          try {
+            const res = await fetch("/api/profile?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Could not save.");
+            homeData.profile = data.profile;
+            editingProfile = false;
+            renderHome(true);
+            // The business name appears in three places outside this card.
+            syncBusinessName(data.profile.businessName);
+          } catch (err) {
+            if (status) { status.className = "catalog-msg error"; status.textContent = err.message; }
+          }
+        }
+
+        function syncBusinessName(name) {
+          if (!name) return;
+          const el = document.querySelector(".sidebar-profile-name");
+          if (el) el.textContent = name;
+          const chip = document.querySelector(".topbar-biz span");
+          if (chip) chip.textContent = name;
+          const av = document.querySelector(".topbar-avatar");
+          if (av) av.textContent = name.trim().charAt(0).toUpperCase();
+        }
+
+        async function dismissSetup() {
+          try {
+            await fetch("/api/profile/setup-dismissed?" + ADMIN_QS, { method: "POST" });
+            if (homeData) homeData.profile.setupDismissed = true;
+            renderHome(true);
+          } catch (err) {
+            console.error("dismissSetup failed:", err);
+          }
+        }
+
+        async function onBrandPhotoPicked(e) {
+          const file = e.target.files && e.target.files[0];
+          e.target.value = ""; // so picking the same file twice still fires
+          if (!file) return;
+          const kind = pendingPhotoKind;
+          const form = new FormData();
+          form.append("photo", file);
+          form.append("kind", kind);
+          try {
+            const res = await fetch("/api/profile/photo?" + ADMIN_QS, { method: "POST", body: form });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Upload failed.");
+            if (homeData) {
+              if (kind === "cover") homeData.profile.coverUrl = data.url;
+              else homeData.profile.avatarUrl = data.url;
+              renderHome(true);
+              const msg = document.getElementById("homeMsg");
+              if (msg) { msg.className = "catalog-msg ok"; msg.textContent = kind === "cover" ? "Cover updated." : "Profile picture updated."; }
+            }
+          } catch (err) {
+            // A modal alert would block the whole page; this says the same
+            // thing in the card the seller is already looking at.
+            const msg = document.getElementById("homeMsg");
+            if (msg) { msg.className = "catalog-msg error"; msg.textContent = err.message; }
+          }
         }
 
         async function loadCatalog() {
@@ -7943,12 +8488,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const topbarDateEl = document.getElementById("topbarDate");
         if (topbarDateEl) topbarDateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
-        document.body.setAttribute("data-tab", "conversations"); // the tab the page opens on
+        document.body.setAttribute("data-tab", "home"); // the tab the page opens on
         initDetailPane();
         applyAccent(currentAccent());
         applyDensity(currentDensity());
         syncSettingsControls();
         loadDashboard();
+        loadHome();
         applyRefreshRate(currentRefreshRate()); // owner-controlled poll, default 5s
       </script>
     </body>
@@ -8313,6 +8859,212 @@ app.delete("/api/catalog/bank-details-2", async (req, res) => {
     console.error("api/catalog/bank-details-2 delete: cleanup failed (non-fatal):", err.message);
   }
   res.json({ ok: true });
+});
+
+// ---------- SELLER PROFILE (Home tab) ----------
+// The shop's own identity: what it's called, how it describes itself, and
+// its two pictures. Everything here is the seller's own text -- nothing is
+// generated, guessed or filled in on their behalf.
+
+const PROFILE_LIMITS = { businessName: 60, tagline: 90, about: 400, location: 60 };
+
+function publicProfile(seller) {
+  return {
+    businessName: seller.businessName || "",
+    tagline: seller.tagline || "",
+    about: seller.about || "",
+    location: seller.location || "",
+    avatarUrl: seller.avatarVersion ? `/brand-photo/${seller.sellerId}/avatar?v=${seller.avatarVersion}` : "",
+    coverUrl: seller.coverVersion ? `/brand-photo/${seller.sellerId}/cover?v=${seller.coverVersion}` : "",
+    businessType: seller.businessType || "goods",
+    createdAt: seller.createdAt || "",
+    setupDismissed: seller.setupDismissed === true || seller.setupDismissed === "1",
+  };
+}
+
+app.get("/api/profile", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  res.json(publicProfile(seller));
+});
+
+app.post("/api/profile", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const body = req.body || {};
+  const fields = {};
+
+  // Business name is the one field that can't be emptied -- it's what the
+  // customer sees Amara speaking for, and it's already on every page.
+  if (body.businessName !== undefined) {
+    const name = String(body.businessName).trim().slice(0, PROFILE_LIMITS.businessName);
+    if (!name) return res.status(400).json({ error: "Business name can't be empty." });
+    fields.businessName = name;
+  }
+  for (const key of ["tagline", "about", "location"]) {
+    if (body[key] !== undefined) fields[key] = String(body[key]).trim().slice(0, PROFILE_LIMITS[key]);
+  }
+  if (Object.keys(fields).length === 0) return res.status(400).json({ error: "Nothing to update." });
+
+  try {
+    await updateSellerRecord(seller.sellerId, fields);
+  } catch (err) {
+    console.error("profile save failed:", err.message);
+    return res.status(500).json({ error: "Could not save. Please try again." });
+  }
+  // The seller context is cached, and it carries businessName -- without
+  // this the sidebar and topbar would keep showing the old name until the
+  // process restarted.
+  invalidateSellerContextCache(seller.sellerId);
+  const fresh = await getSellerContext(seller.sellerId);
+  res.json({ ok: true, profile: publicProfile(fresh || { ...seller, ...fields }) });
+});
+
+// Dismissing the setup card is a real preference, stored on the seller
+// rather than in one browser's localStorage -- otherwise it would come
+// back every time they signed in on a different phone.
+app.post("/api/profile/setup-dismissed", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  try {
+    await updateSellerRecord(seller.sellerId, { setupDismissed: "1" });
+    invalidateSellerContextCache(seller.sellerId);
+  } catch (err) {
+    console.error("setup dismiss failed:", err.message);
+    return res.status(500).json({ error: "Could not save that." });
+  }
+  res.json({ ok: true });
+});
+
+app.post("/api/profile/photo", (req, res, next) => {
+  uploadBrand.single("photo")(req, res, (err) => {
+    if (err) {
+      const message = err.code === "LIMIT_FILE_SIZE"
+        ? "That image is too large. Profile pictures can be up to 1.5MB and covers up to 2.5MB."
+        : "Could not process that image.";
+      return res.status(400).json({ error: message });
+    }
+    next();
+  });
+}, async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const kind = req.body?.kind === "cover" ? "cover" : "avatar";
+  if (!req.file) return res.status(400).json({ error: "No image was uploaded." });
+  // multer's limit is the larger of the two, so the avatar ceiling is
+  // enforced here rather than silently accepting a 2.5MB profile picture.
+  if (req.file.size > BRAND_PHOTO_LIMITS[kind]) {
+    return res.status(400).json({
+      error: kind === "avatar"
+        ? "Profile pictures can be up to 1.5MB. Please use a smaller image."
+        : "Covers can be up to 2.5MB. Please use a smaller image.",
+    });
+  }
+
+  const mime = req.file.mimetype;
+  const version = Date.now();
+  brandPhotoCache[`${seller.sellerId}:${kind}`] = { mime, buffer: req.file.buffer };
+  try {
+    await redisCommand([
+      "SET", nsKey(seller.sellerId, `brand:photo:${kind}`),
+      JSON.stringify({ mime, data: req.file.buffer.toString("base64") }),
+    ]);
+    await updateSellerRecord(seller.sellerId, { [kind + "Version"]: String(version) });
+    invalidateSellerContextCache(seller.sellerId);
+  } catch (err) {
+    console.error("brand photo save failed:", err.message);
+    // It is being served from the in-memory cache already, but saying it
+    // saved when it didn't would mean losing it silently on the next deploy.
+    return res.status(500).json({ error: "The image uploaded but could not be saved. Please try again." });
+  }
+  res.json({ ok: true, kind, url: `/brand-photo/${seller.sellerId}/${kind}?v=${version}` });
+});
+
+app.delete("/api/profile/photo", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  const kind = req.query.kind === "cover" ? "cover" : "avatar";
+  try {
+    await redisCommand(["DEL", nsKey(seller.sellerId, `brand:photo:${kind}`)]);
+    await redisCommand(["HDEL", `seller:${seller.sellerId}`, kind + "Version"]);
+    invalidateSellerContextCache(seller.sellerId);
+  } catch (err) {
+    console.error("brand photo delete failed:", err.message);
+    return res.status(500).json({ error: "Could not remove that image." });
+  }
+  delete brandPhotoCache[`${seller.sellerId}:${kind}`];
+  res.json({ ok: true, kind });
+});
+
+// Everything the Home tab shows, in one request. Every number below is
+// counted from stored records -- there is nothing projected, estimated or
+// benchmarked here, and a section with nothing to report says so rather
+// than inventing filler.
+app.get("/api/home", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  try {
+    const customers = await listAllCustomers(seller.sellerId);
+    const stats = await getDashboardStats(customers);
+
+    // "Waiting on you" is a real, checkable condition: the last message in
+    // the thread came from the customer, so nobody has answered it yet.
+    // Paused threads come first -- those are ones the seller explicitly
+    // took over, so the customer is waiting on a person, not on Amara.
+    const waiting = customers
+      .filter((c) => c.last_message_role === "user")
+      .sort((a, b) => {
+        const ap = a.paused === "yes" ? 0 : 1;
+        const bp = b.paused === "yes" ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return new Date(b.last_contact || 0) - new Date(a.last_contact || 0);
+      })
+      .slice(0, 5)
+      .map((c) => ({
+        phone: c.phone,
+        wa_name: c.wa_name || "",
+        preview: c.last_message_preview || "",
+        last_contact: c.last_contact || "",
+        paused: c.paused === "yes",
+      }));
+
+    // Catalogue gaps, so a seller can see what would make Amara answer
+    // badly before a customer runs into it.
+    const catalog = seller.catalog || {};
+    const keys = Object.keys(catalog.PRODUCT_NAMES || {});
+    const selfHosted = `${BASE_URL}/catalog-photo/${seller.sellerId}/`;
+    const missingPhoto = keys.filter((k) => {
+      const url = (catalog.PRODUCT_IMAGES || {})[k];
+      // The default placeholder path is what a product gets when nobody has
+      // uploaded anything, so it counts as missing rather than as a photo.
+      return !url || (!url.startsWith(selfHosted) && url.startsWith(`${BASE_URL}/images/`));
+    });
+    const missingPrice = keys.filter((k) => !Number((catalog.PRODUCT_PRICES || {})[k]));
+    const missingCategory = keys.filter((k) => !((catalog.PRODUCT_CATEGORIES || {})[k] || "").trim());
+
+    res.json({
+      profile: publicProfile(seller),
+      stats,
+      waiting,
+      waitingTotal: customers.filter((c) => c.last_message_role === "user").length,
+      catalogue: {
+        total: keys.length,
+        missingPhoto: missingPhoto.length,
+        missingPrice: missingPrice.length,
+        missingCategory: missingCategory.length,
+      },
+      connection: {
+        // Amara genuinely cannot send or receive without both of these, so
+        // this is a fact about the account, not a reassuring badge.
+        connected: !!(seller.phoneNumberId && seller.whatsappToken),
+        alertsTo: seller.ownerPhoneNumber || "",
+        suspended: !!seller.suspended,
+      },
+    });
+  } catch (err) {
+    console.error("api/home failed:", err.message);
+    res.status(500).json({ error: "Could not load your dashboard." });
+  }
 });
 
 app.post("/api/catalog/product", (req, res, next) => {
@@ -9064,7 +9816,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 21";
+const BUILD_ROUND = "Round 22";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
