@@ -4455,7 +4455,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .stat-tile::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tile); opacity: 0.85; }
         /* A soft wash of the tile's own hue behind the icon -- depth without
            another border or shadow. */
-        .stat-tile::after { content: ""; position: absolute; right: -26px; top: -34px; width: 120px; height: 120px; border-radius: 50%; background: var(--tile-bg); opacity: 0.75; pointer-events: none; }
+        .stat-tile::after { content: ""; position: absolute; right: -34px; top: -44px; width: 108px; height: 108px; border-radius: 50%; background: var(--tile-bg); opacity: 0.45; pointer-events: none; }
         .stat-tile > * { position: relative; z-index: 1; }
         .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tile); }
         .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
@@ -4687,18 +4687,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            since the whole bar re-renders every 5s poll, this would replay
            forever and read as a flicker instead of a one-time flourish. */
         /* One visible focus ring for keyboard users, everywhere. */
-        /* Views ease in rather than snapping. Short and slight on purpose --
-           a long or large movement on every tab press stops feeling premium
-           and starts feeling slow. */
-        @keyframes viewEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-        .view-enter { animation: viewEnter .26s cubic-bezier(.22,1,.36,1) both; }
-        /* Cards inside a view arrive just behind it, which is what reads as
-           considered rather than one block sliding up. */
-        .view-enter > .catalog-card, .view-enter > .kpi-row { animation: viewEnter .32s cubic-bezier(.22,1,.36,1) both; }
-        .view-enter > .catalog-card:nth-child(2) { animation-delay: .04s; }
-        .view-enter > .catalog-card:nth-child(3) { animation-delay: .08s; }
-        .view-enter > .catalog-card:nth-child(4) { animation-delay: .12s; }
-        .view-enter > .catalog-card:nth-child(n+5) { animation-delay: .15s; }
+        /* The view transition itself lives in JS now (see playViewEnter) so it
+           can restart without a forced reflow. The per-card stagger that used
+           to sit here is gone deliberately: animating a dozen cards at once
+           was a measurable part of the heaviness on a mid-range phone, and one
+           clean movement of the whole view reads better than twelve competing
+           ones anyway. */
         /* A press you can feel, on the nav and on every button-ish control. */
         nav.tabs button:active { transform: scale(0.975); }
         .list-tab:active, .cat-chip:active, .seg-control button:active,
@@ -4707,7 +4701,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sidebar-footer-link { transition: background .15s, color .15s, transform .12s ease; }
         .cat-chip, .swatch, .btn-quiet, .icon-btn { transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s ease; }
         @media (prefers-reduced-motion: reduce) {
-          .view-enter, .view-enter > .catalog-card, .view-enter > .kpi-row { animation: none; }
           nav.tabs button:active, .list-tab:active, .cat-chip:active, .seg-control button:active,
           .catalog-btn:active, .btn-quiet:active, .icon-btn:active, .sidebar-footer-link:active, .swatch:active { transform: none; }
         }
@@ -4735,8 +4728,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @keyframes bubbleInRight { from { opacity: 0; transform: translateY(8px) translateX(6px); } to { opacity: 1; transform: none; } }
         .msg-row.from-user.bubble-in { animation: bubbleInLeft .28s cubic-bezier(.4,0,.2,1) backwards; }
         .msg-row.from-assistant.bubble-in { animation: bubbleInRight .28s cubic-bezier(.4,0,.2,1) backwards; }
-        .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; width: 100%; }
+        /* scrollbar-gutter reserves the scrollbar's width whether or not a
+           scrollbar is currently showing. Without it, moving from a tab whose
+           content overflows to one that doesn't takes the scrollbar away, and
+           because these views are centred, everything on the page slides
+           sideways by its width on every switch. */
+        .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; scrollbar-gutter: stable; width: 100%; }
         .catalog-card { background: var(--surface); border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: box-shadow .15s ease; }
+        /* Settings is around 2650px of form. Revealing it laid the whole thing
+           out in a single frame, which measured as a 57ms stall right as the
+           view animated in. content-visibility lets the browser skip laying
+           out the cards that are still below the fold; the intrinsic size
+           keeps the scrollbar honest in the meantime. */
+        .catalog-view > .catalog-card { content-visibility: auto; contain-intrinsic-size: auto 320px; }
         .catalog-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
         .catalog-card h2 { font-family: var(--font-heading); font-size: 15px; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
@@ -4945,98 +4949,181 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .layout { position: relative; }
           .layout.details-on .detail-pane { position: absolute; right: 0; top: 0; bottom: 0; z-index: 12; box-shadow: var(--shadow-lg); }
         }
-        /* ---- Home tab ---- */
-        .home-view { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg); }
-        .home-inner { max-width: 900px; margin: 0 auto; }
-        /* Brand header: cover, then an avatar overlapping its bottom edge,
-           the shape people already know from WhatsApp and every social
-           profile -- so it reads as "this is my shop" without a caption. */
-        .brand-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 18px; }
-        .brand-cover { position: relative; height: 140px; background: linear-gradient(120deg, var(--accent-light), var(--surface-3)); background-size: cover; background-position: center; }
-        [data-theme="dark"] .brand-cover { background: linear-gradient(120deg, var(--accent-soft), var(--surface-3)); }
+        /* ---- Home tab ----
+           The masthead is the piece that has to carry the whole page, so it is
+           built as one: a cover, a ring-mounted avatar breaking its lower edge,
+           and a typographic block with real hierarchy rather than three stacked
+           grey lines. Everything below it steps down in weight from there. */
+        .home-view { flex: 1; overflow-y: auto; scrollbar-gutter: stable; padding: 22px 24px 34px; background: var(--bg); }
+        .home-inner { max-width: 960px; margin: 0 auto; }
+
+        .brand-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 22px; }
+        /* Without a photo the cover is still a designed surface: three
+           accent-derived washes over a deep base, so it changes with the
+           seller's accent instead of being a flat grey band. */
+        .brand-cover {
+          position: relative; height: 168px;
+          background-color: var(--accent-dark);
+          background-image:
+            radial-gradient(115% 165% at 8% 100%, var(--accent) 0%, transparent 60%),
+            radial-gradient(95% 150% at 95% 0%, rgba(255,255,255,0.30) 0%, transparent 58%),
+            linear-gradient(115deg, var(--accent-dark) 0%, var(--accent) 58%, var(--accent-dark) 100%);
+          background-size: cover; background-position: center;
+        }
+        /* A very fine diagonal weave keeps the placeholder from reading as a
+           flat CSS gradient. It is one repeating SVG, no image request. */
+        .brand-cover::before {
+          content: ""; position: absolute; inset: 0; opacity: 0.5;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 40L40 0M-10 10L10 -10M30 50L50 30' stroke='%23ffffff' stroke-opacity='0.09' stroke-width='1.2'/%3E%3C/svg%3E");
+        }
         .brand-cover.has-photo { background-image: var(--cover-img); }
-        .brand-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,0.28)); opacity: 0; transition: opacity .2s ease; }
-        .brand-cover.has-photo::after { opacity: 1; }
-        .photo-btn { position: absolute; display: inline-flex; align-items: center; gap: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; box-shadow: var(--shadow-sm); z-index: 2; transition: background .15s, border-color .15s, transform .12s ease; }
-        .photo-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .brand-cover.has-photo::before { display: none; }
+        /* A scrim only under a real photo, so the control on top of it stays
+           readable whatever the seller uploaded. */
+        .brand-cover.has-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.34) 100%); }
+
+        /* No backdrop blur here on purpose. The button sits inside the view
+           whose opacity animates on every tab switch, and a backdrop-filter
+           under an animating ancestor has to be recomposited every frame --
+           it measured as jank on Home. The fill is 92% opaque anyway, so the
+           blur was costing frames for something almost invisible. */
+        .photo-btn { position: absolute; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.92); color: #111827; border: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 650; font-family: inherit; cursor: pointer; z-index: 3; box-shadow: 0 2px 10px rgba(0,0,0,0.20); transition: background .15s, transform .12s ease; }
+        .photo-btn:hover { background: #fff; }
         .photo-btn:active { transform: scale(0.96); }
         .photo-btn svg { width: 14px; height: 14px; }
-        .cover-photo-btn { right: 14px; bottom: 14px; }
-        .brand-body { padding: 0 22px 20px; position: relative; }
-        .brand-avatar-wrap { position: relative; width: 88px; margin-top: -44px; margin-bottom: 12px; }
-        .brand-avatar { width: 88px; height: 88px; border-radius: 26px; border: 4px solid var(--surface); background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 32px; font-weight: 700; overflow: hidden; box-shadow: var(--shadow-md); }
+        .cover-photo-btn { right: 16px; bottom: 16px; }
+
+        .brand-body { padding: 0 26px 24px; position: relative; }
+        .brand-avatar-wrap { position: relative; width: 104px; margin-top: -52px; margin-bottom: 16px; }
+        /* The ring is the card's own background, so the avatar reads as
+           mounted on the card rather than pasted over the cover. */
+        .brand-avatar { width: 104px; height: 104px; border-radius: 30px; border: 5px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 38px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 10px 26px var(--accent-shadow); }
         .brand-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .avatar-photo-btn { right: -10px; bottom: -6px; padding: 6px 8px; font-size: 11px; }
-        /* Beside the text on a wide screen, under all of it on a phone. The
-           about paragraph lives inside .brand-text rather than after the row,
-           so the phone layout falls out of the same markup with no reordering
-           and the button can never collide with the cover control above it.  */
-        .brand-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+        .avatar-photo-btn { right: -6px; bottom: -2px; padding: 7px; border-radius: 50%; }
+        .avatar-photo-btn svg { width: 15px; height: 15px; }
+
+        .brand-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; }
         .brand-text { min-width: 0; flex: 1; }
+        .brand-title-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .brand-name { font-family: var(--font-heading); font-size: 30px; font-weight: 800; letter-spacing: -0.025em; color: var(--text); margin: 0; line-height: 1.12; }
+        /* Real state, not decoration: this only says live when the number is
+           actually connected (see the connected flag from /api/home). */
+        .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); white-space: nowrap; }
+        .live-pill.off { background: var(--warn-bg); color: var(--warn-fg); }
+        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
+        .brand-tagline { font-size: 15px; color: var(--muted); margin-top: 7px; line-height: 1.5; max-width: 56ch; }
+        .brand-empty-hint { font-size: 14px; color: var(--muted-2); margin-top: 7px; }
+        .brand-empty-hint button { background: none; border: none; padding: 0; font: inherit; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        /* Meta reads as a row of facts separated by hairlines, which is why it
+           doesn't blur into the tagline above it. */
+        .brand-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 14px; margin-top: 14px; font-size: 12.5px; color: var(--muted-2); }
+        .brand-meta span { display: inline-flex; align-items: center; gap: 6px; padding-right: 14px; border-right: 1px solid var(--border); }
+        .brand-meta span:last-child { border-right: none; padding-right: 0; }
+        .brand-meta svg { width: 13.5px; height: 13.5px; opacity: 0.85; }
+        .brand-about { font-size: 14px; color: var(--text); line-height: 1.65; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-light); max-width: 68ch; white-space: pre-wrap; }
         .brand-edit-btn { flex-shrink: 0; }
-        .brand-name { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--text); margin: 0; line-height: 1.2; }
-        .brand-tagline { font-size: 13.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
-        .brand-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 11px; font-size: 12px; color: var(--muted-2); }
-        .brand-meta span { display: inline-flex; align-items: center; gap: 5px; }
-        .brand-meta svg { width: 13px; height: 13px; }
-        .brand-about { font-size: 13px; color: var(--text); line-height: 1.6; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-light); white-space: pre-wrap; }
-        .brand-empty-hint { font-size: 13px; color: var(--muted-2); font-style: italic; margin-top: 5px; }
 
-        /* Setup prompt -- appears until dismissed or completed. */
-        .setup-card { background: var(--surface); border: 1px solid var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
-        .setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-        .setup-title { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text); }
-        .setup-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
-        .setup-steps { display: flex; flex-direction: column; gap: 8px; margin-top: 13px; }
-        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
-        .setup-step .tick { width: 19px; height: 19px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .setup-step.done .tick { background: var(--ok-bg); border-color: var(--ok-fg); color: var(--ok-fg); }
-        .setup-step.done { color: var(--muted); }
-        .setup-step .tick svg { width: 11px; height: 11px; opacity: 0; }
-        .setup-step.done .tick svg { opacity: 1; }
-        .setup-actions { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; }
+        /* Setup prompt */
+        .setup-card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
+        .setup-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(to bottom, var(--accent), var(--accent-dark)); }
+        .setup-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+        .setup-title { font-family: var(--font-heading); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+        .setup-sub { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.55; max-width: 60ch; }
+        .setup-progress { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
+        .setup-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+        .setup-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width .5s cubic-bezier(.22,1,.36,1); }
+        .setup-progress-text { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .setup-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 15px; }
+        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); padding: 9px 11px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-2); transition: border-color .15s, background .15s, transform .12s ease; }
+        .setup-step:not(.done) { cursor: pointer; }
+        .setup-step:not(.done):hover { border-color: var(--accent); background: var(--accent-light); }
+        .setup-step:not(.done):active { transform: scale(0.985); }
+        .setup-step.done { color: var(--muted-2); background: transparent; border-color: transparent; }
+        .setup-step .tick { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: transparent; }
+        .setup-step.done .tick { background: var(--ok-fg); border-color: var(--ok-fg); color: #fff; }
+        .setup-step .tick svg { width: 11px; height: 11px; }
+        .setup-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 
-        /* Connection state -- only ever rendered when there is something real
-           to say, so its presence alone means something needs attention. */
-        .home-alert { display: flex; align-items: flex-start; gap: 11px; border-radius: 13px; padding: 14px 16px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; border: 1px solid; }
-        .home-alert svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; }
+        /* Alerts */
+        .home-alert { display: flex; align-items: flex-start; gap: 12px; border-radius: 16px; padding: 15px 18px; margin-bottom: 20px; font-size: 13.5px; line-height: 1.55; border: 1px solid; }
+        .home-alert svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
         .home-alert.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-fg); }
         .home-alert.bad { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
-        .home-alert b { font-weight: 700; }
+        .home-alert b { font-weight: 750; }
 
-        .home-section-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--muted-2); margin: 0 0 10px 2px; }
-        .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-        .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .home-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 12px; }
+        .home-section-label { display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); font-size: 13px; font-weight: 700; letter-spacing: -0.005em; color: var(--text); }
+        .home-section-note { font-size: 11.5px; color: var(--muted-2); }
+        .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 3px var(--ok-bg); }
 
-        /* Waiting-on-you rows reuse the conversation row's visual language so
-           tapping one feels like the same object in a different place. */
-        .waiting-row { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background .15s ease, padding-left .15s ease; }
-        .waiting-row:last-child { border-bottom: none; }
-        .waiting-row:hover { background: var(--surface-2); padding-left: 6px; }
+        .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 13px; margin-bottom: 26px; }
+        .home-stats .stat-tile { border-radius: 16px; padding: 16px 18px; }
+        .home-stats .stat-tile .stat-value { font-size: 27px; }
+        .home-stats .stat-tile .stat-label { font-size: 12px; }
+        .home-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; align-items: start; }
+        /* Home's own cards, a step softer and rounder than the catalogue's. */
+        .home-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; box-shadow: var(--shadow-sm); }
+        .home-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+        .home-card h3 { font-family: var(--font-heading); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; margin: 0; color: var(--text); }
+        .home-card-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+        .home-count-chip { font-size: 12px; font-weight: 750; padding: 3px 10px; border-radius: 999px; background: var(--accent-light); color: var(--accent); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .home-count-chip.calm { background: var(--surface-3); color: var(--muted); }
+
+        .waiting-list { margin-top: 14px; }
+        .waiting-row { display: flex; align-items: center; gap: 12px; padding: 11px 10px; margin: 0 -10px; border-radius: 13px; cursor: pointer; transition: background .15s ease; }
+        .waiting-row + .waiting-row { border-top: 1px solid var(--border-light); }
+        .waiting-row:hover { background: var(--surface-2); }
         .waiting-row:active { background: var(--surface-3); }
-        .waiting-avatar { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .waiting-avatar { width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 700; color: #fff; flex-shrink: 0; }
         .waiting-main { min-width: 0; flex: 1; }
-        .waiting-top { display: flex; align-items: baseline; justify-content: space-between; gap: 9px; }
-        .waiting-name { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .waiting-when { font-size: 11px; color: var(--muted-2); flex-shrink: 0; }
-        .waiting-preview { font-size: 12.5px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .waiting-flag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; }
+        .waiting-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .waiting-name { font-size: 14px; font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .waiting-when { font-size: 11.5px; color: var(--muted-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .waiting-preview { font-size: 13px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .waiting-flag { font-size: 10px; font-weight: 750; padding: 2.5px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; letter-spacing: 0.01em; }
+        .waiting-chev { color: var(--muted-2); flex-shrink: 0; display: flex; }
+        .waiting-chev svg { width: 16px; height: 16px; }
 
-        .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
-        .gap-row:last-child { border-bottom: none; }
-        .gap-label { color: var(--text); display: flex; align-items: center; gap: 8px; }
-        .gap-count { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
-        .gap-count.zero { color: var(--ok-fg); }
-        .gap-count.some { color: var(--warn-fg); }
-        .home-empty { font-size: 13px; color: var(--muted); padding: 16px 0; text-align: center; line-height: 1.55; }
+        /* Catalogue completeness: one honest ratio, drawn once, instead of
+           three rows of numbers the seller has to add up themselves. */
+        .cat-health { display: flex; align-items: center; gap: 18px; margin-top: 16px; }
+        .health-ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
+        .health-ring svg { width: 84px; height: 84px; transform: rotate(-90deg); }
+        .health-ring .track { fill: none; stroke: var(--surface-3); stroke-width: 9; }
+        .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.22,1,.36,1); }
+        .health-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .health-num b { font-family: var(--font-heading); font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
+        .health-num span { font-size: 9.5px; color: var(--muted-2); margin-top: 2px; }
+        .gap-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+        .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+        .gap-label { color: var(--muted); }
+        .gap-count { font-weight: 700; font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 2px 9px; border-radius: 999px; }
+        .gap-count.zero { color: var(--ok-fg); background: var(--ok-bg); }
+        .gap-count.some { color: var(--warn-fg); background: var(--warn-bg); }
+        .home-empty { font-size: 13.5px; color: var(--muted); padding: 22px 0 18px; text-align: center; line-height: 1.6; }
+        .home-empty-icon { display: flex; justify-content: center; margin-bottom: 10px; color: var(--muted-2); }
+        .home-empty-icon svg { width: 26px; height: 26px; }
 
         /* Edit-profile form */
-        .profile-form { display: grid; gap: 13px; margin-top: 4px; }
-        .profile-field label { font-size: 12.5px; font-weight: 600; color: var(--text); display: block; margin-bottom: 5px; }
-        .profile-field input, .profile-field textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 9px; font-size: 13.5px; font-family: inherit; background: var(--surface); color: var(--text); }
-        .profile-field textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+        .profile-form { display: grid; gap: 15px; margin-top: 16px; }
+        .profile-field label { font-size: 12.5px; font-weight: 650; color: var(--text); display: block; margin-bottom: 6px; }
+        .profile-field input, .profile-field textarea { width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong); border-radius: 11px; font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
+        .profile-field textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
         .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
-        .profile-count { font-size: 11px; color: var(--muted-2); margin-top: 4px; text-align: right; }
+
+        /* The awkward middle. A tablet, or a laptop window narrowed to half the
+           screen, still has the 232px sidebar taking a chunk out of it, so the
+           working area is far narrower than the viewport suggests. auto-fit at
+           minmax(150px) put three tiles on one row and stranded the fourth on
+           its own underneath -- and squeezed each one so the number and its
+           icon fought for the same space. Two clean rows of two instead. */
+        @media (min-width: 701px) and (max-width: 1080px) {
+          .kpi-row, .home-stats { grid-template-columns: 1fr 1fr; }
+          .home-grid { grid-template-columns: 1fr; }
+          .stat-tile { min-width: 0; }
+          .brand-name { font-size: 26px; }
+          .trend-chart-wrap { height: 210px; }
+        }
 
         @media (max-width: 700px) {
           .list-pane { width: 100%; }
@@ -5068,19 +5155,41 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .stat-tile .stat-value { font-size: 15.5px; letter-spacing: -0.2px; }
           .stat-tile .stat-label { font-size: 10.5px; margin-top: 1px; }
           .stat-tile:hover { transform: none; box-shadow: var(--shadow-sm); }
-          /* Home on a phone: full-bleed cards, a shorter cover, and the two
-             lower cards stacked rather than side by side. */
-          .home-view { padding: 14px 13px 20px; }
+          /* Home on a phone. The masthead keeps its proportions -- a smaller
+             cover and avatar, the same relationship between them -- so it
+             still reads as a profile rather than a stack of boxes. */
+          .home-view { padding: 14px 13px 24px; }
           .home-grid { grid-template-columns: 1fr; gap: 14px; }
-          .brand-cover { height: 104px; }
-          .brand-body { padding: 0 16px 16px; }
-          .brand-avatar-wrap { width: 72px; margin-top: -36px; }
-          .brand-avatar { width: 72px; height: 72px; border-radius: 22px; font-size: 26px; }
-          .brand-name { font-size: 19px; }
+          .brand-card { border-radius: 18px; margin-bottom: 16px; }
+          .brand-cover { height: 120px; }
+          .brand-body { padding: 0 17px 18px; }
+          .brand-avatar-wrap { width: 78px; margin-top: -39px; margin-bottom: 13px; }
+          .brand-avatar { width: 78px; height: 78px; border-radius: 24px; font-size: 29px; border-width: 4px; }
+          .brand-name { font-size: 23px; }
+          .brand-title-line { gap: 8px; }
+          .live-pill { font-size: 10.5px; padding: 3px 9px 3px 7px; }
+          .brand-tagline { font-size: 14px; margin-top: 6px; }
+          /* The hairline separators only work on a single line. Once the row
+             wraps -- which it does on a phone -- the last item on each line
+             leaves a divider hanging in empty space, so spacing carries the
+             separation here instead. */
+          .brand-meta { gap: 6px 16px; margin-top: 12px; font-size: 12px; }
+          .brand-meta span { padding-right: 0; border-right: none; }
+          .brand-about { font-size: 13.5px; margin-top: 15px; padding-top: 15px; }
           .brand-head-row { flex-direction: column; gap: 0; }
-          .brand-edit-btn { width: 100%; text-align: center; margin-top: 15px; padding: 9px 14px; }
-          .cover-photo-btn { right: 10px; bottom: 10px; padding: 5px 10px; font-size: 11.5px; }
-          .setup-card { padding: 14px 15px; }
+          .brand-edit-btn { width: 100%; text-align: center; margin-top: 16px; padding: 10px 14px; }
+          .cover-photo-btn { right: 11px; bottom: 11px; padding: 6px 11px; font-size: 11.5px; }
+          .setup-card { padding: 16px 16px; border-radius: 16px; margin-bottom: 16px; }
+          .setup-steps { grid-template-columns: 1fr 1fr; gap: 7px; }
+          .setup-step { font-size: 12.5px; padding: 8px 9px; gap: 8px; }
+          .setup-step .tick { width: 18px; height: 18px; }
+          .home-card { padding: 17px 16px; border-radius: 16px; }
+          .home-alert { padding: 13px 15px; border-radius: 14px; font-size: 13px; }
+          .cat-health { gap: 14px; }
+          .health-ring, .health-ring svg { width: 74px; height: 74px; }
+          .waiting-row { padding: 10px 8px; margin: 0 -8px; }
+          .waiting-avatar { width: 36px; height: 36px; border-radius: 12px; }
+          .waiting-chev { display: none; }
           .setup-actions .catalog-btn, .setup-actions .btn-quiet { width: 100%; justify-content: center; text-align: center; }
           /* Topbar on one row, with room to breathe. */
           /* Respects the notch / home indicator when installed to the home
@@ -5517,6 +5626,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="setting-desc">Show the panel beside a conversation by default on wide screens.</div>
             </div>
             <button class="switch" id="detailsSwitch" role="switch" onclick="toggleDetailDefault()"><span></span></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Setup checklist</div>
+              <div class="setting-desc">The "finish setting up your shop" card on Home. It hides itself once everything on it is done.</div>
+            </div>
+            <button class="switch" id="setupSwitch" role="switch" onclick="setSetupDismissed(!homeSetupHidden())"><span></span></button>
           </div>
           <div class="setting-row" id="hapticsRow">
             <div class="setting-text">
@@ -6619,6 +6735,42 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }
         }
 
+        // The view transition, driven by the Web Animations API rather than a
+        // CSS class. The class version had to be removed, forced through a
+        // synchronous layout (void offsetWidth) and re-added on every switch
+        // just to restart itself -- a forced reflow immediately after changing
+        // the display of seven elements, which measured as a 30-36ms block
+        // before the animation had even begun. WAAPI restarts on every call by
+        // definition, needs no reflow, and animates only opacity and transform,
+        // so the whole thing stays on the compositor.
+        let viewEnterAnim = null;
+        function prefersReducedMotion() {
+          return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        }
+        function playViewEnter(el) {
+          viewEnterAnim = null;
+          if (!el || !el.animate || prefersReducedMotion()) return;
+          viewEnterAnim = el.animate(
+            [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+            { duration: 240, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+          );
+        }
+        // Runs work once the transition has finished, so a heavy render can
+        // never share a frame with the motion. Falls through immediately when
+        // there is no animation to wait for (reduced motion, or a browser
+        // without WAAPI), so nothing depends on the animation existing.
+        function afterViewEnter(fn) {
+          if (!viewEnterAnim) return void setTimeout(fn, 0);
+          let done = false;
+          // One extra frame after the animation reports finished, so the work
+          // can't share the frame that commits its final state.
+          const run = () => { if (!done) { done = true; requestAnimationFrame(() => setTimeout(fn, 0)); } };
+          viewEnterAnim.finished.then(run).catch(run);
+          // A tab switched away from mid-animation cancels it; the safety net
+          // means a loader can never be dropped entirely.
+          setTimeout(run, 400);
+        }
+
         function switchTab(tab) {
           // Not every element below exists on every seller's dashboard --
           // a goods seller never gets tabServices/tabBookings, a bookable
@@ -6626,24 +6778,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // so this one function works for either businessType without
           // needing its own fork.
           const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView" };
+          let entering = null;
           for (const t in views) {
             const el = document.getElementById(views[t]);
             if (!el) continue;
             if (t === tab) {
               el.style.display = t === "conversations" ? "flex" : "block";
-              // Restart the entrance animation on every switch: without
-              // removing the class first the browser reuses the finished
-              // animation and the swap snaps in with no motion at all.
-              el.classList.remove("view-enter");
-              void el.offsetWidth;
-              el.classList.add("view-enter");
+              entering = el;
             } else {
               el.style.display = "none";
-              // Drop the entrance class from the view we're leaving. Left
-              // behind, it stacks up on every view ever opened, and the
-              // staggered card delays then count children across two
-              // containers instead of one.
-              el.classList.remove("view-enter");
             }
           }
           const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings" };
@@ -6655,11 +6798,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // LIST, not silently reopen whichever thread was last read -- on a
           // phone that made it look like the menu item did nothing.
           if (tab === "conversations" && window.innerWidth <= 700) closeThreadMobile();
-          if (tab === "home") loadHome();
-          if (tab === "catalog") loadCatalog();
-          if (tab === "services" || tab === "bookings") loadBookable();
-          if (tab === "analytics") loadAnalytics();
-          if (tab === "settings") { loadCatalog(); syncSettingsControls(); } // catalog load fills the bank fields
+          playViewEnter(entering);
+          // Loading is deliberately NOT done inline here. Measured on a
+          // 4x-throttled phone, building the analytics chart cost a single
+          // 129ms frame, and it landed in the middle of the transition --
+          // which is the heaviness you feel rather than see. The fetch and
+          // the render both wait for the motion to finish; 260ms is nothing
+          // next to a network round trip, and the tab arrives smooth.
+          afterViewEnter(() => {
+            if (tab === "home") loadHome();
+            if (tab === "catalog") loadCatalog();
+            if (tab === "services" || tab === "bookings") loadBookable();
+            if (tab === "analytics") loadAnalytics();
+            if (tab === "settings") { loadCatalog(); syncSettingsControls(); } // catalog load fills the bank fields
+          });
           // Leaving Conversations must give the stat tiles back on mobile,
           // otherwise they'd stay hidden on every other tab.
           if (tab !== "conversations") document.body.classList.remove("mobile-thread-open");
@@ -7031,6 +7183,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // The switch is only meaningful where the browser can actually
           // vibrate. On an iPhone it stays visible but reads as unavailable
           // and says why, rather than pretending to be a working control.
+          const stSw = document.getElementById("setupSwitch");
+          if (stSw) {
+            const on = !homeSetupHidden();
+            stSw.classList.toggle("on", on);
+            stSw.setAttribute("aria-checked", on ? "true" : "false");
+          }
           const hSw = document.getElementById("hapticsSwitch");
           if (hSw) {
             const supported = hapticsSupported();
@@ -7107,7 +7265,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const labels = data.trend.map((d) => new Date(d.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric" }));
           const values = data.trend.map((d) => d.revenue);
           const orders = data.trend.map((d) => d.orders);
+          // Building the chart is by far the most expensive thing on this
+          // page -- 128ms in one frame on a 4x-throttled phone. The numbers
+          // and lists below are cheap text, so they are painted first and the
+          // chart is drawn in a later frame. The tab arrives complete-looking
+          // straight away and the canvas fills in a beat behind it.
+          const drawTrendChart = () => {
           const canvas = document.getElementById("trendChart");
+          if (!canvas) return;
           const ctx = canvas.getContext("2d");
 
           // A real chart (Chart.js) instead of hand-rolled divs -- a
@@ -7155,6 +7320,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             options: {
               responsive: true,
               maintainAspectRatio: false,
+              // Chart.js animates itself in over ~1s by default. Straight
+              // after a tab transition on a phone that is a second of extra
+              // frames for a chart the seller is already looking at, and it
+              // measured as a 113ms frame. The chart appears drawn instead.
+              animation: narrow ? false : { duration: 400 },
               interaction: { mode: "index", intersect: false },
               plugins: {
                 legend: { display: false },
@@ -7199,6 +7369,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               },
             },
           });
+          };
+          if (window.requestIdleCallback) requestIdleCallback(drawTrendChart, { timeout: 300 });
+          else setTimeout(drawTrendChart, 0);
 
           // KPIs, all arithmetic on the same 14 days the chart draws -- no
           // projections, no benchmarks, nothing the data can't support.
@@ -7249,6 +7422,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         let homeData = null;
         let editingProfile = false;
 
+        const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
+        const ICON_TICK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><polyline points="8 12.2 11 15.2 16 9.5"/></svg>';
         const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
         const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
@@ -7258,8 +7433,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           try {
             const res = await fetch("/api/home?" + ADMIN_QS);
             if (!res.ok) throw new Error("HTTP " + res.status);
+            const wasNull = !homeData;
             homeData = await res.json();
             renderHome();
+            // The Settings switch for the setup checklist reads its state from
+            // homeData, which is null on the very first paint -- so the switch
+            // would sit in the wrong position until something else happened to
+            // refresh it. Re-sync once, the moment the real state arrives.
+            if (wasNull) syncSettingsControls();
           } catch (err) {
             console.error("loadHome failed:", err);
             const host = document.getElementById("homeView");
@@ -7269,24 +7450,25 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }
         }
 
-        function homeBrandCard(p) {
+        function homeBrandCard(p, d) {
           const initial = escapeHtml((p.businessName || "S").trim().charAt(0).toUpperCase());
-          const avatar = p.avatarUrl
-            ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">'
-            : initial;
+          const avatar = p.avatarUrl ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">' : initial;
           const coverStyle = p.coverUrl
             ? ' class="brand-cover has-photo" style="--cover-img:url(' + encodeURI(p.coverUrl) + ')"'
             : ' class="brand-cover"';
           const meta = [];
-          if (p.location) {
-            meta.push('<span>' + ICON_PIN + escapeHtml(p.location) + '</span>');
-          }
+          if (p.location) meta.push('<span>' + ICON_PIN + escapeHtml(p.location) + '</span>');
+          meta.push('<span>' + ICON_BOX + d.catalogue.total + ' product' + (d.catalogue.total === 1 ? "" : "s") + '</span>');
+          meta.push('<span>' + ICON_USERS + d.stats.totalCustomers + ' customer' + (d.stats.totalCustomers === 1 ? "" : "s") + '</span>');
           if (p.createdAt) {
-            const d = new Date(p.createdAt);
-            if (!isNaN(d)) {
-              meta.push('<span>' + ICON_CAL + 'On Stafly since ' + d.toLocaleDateString(undefined, { month: "long", year: "numeric" }) + '</span>');
-            }
+            const dt = new Date(p.createdAt);
+            if (!isNaN(dt)) meta.push('<span>' + ICON_CAL + 'Since ' + dt.toLocaleDateString(undefined, { month: "short", year: "numeric" }) + '</span>');
           }
+          // The pill states a fact from the connection check, nothing more:
+          // Amara literally cannot reply without both credentials.
+          const live = d.connection.connected && !d.connection.suspended
+            ? '<span class="live-pill"><span class="live-dot"></span>Amara is live</span>'
+            : '<span class="live-pill off"><span class="live-dot"></span>Not connected</span>';
           return '' +
             '<div class="brand-card">' +
               '<div' + coverStyle + '>' +
@@ -7294,15 +7476,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '</div>' +
               '<div class="brand-body">' +
                 '<div class="brand-avatar-wrap">' +
-                  '<div class="brand-avatar" style="background:' + (p.avatarUrl ? "transparent" : "var(--accent)") + '">' + avatar + '</div>' +
-                  '<button class="photo-btn avatar-photo-btn" data-home-action="pick-avatar" title="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
+                  '<div class="brand-avatar">' + avatar + '</div>' +
+                  '<button class="photo-btn avatar-photo-btn" data-home-action="pick-avatar" aria-label="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
                 '</div>' +
                 '<div class="brand-head-row">' +
                   '<div class="brand-text">' +
-                    '<h2 class="brand-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' +
+                    '<div class="brand-title-line">' +
+                      '<h2 class="brand-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' + live +
+                    '</div>' +
                     (p.tagline
                       ? '<div class="brand-tagline">' + escapeHtml(p.tagline) + '</div>'
-                      : '<div class="brand-empty-hint">No tagline yet</div>') +
+                      : '<div class="brand-empty-hint">No tagline yet. <button data-home-action="edit-profile">Add one</button></div>') +
                     (meta.length ? '<div class="brand-meta">' + meta.join("") + '</div>' : '') +
                     (p.about ? '<div class="brand-about">' + escapeHtml(p.about) + '</div>' : '') +
                   '</div>' +
@@ -7314,8 +7498,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         function homeProfileForm(p) {
           return '' +
-            '<div class="brand-card"><div style="padding:20px 22px;">' +
-              '<div class="card-head"><div><h2>Edit profile</h2><div class="card-sub">This is your shop’s own description. Amara never invents any of it.</div></div></div>' +
+            '<div class="brand-card"><div style="padding:22px 24px 24px;">' +
+              '<h3 style="font-family:var(--font-heading);font-size:18px;font-weight:750;letter-spacing:-0.015em;margin:0;">Edit profile</h3>' +
+              '<div class="home-card-sub">Your shop in your own words. Amara never writes any of this for you.</div>' +
               '<div class="profile-form">' +
                 '<div class="profile-field"><label for="pfName">Business name</label>' +
                   '<input id="pfName" maxlength="60" value="' + escapeHtml(p.businessName || "") + '"></div>' +
@@ -7337,72 +7522,81 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function homeSetupCard(d) {
           const p = d.profile;
           const steps = [
-            { done: !!p.avatarUrl, label: "Add a profile picture", action: "pick-avatar" },
-            { done: !!p.coverUrl, label: "Add a cover photo", action: "pick-cover" },
-            { done: !!p.tagline, label: "Write a short tagline", action: "edit-profile" },
-            { done: d.catalogue.total > 0, label: "Add your first product", action: "go-catalog" },
+            { done: !!p.avatarUrl, label: "Profile picture", action: "pick-avatar" },
+            { done: !!p.coverUrl, label: "Cover photo", action: "pick-cover" },
+            { done: !!p.tagline, label: "Short tagline", action: "edit-profile" },
+            { done: d.catalogue.total > 0, label: "First product", action: "go-catalog" },
           ];
-          const remaining = steps.filter((s) => !s.done);
-          // Nothing left to prompt about, or the seller already said no.
-          if (remaining.length === 0 || p.setupDismissed) return "";
+          const doneCount = steps.filter((s) => s.done).length;
+          if (doneCount === steps.length || p.setupDismissed) return "";
+          const pct = Math.round((doneCount / steps.length) * 100);
           return '' +
             '<div class="setup-card">' +
-              '<div class="setup-head">' +
+              '<div class="setup-top">' +
                 '<div>' +
                   '<div class="setup-title">Finish setting up your shop</div>' +
-                  '<div class="setup-sub">Your customers only ever see Amara on WhatsApp, so this is for your own dashboard. You can skip it and add these any time.</div>' +
+                  '<div class="setup-sub">Your customers only ever meet Amara on WhatsApp, so this is for your own dashboard. Skip it and add these whenever you like.</div>' +
                 '</div>' +
+              '</div>' +
+              '<div class="setup-progress">' +
+                '<div class="setup-bar"><div class="setup-bar-fill" style="width:' + pct + '%"></div></div>' +
+                '<div class="setup-progress-text">' + doneCount + ' of ' + steps.length + '</div>' +
               '</div>' +
               '<div class="setup-steps">' +
                 steps.map((s) =>
-                  '<div class="setup-step' + (s.done ? " done" : "") + '"' + (s.done ? "" : ' data-home-action="' + s.action + '" style="cursor:pointer;"') + '>' +
+                  '<div class="setup-step' + (s.done ? " done" : "") + '"' + (s.done ? "" : ' data-home-action="' + s.action + '"') + '>' +
                     '<span class="tick">' + ICON_TICK + '</span>' + escapeHtml(s.label) +
                   '</div>'
                 ).join("") +
               '</div>' +
               '<div class="setup-actions">' +
-                '<button class="btn-quiet" data-home-action="dismiss-setup">Don’t show this again</button>' +
+                '<button class="btn-quiet" data-home-action="dismiss-setup">Hide this</button>' +
               '</div>' +
             '</div>';
         }
 
         function homeAlerts(d) {
-          let out = "";
           if (d.connection.suspended) {
-            out += '<div class="home-alert bad">' + ICON_ALERT +
+            return '<div class="home-alert bad">' + ICON_ALERT +
               '<div><b>This account is suspended.</b> Amara is not replying to any customer messages. Contact support to have it reviewed.</div></div>';
-          } else if (!d.connection.connected) {
-            out += '<div class="home-alert warn">' + ICON_ALERT +
+          }
+          if (!d.connection.connected) {
+            return '<div class="home-alert warn">' + ICON_ALERT +
               '<div><b>WhatsApp isn’t connected yet.</b> Amara can’t send or receive messages until your number is linked, so nothing on this dashboard will move until then.</div></div>';
           }
-          return out;
+          return "";
         }
 
         function homeWaitingCard(d) {
           const rows = d.waiting.map((w) => {
             const c = { phone: w.phone, wa_name: w.wa_name };
-            const name = escapeHtml(displayNameFor(c));
             return '' +
               '<div class="waiting-row" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">' +
                 '<div class="waiting-avatar" style="background:' + avatarColorFor(w.phone) + '">' + escapeHtml(avatarTextFor(c)) + '</div>' +
                 '<div class="waiting-main">' +
-                  '<div class="waiting-top"><span class="waiting-name">' + name + '</span>' +
-                    (w.paused ? '<span class="waiting-flag">You</span>' : '<span class="waiting-when">' + escapeHtml(timeAgo(w.last_contact)) + '</span>') +
+                  '<div class="waiting-top"><span class="waiting-name">' + escapeHtml(displayNameFor(c)) + '</span>' +
+                    (w.paused
+                      ? '<span class="waiting-flag">YOURS</span>'
+                      : '<span class="waiting-when">' + escapeHtml(timeAgo(w.last_contact)) + '</span>') +
                   '</div>' +
                   '<div class="waiting-preview">' + escapeHtml(w.preview || "No message text") + '</div>' +
                 '</div>' +
+                '<span class="waiting-chev">' + ICON_CHEVRON + '</span>' +
               '</div>';
           }).join("");
           const more = d.waitingTotal > d.waiting.length
             ? '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-conversations">See all ' + d.waitingTotal + ' in Conversations</button></div>'
             : "";
           return '' +
-            '<div class="catalog-card">' +
-              '<div class="card-head"><div><h2>Waiting on a reply</h2>' +
-                '<div class="card-sub">Threads where the customer spoke last. A "You" tag means you took that one over.</div></div></div>' +
+            '<div class="home-card">' +
+              '<div class="home-card-head">' +
+                '<div><h3>Waiting on a reply</h3>' +
+                  '<div class="home-card-sub">Threads where the customer spoke last.</div></div>' +
+                (d.waitingTotal ? '<span class="home-count-chip">' + d.waitingTotal + '</span>' : '<span class="home-count-chip calm">0</span>') +
+              '</div>' +
               (d.waiting.length
-                ? rows + more
-                : '<div class="home-empty">Nobody is waiting. Every conversation has had the last word from your side or from Amara.</div>') +
+                ? '<div class="waiting-list">' + rows + '</div>' + more
+                : '<div class="home-empty"><div class="home-empty-icon">' + ICON_TICK_CIRCLE + '</div>Nobody is waiting. Every conversation has had the last word from you or from Amara.</div>') +
             '</div>';
         }
 
@@ -7410,23 +7604,42 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const c = d.catalogue;
           if (c.total === 0) {
             return '' +
-              '<div class="catalog-card">' +
-                '<div class="card-head"><div><h2>Your catalogue</h2>' +
-                  '<div class="card-sub">What Amara can quote and sell on your behalf.</div></div></div>' +
-                '<div class="home-empty">No products yet. Until you add one, Amara can answer questions but can’t quote a price.</div>' +
+              '<div class="home-card">' +
+                '<div class="home-card-head"><div><h3>Your catalogue</h3>' +
+                  '<div class="home-card-sub">What Amara can quote and sell for you.</div></div></div>' +
+                '<div class="home-empty"><div class="home-empty-icon">' + ICON_BOX + '</div>' +
+                  'No products yet. Until you add one, Amara can answer questions but can’t quote a price.</div>' +
                 '<div class="setup-actions"><button class="catalog-btn" data-home-action="go-catalog">Add your first product</button></div>' +
               '</div>';
           }
+          // One honest ratio: how many of the three details each product could
+          // carry are actually filled in. Nothing is weighted or estimated.
+          const slots = c.total * 3;
+          const filled = slots - (c.missingPhoto + c.missingPrice + c.missingCategory);
+          const pct = Math.round((filled / slots) * 100);
+          const R = 34, CIRC = 2 * Math.PI * R;
           const gap = (label, n) =>
             '<div class="gap-row"><span class="gap-label">' + label + '</span>' +
-              '<span class="gap-count ' + (n === 0 ? "zero" : "some") + '">' + (n === 0 ? "All set" : n) + '</span></div>';
+              '<span class="gap-count ' + (n === 0 ? "zero" : "some") + '">' + (n === 0 ? "none" : n) + '</span></div>';
           return '' +
-            '<div class="catalog-card">' +
-              '<div class="card-head"><div><h2>Your catalogue</h2>' +
-                '<div class="card-sub">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell.</div></div></div>' +
-              gap("Missing a photo", c.missingPhoto) +
-              gap("Missing a price", c.missingPrice) +
-              gap("Missing a category", c.missingCategory) +
+            '<div class="home-card">' +
+              '<div class="home-card-head">' +
+                '<div><h3>Your catalogue</h3>' +
+                  '<div class="home-card-sub">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell.</div></div>' +
+                '<span class="home-count-chip calm">' + c.total + '</span>' +
+              '</div>' +
+              '<div class="cat-health">' +
+                '<div class="health-ring">' +
+                  '<svg viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="' + R + '"></circle>' +
+                  '<circle class="fill" cx="42" cy="42" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
+                  '<div class="health-num"><b>' + pct + '%</b><span>complete</span></div>' +
+                '</div>' +
+                '<div class="gap-list">' +
+                  gap("Missing a photo", c.missingPhoto) +
+                  gap("Missing a price", c.missingPrice) +
+                  gap("Missing a category", c.missingCategory) +
+                '</div>' +
+              '</div>' +
               '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-catalog">Open catalogue</button></div>' +
             '</div>';
         }
@@ -7439,7 +7652,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         let lastHomeSignature = null;
         function homeSignature(d) {
           return JSON.stringify([
-            d.profile, d.waitingTotal, d.catalogue, d.connection,
+            d.profile, d.waitingTotal, d.catalogue, d.connection, d.stats,
             d.waiting.map((w) => [w.phone, w.last_contact, w.paused, w.preview]),
           ]);
         }
@@ -7458,9 +7671,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           host.innerHTML = '' +
             '<div class="home-inner">' +
               homeAlerts(d) +
-              (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile)) +
+              (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
               homeSetupCard(d) +
-              '<div class="home-section-label">Right now</div>' +
+              '<div class="home-section-head">' +
+                '<div class="home-section-label"><span class="pulse-dot"></span>Right now</div>' +
+                '<div class="home-section-note">Updates on its own</div>' +
+              '</div>' +
               '<div class="home-stats" id="homeStats"></div>' +
               '<div class="home-grid">' +
                 homeWaitingCard(d) +
@@ -7498,7 +7714,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           } else if (action === "save-profile") {
             saveProfile();
           } else if (action === "dismiss-setup") {
-            dismissSetup();
+            setSetupDismissed(true);
           } else if (action === "go-catalog") {
             switchTab("catalog");
           } else if (action === "go-conversations") {
@@ -7549,13 +7765,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (av) av.textContent = name.trim().charAt(0).toUpperCase();
         }
 
-        async function dismissSetup() {
+        function homeSetupHidden() {
+          return !!(homeData && homeData.profile && homeData.profile.setupDismissed);
+        }
+        async function setSetupDismissed(dismissed) {
           try {
-            await fetch("/api/profile/setup-dismissed?" + ADMIN_QS, { method: "POST" });
-            if (homeData) homeData.profile.setupDismissed = true;
+            await fetch("/api/profile/setup-dismissed?" + ADMIN_QS, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ dismissed: dismissed }),
+            });
+            if (homeData) homeData.profile.setupDismissed = dismissed;
             renderHome(true);
+            syncSettingsControls();
           } catch (err) {
-            console.error("dismissSetup failed:", err);
+            console.error("setSetupDismissed failed:", err);
           }
         }
 
@@ -8926,14 +9150,18 @@ app.post("/api/profile", async (req, res) => {
 app.post("/api/profile/setup-dismissed", async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
+  // Takes a value rather than being one-way. Dismissing a checklist is the
+  // kind of thing that gets tapped by accident, and a setting you can only
+  // ever turn off once is a trap, not a preference.
+  const dismissed = req.body && req.body.dismissed === false ? "0" : "1";
   try {
-    await updateSellerRecord(seller.sellerId, { setupDismissed: "1" });
+    await updateSellerRecord(seller.sellerId, { setupDismissed: dismissed });
     invalidateSellerContextCache(seller.sellerId);
   } catch (err) {
     console.error("setup dismiss failed:", err.message);
     return res.status(500).json({ error: "Could not save that." });
   }
-  res.json({ ok: true });
+  res.json({ ok: true, dismissed: dismissed === "1" });
 });
 
 app.post("/api/profile/photo", (req, res, next) => {
@@ -9816,7 +10044,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 22";
+const BUILD_ROUND = "Round 23";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
