@@ -4396,7 +4396,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
-        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
+        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
         /* A real profile card at the top of the sidebar -- who's logged
            in and what kind of seller they are, using only real fields
            already passed into dashboardHtml (never fabricated). This is
@@ -4406,7 +4406,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* The seller's own card, raised off the rail rather than sitting flat
            on it, which is what made the top of the sidebar feel empty. */
         .sidebar-profile { display: flex; align-items: center; gap: 10px; margin: 0 12px 6px; padding: 10px 11px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); }
-        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 15px; font-weight: 700; flex-shrink: 0; box-shadow: 0 3px 10px var(--accent-shadow); }
+        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 15px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 3px 10px var(--accent-shadow); }
+        /* Once a shop has a picture it should be the shop everywhere, not just
+           on Home. The accent glow is dropped when a real photo is in place --
+           a coloured halo behind someone's own photograph looks like a mistake. */
+        .sidebar-profile-avatar img, .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sidebar-profile-avatar.has-photo, .topbar-avatar.has-photo { background: var(--surface-3); box-shadow: none; }
         .sidebar-profile-name { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-profile-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
         /* An honest "yes, this is actually refreshing itself" cue -- the
@@ -4764,6 +4769,26 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-btn:hover { box-shadow: 0 4px 10px var(--accent-shadow-strong); transform: translateY(-1px); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
+        /* Toasts. Until now a save either silently worked or wrote a line of
+           small grey text next to the form -- which is invisible if you are
+           looking anywhere else on the page, and absent entirely on a phone
+           where the form has scrolled. Every real save now says so. */
+        .toast-stack { position: fixed; z-index: 200; right: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { display: flex; align-items: flex-start; gap: 11px; min-width: 240px; max-width: 380px; padding: 13px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); font-size: 13.5px; line-height: 1.45; color: var(--text); pointer-events: auto; }
+        .toast-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .toast-icon svg { width: 12px; height: 12px; }
+        .toast.ok .toast-icon { background: var(--ok-bg); color: var(--ok-fg); }
+        .toast.bad .toast-icon { background: var(--danger-bg); color: var(--danger); }
+        .toast.info .toast-icon { background: var(--accent-light); color: var(--accent); }
+        .toast-body { min-width: 0; }
+        .toast-title { font-weight: 650; }
+        .toast-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+        @media (max-width: 700px) {
+          /* Bottom-anchored on a phone would sit under the composer and the
+             home indicator, so they come down from the top instead. */
+          .toast-stack { right: 12px; left: 12px; bottom: auto; top: calc(10px + env(safe-area-inset-top)); }
+          .toast { min-width: 0; max-width: none; padding: 12px 14px; font-size: 13px; }
+        }
         .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
         /* The min-height above reserves room so the card doesn't jump when a
            save message appears. Inside a card header that stacks on mobile,
@@ -4804,14 +4829,87 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Products as cards led by their photo -- that photo is exactly what
            Amara sends a customer, so it's the thing worth recognising. */
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
-        .product-card { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+        /* Catalogue toolbar: search and sort sit above the category chips, so
+           all three compose instead of each one resetting the others. */
+        .cat-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        .cat-search { position: relative; flex: 1; min-width: 190px; display: flex; align-items: center; }
+        .cat-search svg { position: absolute; left: 12px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
+        .cat-search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13.5px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
+        .cat-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .cat-sort { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .cat-sort label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+        .cat-sort select { padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); cursor: pointer; }
+        .cat-sort select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        /* ---- Bookings & services ----
+           Both were six-column tables, which is unusable on a phone and not
+           much better on a laptop for rows that carry five different kinds of
+           fact. Cards, with the one thing you scan for -- the time, the name --
+           given the weight. */
+        .bk-daygroup { font-family: var(--font-heading); font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 18px 0 9px; padding-bottom: 7px; border-bottom: 1px solid var(--border-light); }
+        .bk-daygroup:first-child { margin-top: 4px; }
+        .bk-card { display: flex; align-items: center; gap: 14px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 9px; transition: border-color .15s ease, box-shadow .15s ease; }
+        .bk-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+        .bk-time { flex-shrink: 0; width: 66px; display: flex; flex-direction: column; gap: 2px; padding-right: 14px; border-right: 1px solid var(--border-light); }
+        .bk-time b { font-family: var(--font-heading); font-size: 16px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .bk-time span { font-size: 10.5px; color: var(--muted-2); }
+        .bk-main { flex: 1; min-width: 0; }
+        .bk-service { font-size: 14px; font-weight: 650; color: var(--text); }
+        .bk-who { font-size: 12.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bk-phone { color: var(--muted-2); font-variant-numeric: tabular-nums; }
+        .bk-ref { font-size: 11px; color: var(--muted-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+        .bk-actions { display: flex; gap: 7px; flex-shrink: 0; }
+        .bk-reschedule { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); padding: 14px; margin: -4px 0 12px; }
+        .bk-resched-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+        .bk-slots { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+        .svc-card { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 9px; transition: border-color .15s ease, box-shadow .15s ease; }
+        .svc-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+        .svc-card.needs-work { border-color: var(--warn-border); }
+        .svc-main { flex: 1; min-width: 0; }
+        .svc-name { font-size: 14.5px; font-weight: 650; color: var(--text); }
+        .svc-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; margin-top: 5px; font-size: 12.5px; color: var(--muted); }
+        .svc-meta > span { padding-right: 12px; border-right: 1px solid var(--border); }
+        .svc-meta > span:last-child { border-right: none; padding-right: 0; }
+        .svc-price { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+        .svc-mode.warn, .svc-price.warn { color: var(--warn-fg); font-weight: 650; }
+        .svc-key { font-size: 11px; color: var(--muted-2); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .svc-actions { display: flex; gap: 7px; flex-shrink: 0; }
+
+        .cat-summary { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); font-size: 12px; color: var(--muted-2); }
+        .cat-summary span { display: inline-flex; align-items: center; padding-right: 16px; border-right: 1px solid var(--border); }
+        .cat-summary span:last-child { border-right: none; padding-right: 0; }
+        .cat-summary .sum-warn { color: var(--warn-fg); font-weight: 650; }
+        .cat-summary .sum-ok { color: var(--ok-fg); font-weight: 650; }
+
+        .product-card { position: relative; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+        /* A product Amara can't quote properly is worth pointing at, quietly. */
+        .product-card.needs-work { border-color: var(--warn-border); }
+        .thumb-cat, .thumb-sold { position: absolute; z-index: 2; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.01em; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .thumb-cat { left: 9px; top: 9px; background: rgba(255,255,255,0.9); color: #111827; }
+        .thumb-sold { right: 9px; top: 9px; background: rgba(17,24,39,0.78); color: #fff; }
+        .product-flag { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--warn-fg); margin-top: 7px; }
+        .product-flag svg { width: 12px; height: 12px; flex-shrink: 0; }
+        .price-missing { color: var(--warn-fg); font-weight: 600; font-size: 13px; }
+        /* Actions read as controls now, not two words of body text. */
+        .product-actions { display: flex; align-items: center; gap: 7px; padding: 0 12px 12px; }
+        .pact { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); color: var(--text); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, border-color .15s, color .15s, transform .12s ease; }
+        .pact svg { width: 13px; height: 13px; }
+        .pact:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+        .pact:active { transform: scale(0.96); }
+        .pact.danger { flex: 0 0 auto; padding: 7px 10px; color: var(--muted); }
+        .pact.danger:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
         .product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
         .product-thumb { position: relative; aspect-ratio: 4 / 3; background: var(--surface-3); overflow: hidden; }
         .product-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
         /* A product with no usable photo shows a calm placeholder rather than
            a broken-image icon. */
         .product-thumb.no-photo img { display: none; }
-        .product-thumb.no-photo::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--muted-2); }
+        /* An icon instead of the words "No photo" in grey: a grid of eight
+           products with the same sentence repeated eight times read as an
+           error state rather than as products waiting for a picture. */
+        .product-thumb.no-photo { background: var(--surface-2); }
+        .product-thumb.no-photo::after { content: ""; position: absolute; inset: 0; background-repeat: no-repeat; background-position: center; background-size: 30px 30px; opacity: 0.32;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='10' r='1.6'/%3E%3Cpath d='m3.6 17.5 4.9-4.4a2 2 0 0 1 2.7 0l3.4 3.1a2 2 0 0 0 2.7 0l3.1-2.8'/%3E%3C/svg%3E"); }
         .product-body { padding: 11px 12px 4px; flex: 1; }
         .product-cat { display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-soft); padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
         .product-name { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
@@ -4998,6 +5096,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* The ring is the card's own background, so the avatar reads as
            mounted on the card rather than pasted over the cover. */
         .brand-avatar { width: 104px; height: 104px; border-radius: 30px; border: 5px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 38px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 10px 26px var(--accent-shadow); }
+        /* With a real photograph in it, an accent-coloured glow reads as a
+           rendering fault rather than depth. A neutral drop shadow is what a
+           photo actually wants. */
+        .brand-avatar.has-photo { background: var(--surface-3); box-shadow: 0 8px 22px rgba(15,23,42,0.18); }
+        [data-theme="dark"] .brand-avatar.has-photo { box-shadow: 0 8px 22px rgba(0,0,0,0.42); }
         .brand-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .avatar-photo-btn { right: -6px; bottom: -2px; padding: 7px; border-radius: 50%; }
         .avatar-photo-btn svg { width: 15px; height: 15px; }
@@ -5056,13 +5159,60 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .home-section-note { font-size: 11.5px; color: var(--muted-2); }
         .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 3px var(--ok-bg); }
 
-        .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 13px; margin-bottom: 26px; }
-        .home-stats .stat-tile { border-radius: 16px; padding: 16px 18px; }
-        .home-stats .stat-tile .stat-value { font-size: 27px; }
-        .home-stats .stat-tile .stat-label { font-size: 12px; }
-        .home-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; align-items: start; }
+        /* Home's own tiles. The analytics tile is a number with an icon beside
+           it; these carry a third line of real context, so the icon moves up
+           next to the value and the two text lines stack cleanly beneath. */
+        .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 13px; margin-bottom: 26px; }
+        .htile { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 17px 15px; box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; --tint: var(--accent); --tint-bg: var(--accent-light); }
+        .htile.t-total { --tint: var(--accent); --tint-bg: var(--accent-light); }
+        .htile.t-active { --tint: var(--ok-fg); --tint-bg: var(--ok-bg); }
+        .htile.t-paused { --tint: var(--warn-fg); --tint-bg: var(--warn-bg); }
+        .htile.t-revenue { --tint: var(--info-fg); --tint-bg: var(--info-bg); }
+        .htile::after { content: ""; position: absolute; right: -40px; top: -48px; width: 104px; height: 104px; border-radius: 50%; background: var(--tint-bg); opacity: 0.42; pointer-events: none; }
+        .htile > * { position: relative; z-index: 1; }
+        .htile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tint); }
+        .htile-top { display: flex; align-items: center; gap: 10px; }
+        .htile-icon { width: 32px; height: 32px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tint-bg); color: var(--tint); }
+        .htile-icon svg { width: 16px; height: 16px; }
+        .htile-value { font-family: var(--font-heading); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .htile-label { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 12px; }
+        .htile-context { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; line-height: 1.35; }
+
+        .home-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+        /* Seven bars, drawn from real per-day counts. */
+        .wk-chart { display: flex; align-items: flex-end; gap: 7px; height: 92px; margin-top: 16px; }
+        .wk-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; height: 100%; }
+        .wk-bar-slot { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
+        .wk-bar { width: 100%; border-radius: 8px; background: linear-gradient(to top, var(--accent-dark), var(--accent)); transition: height .55s cubic-bezier(.22,1,.36,1); }
+        .wk-col.is-today .wk-bar-slot { box-shadow: inset 0 0 0 1.5px var(--accent-soft); }
+        .wk-day { font-size: 10.5px; font-weight: 600; color: var(--muted-2); }
+        .wk-col.is-today .wk-day { color: var(--accent); }
+        .wk-foot { display: flex; gap: 0; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+        .wk-stat { flex: 1; display: flex; flex-direction: column; gap: 2px; padding-right: 12px; border-right: 1px solid var(--border-light); }
+        .wk-stat:last-child { border-right: none; padding-right: 0; }
+        .wk-stat b { font-family: var(--font-heading); font-size: 17px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .wk-stat span { font-size: 11px; color: var(--muted-2); }
+
+        /* A real look at the shop's own products, not just counts about them. */
+        .pmini-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+        .pmini { min-width: 0; cursor: pointer; }
+        .pmini-thumb { aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; background: var(--surface-3); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); transition: border-color .15s ease, transform .18s ease; }
+        .pmini:hover .pmini-thumb { border-color: var(--accent); transform: translateY(-2px); }
+        .pmini-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pmini-blank { color: var(--muted-2); display: flex; }
+        .pmini-blank svg { width: 20px; height: 20px; }
+        .pmini-name { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pmini-meta { font-size: 11px; color: var(--muted-2); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pmini-warn { color: var(--warn-fg); font-weight: 600; }
+        /* min-width:0 on the tracks. A grid item defaults to min-content
+           width, so a card holding rows with negative margins (the waiting
+           list) pushed itself 46px wider than its own column -- invisible on a
+           wide screen, a sideways scroll inside the view on a phone. */
+        .home-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+        .home-grid > * { min-width: 0; }
         /* Home's own cards, a step softer and rounder than the catalogue's. */
-        .home-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; box-shadow: var(--shadow-sm); }
+        .home-card { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; box-shadow: var(--shadow-sm); }
         .home-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
         .home-card h3 { font-family: var(--font-heading); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; margin: 0; color: var(--text); }
         .home-card-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
@@ -5086,13 +5236,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         /* Catalogue completeness: one honest ratio, drawn once, instead of
            three rows of numbers the seller has to add up themselves. */
-        .cat-health { display: flex; align-items: center; gap: 18px; margin-top: 16px; }
-        .health-ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
-        .health-ring svg { width: 84px; height: 84px; transform: rotate(-90deg); }
-        .health-ring .track { fill: none; stroke: var(--surface-3); stroke-width: 9; }
-        .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.22,1,.36,1); }
+        .cat-health { display: flex; align-items: center; gap: 16px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-light); }
+        .health-ring { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
+        .health-ring svg { width: 74px; height: 74px; transform: rotate(-90deg); }
+        .health-ring .track { fill: none; stroke: var(--surface-3); stroke-width: 8; }
+        .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.22,1,.36,1); }
         .health-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .health-num b { font-family: var(--font-heading); font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
+        .health-num b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
         .health-num span { font-size: 9.5px; color: var(--muted-2); margin-top: 2px; }
         .gap-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
         .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
@@ -5146,7 +5296,27 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .fees-row div { width: 100%; }
           /* The live numbers are Home's content now, not a band under the
              topbar on every tab. Two per row, compact. */
-          .home-stats { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 18px; }
+          /* Two tiles per row, and the context line stays -- it is the part
+             that makes a bare number mean something. */
+          .home-stats { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+          .htile { padding: 13px 13px 12px; border-radius: 15px; }
+          .htile-icon { width: 28px; height: 28px; border-radius: 9px; }
+          .htile-icon svg { width: 14px; height: 14px; }
+          .htile-value { font-size: 21px; }
+          .htile-label { font-size: 12px; margin-top: 10px; }
+          .htile-context { font-size: 10.5px; }
+          .htile::after { width: 84px; height: 84px; right: -32px; top: -40px; }
+          .home-col { gap: 14px; }
+          .wk-chart { height: 76px; gap: 5px; margin-top: 14px; }
+          .wk-foot { margin-top: 13px; padding-top: 12px; }
+          .wk-stat b { font-size: 15.5px; }
+          .wk-stat span { font-size: 10.5px; }
+          .pmini-row { grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+          .pmini-name { font-size: 11px; margin-top: 6px; }
+          .pmini-meta { font-size: 10px; }
+          .pmini-thumb { border-radius: 10px; }
+          .cat-health { gap: 13px; margin-top: 15px; padding-top: 14px; }
+          .health-ring, .health-ring svg { width: 66px; height: 66px; }
           .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; flex-direction: row-reverse; align-items: center; gap: 9px; }
           .stat-tile::before { height: 0; }
           .stat-tile::after { display: none; }
@@ -5159,7 +5329,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              cover and avatar, the same relationship between them -- so it
              still reads as a profile rather than a stack of boxes. */
           .home-view { padding: 14px 13px 24px; }
-          .home-grid { grid-template-columns: 1fr; gap: 14px; }
+          .home-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
           .brand-card { border-radius: 18px; margin-bottom: 16px; }
           .brand-cover { height: 120px; }
           .brand-body { padding: 0 17px 18px; }
@@ -5180,9 +5350,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .brand-edit-btn { width: 100%; text-align: center; margin-top: 16px; padding: 10px 14px; }
           .cover-photo-btn { right: 11px; bottom: 11px; padding: 6px 11px; font-size: 11.5px; }
           .setup-card { padding: 16px 16px; border-radius: 16px; margin-bottom: 16px; }
-          .setup-steps { grid-template-columns: 1fr 1fr; gap: 7px; }
-          .setup-step { font-size: 12.5px; padding: 8px 9px; gap: 8px; }
-          .setup-step .tick { width: 18px; height: 18px; }
+          /* One per row. Two columns squeezed "Profile picture" and left the
+             completed rows floating in half-width boxes with nothing in them. */
+          .setup-steps { grid-template-columns: 1fr; gap: 6px; }
+          .setup-step { font-size: 13px; padding: 10px 12px; gap: 10px; border-radius: 12px; }
+          .setup-step .tick { width: 19px; height: 19px; }
+          .setup-step.done { padding: 8px 12px; }
+          .setup-title { font-size: 15px; }
+          .setup-sub { font-size: 12.5px; }
+          .setup-progress { margin-top: 13px; }
           .home-card { padding: 17px 16px; border-radius: 16px; }
           .home-alert { padding: 13px 15px; border-radius: 14px; font-size: 13px; }
           .cat-health { gap: 14px; }
@@ -5280,13 +5456,33 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .cat-chip { flex: 0 0 auto; }
           .product-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
           .product-thumb { aspect-ratio: 1 / 1; }
-          .product-thumb.no-photo::after { font-size: 10.5px; }
+          .product-thumb.no-photo::after { background-size: 24px 24px; }
           .product-body { padding: 9px 10px 10px; gap: 3px; }
           .product-name { font-size: 13px; line-height: 1.3; }
           .product-price { font-size: 13.5px; }
           .product-cat { font-size: 10px; padding: 2px 7px; }
-          .product-actions { gap: 6px; }
-          .product-actions .btn-quiet { flex: 1; justify-content: center; text-align: center; padding: 6px 4px; font-size: 11.5px; }
+          /* Bookings and services stack on a phone: the actions go full width
+             under the detail rather than being squeezed beside it. */
+          .bk-card, .svc-card { flex-wrap: wrap; gap: 10px 12px; padding: 12px 13px; }
+          .bk-time { width: auto; padding-right: 12px; flex-direction: row; align-items: baseline; gap: 7px; }
+          .bk-main { flex: 1 1 100%; order: 3; }
+          .bk-actions, .svc-actions { flex: 1 1 100%; order: 4; }
+          .bk-actions .pact, .svc-actions .pact { flex: 1; }
+          .bk-actions .pact.danger, .svc-actions .pact.danger { flex: 0 0 auto; }
+          .svc-main { flex: 1 1 100%; }
+          .svc-meta { gap: 4px 10px; }
+          .svc-meta > span { padding-right: 10px; }
+          .bk-resched-row { gap: 8px; }
+          .bk-resched-row .catalog-btn { width: 100%; justify-content: center; }
+          .cat-toolbar { gap: 8px; margin-bottom: 10px; }
+          .cat-search { min-width: 0; flex: 1 1 100%; }
+          .cat-sort { flex: 1 1 100%; }
+          .cat-sort select { flex: 1; }
+          .cat-summary { gap: 4px 12px; font-size: 11.5px; }
+          .cat-summary span { padding-right: 12px; }
+          .product-actions { gap: 6px; padding: 0 10px 10px; }
+          .pact { padding: 6px 8px; font-size: 11.5px; gap: 5px; }
+          .thumb-cat, .thumb-sold { font-size: 9.5px; padding: 2px 7px; }
           .dropzone { padding: 14px; }
           .dropzone-preview img { max-height: 110px; }
 
@@ -5389,8 +5585,25 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               Add product
             </button>
           </div>
+          <div class="cat-toolbar">
+            <div class="cat-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="productSearch" placeholder="Search products" oninput="renderProductGrid()" autocomplete="off">
+            </div>
+            <div class="cat-sort">
+              <label for="productSort">Sort</label>
+              <select id="productSort" onchange="renderProductGrid()">
+                <option value="name">Name</option>
+                <option value="price-desc">Price, high to low</option>
+                <option value="price-asc">Price, low to high</option>
+                <option value="sold">Best selling</option>
+                <option value="incomplete">Needs attention</option>
+              </select>
+            </div>
+          </div>
           <div class="cat-filter" id="categoryFilter"></div>
           <div class="product-grid" id="productGrid"></div>
+          <div class="cat-summary" id="catalogSummary"></div>
           <div class="inline-panel" id="productPanel" style="display:none;">
             <div class="inline-panel-head">
               <span id="productPanelTitle">New product</span>
@@ -5486,11 +5699,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       </div>
       <div class="catalog-view" id="servicesView" style="display:none;">
         <div class="catalog-card">
-          <h2>Services</h2>
-          <table class="catalog-table" id="offeringsTable">
-            <thead><tr><th>Name</th><th>Key</th><th>Price</th><th>Duration</th><th>Delivery</th><th></th></tr></thead>
-            <tbody id="offeringsTableBody"></tbody>
-          </table>
+          <div class="card-head">
+            <div>
+              <h2>Services</h2>
+              <div class="card-sub">What Amara can quote, describe and book on your behalf.</div>
+            </div>
+          </div>
+          <div id="offeringsList"></div>
           <div id="offeringEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:8px;">
             Editing "<b id="offeringEditingName"></b>" -- <a href="#" onclick="cancelEditOffering();return false;">cancel, add a new service instead</a>
           </div>
@@ -5582,11 +5797,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       </div>
       <div class="catalog-view" id="bookingsView" style="display:none;">
         <div class="catalog-card">
-          <h2 id="bookingsHeading">Upcoming bookings</h2>
-          <table class="catalog-table" id="bookingsTable">
-            <thead><tr><th>Date</th><th>Time</th><th>Service</th><th>Customer</th><th>Reference</th><th></th></tr></thead>
-            <tbody id="bookingsTableBody"></tbody>
-          </table>
+          <div class="card-head">
+            <div>
+              <h2 id="bookingsHeading">Upcoming bookings</h2>
+              <div class="card-sub">Everything Amara has booked in, soonest first.</div>
+            </div>
+          </div>
+          <div id="bookingsList"></div>
         </div>
       </div>
       <div class="catalog-view" id="settingsView" style="display:none;">
@@ -5822,6 +6039,67 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // whatever the owner is mid-typing into the compose or notes box.
         let renderedThreadPhone = null;
 
+        // ---- Toasts -------------------------------------------------------
+        // One place for "that worked" and "that didn't". Uses the Web
+        // Animations API for the same reason the view transition does: it
+        // needs no reflow and stays on the compositor.
+        function toast(title, opts) {
+          const o = opts || {};
+          let stack = document.getElementById("toastStack");
+          if (!stack) {
+            stack = document.createElement("div");
+            stack.id = "toastStack";
+            stack.className = "toast-stack";
+            stack.setAttribute("role", "status");
+            stack.setAttribute("aria-live", "polite");
+            document.body.appendChild(stack);
+          }
+          const kind = o.kind === "bad" ? "bad" : o.kind === "info" ? "info" : "ok";
+          const icon = kind === "bad" ? ICON_ALERT : kind === "info" ? ICON_INFO : ICON_CHECK;
+          const el = document.createElement("div");
+          el.className = "toast " + kind;
+          el.innerHTML =
+            '<span class="toast-icon">' + icon + '</span>' +
+            '<div class="toast-body"><div class="toast-title"></div>' +
+            (o.sub ? '<div class="toast-sub"></div>' : '') + '</div>';
+          // textContent rather than interpolation: some of these carry a
+          // server error message or a product name straight from input.
+          el.querySelector(".toast-title").textContent = title;
+          if (o.sub) el.querySelector(".toast-sub").textContent = o.sub;
+          stack.appendChild(el);
+          const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const fromY = window.innerWidth <= 700 ? -14 : 14;
+          if (el.animate && !reduce) {
+            el.animate([{ opacity: 0, transform: "translateY(" + fromY + "px)" }, { opacity: 1, transform: "none" }],
+              { duration: 220, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" });
+          }
+          const life = o.kind === "bad" ? 6000 : 3200;
+          setTimeout(() => {
+            if (!el.isConnected) return;
+            if (el.animate && !reduce) {
+              const out = el.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(" + (fromY / 2) + "px)" }],
+                { duration: 200, easing: "ease-in", fill: "both" });
+              out.finished.then(() => el.remove()).catch(() => el.remove());
+            } else {
+              el.remove();
+            }
+          }, life);
+        }
+
+        // Every save in this file already wrote a small inline message next to
+        // its form. flash() keeps that -- it is still the right place for the
+        // detail -- and adds the toast, so the outcome is visible even when
+        // you are looking somewhere else or the form has scrolled away.
+        function flash(el, text, kind, title) {
+          const bad = kind === "bad" || kind === "error";
+          if (el) {
+            el.textContent = text;
+            el.className = text ? "catalog-msg " + (bad ? "error" : "ok") : "catalog-msg";
+          }
+          const sub = title && text ? text : undefined;
+          toast(title || text, bad ? { kind: "bad", sub: sub } : { sub: sub });
+        }
+
         function escapeHtml(str) {
           return String(str || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
         }
@@ -5971,6 +6249,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
         const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
+        const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+        const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+        const ICON_IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m3.6 17.5 4.9-4.4a2 2 0 0 1 2.7 0l3.4 3.1a2 2 0 0 0 2.7 0l3.1-2.8"/></svg>';
+        const ICON_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="11" x2="12" y2="16.5"/><line x1="12" y1="7.5" x2="12.01" y2="7.5"/></svg>';
         const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
         // WhatsApp gives us no profile photo and no name, so a contact chip
         // shows a person mark rather than repeating digits we already print
@@ -6015,26 +6297,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // settings form where it had nothing to do with the task at hand.
         // They live on Home now, as content rather than as a header band.
         // The 5s poll still drives them, so they stay live.
+        // Home owns its own tiles now (see renderHomeStats), because they
+        // carry a second line of context this function has no access to. This
+        // stays as the single place the poll hands stats to, so nothing else
+        // has to know where they ended up.
         let lastStats = null;
         function renderStats(stats) {
           lastStats = stats;
-          const host = document.getElementById("homeStats");
-          if (!host) return; // Home isn't rendered yet; it reads lastStats when it is
-          const firstPaint = !statsAnimated;
-          const inCls = statsAnimated ? "" : " tile-in";
-          statsAnimated = true;
-          host.innerHTML =
-            statTile("tile-total" + inCls, ICON_USERS, stats.totalCustomers, "Total customers") +
-            statTile("tile-active" + inCls, ICON_CHAT, stats.activeToday, "Active today") +
-            statTile("tile-paused" + inCls, ICON_PAUSE, stats.pausedNow, "Paused") +
-            statTile("tile-revenue" + inCls, ICON_WALLET, "N" + stats.revenueTodayNaira.toLocaleString(), stats.paymentsToday + " order" + (stats.paymentsToday === 1 ? "" : "s") + " today");
-          // Only on the very first paint -- the 5s poll must not re-run the
-          // count-up, or the numbers would visibly churn every few seconds.
-          if (firstPaint) {
-            const vals = host.querySelectorAll(".stat-value");
-            const targets = [stats.totalCustomers, stats.activeToday, stats.pausedNow, stats.revenueTodayNaira];
-            vals.forEach((el, i) => countUp(el, targets[i] || 0, i === 3 ? "N" : ""));
-          }
         }
 
         // Which list-tab is active -- each one maps to a real stored field
@@ -6535,15 +6804,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save note.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not save note.", "bad");
               return;
             }
-            msg.textContent = "Saved.";
-            msg.className = "catalog-msg ok";
+            flash(msg, "", "ok", "Private note saved");
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -7476,7 +7742,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '</div>' +
               '<div class="brand-body">' +
                 '<div class="brand-avatar-wrap">' +
-                  '<div class="brand-avatar">' + avatar + '</div>' +
+                  '<div class="brand-avatar' + (p.avatarUrl ? " has-photo" : "") + '">' + avatar + '</div>' +
                   '<button class="photo-btn avatar-photo-btn" data-home-action="pick-avatar" aria-label="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
                 '</div>' +
                 '<div class="brand-head-row">' +
@@ -7600,6 +7866,90 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '</div>';
         }
 
+        // Tiles are built here rather than reusing the analytics stat tile, so
+        // Home can carry a second line of real context under each number. Every
+        // context line below is counted from stored records -- there are no
+        // invented deltas and no "vs last week" where nothing was recorded.
+        function homeTile(cls, icon, value, label, context) {
+          return '' +
+            '<div class="htile ' + cls + '">' +
+              '<div class="htile-top">' +
+                '<span class="htile-icon">' + icon + '</span>' +
+                '<span class="htile-value">' + value + '</span>' +
+              '</div>' +
+              '<div class="htile-label">' + label + '</div>' +
+              (context ? '<div class="htile-context">' + context + '</div>' : '') +
+            '</div>';
+        }
+
+        let homeStatsAnimated = false;
+        function renderHomeStats(d) {
+          const host = document.getElementById("homeStats");
+          if (!host || !d.stats) return;
+          const s = d.stats;
+          const nw = d.newThisWeek || 0;
+          const paidToday = s.paymentsToday || 0;
+          host.innerHTML =
+            homeTile("t-total", ICON_USERS, s.totalCustomers, "Total customers",
+              nw > 0 ? "+" + nw + " this week" : "none new this week") +
+            homeTile("t-active", ICON_CHAT, s.activeToday, "Active today",
+              s.totalCustomers ? "of " + s.totalCustomers + " you've ever spoken to" : "") +
+            homeTile("t-paused", ICON_PAUSE, s.pausedNow, "You're handling",
+              s.pausedNow ? "Amara has stepped back" : "Amara is on all of them") +
+            homeTile("t-revenue", ICON_WALLET, "N" + (s.revenueTodayNaira || 0).toLocaleString(), "Paid today",
+              paidToday ? paidToday + " order" + (paidToday === 1 ? "" : "s") : "no orders yet today");
+          // Count up only the first time. The poll must not restart it, or the
+          // numbers would visibly churn every few seconds.
+          if (!homeStatsAnimated) {
+            homeStatsAnimated = true;
+            const vals = host.querySelectorAll(".htile-value");
+            const targets = [s.totalCustomers, s.activeToday, s.pausedNow, s.revenueTodayNaira];
+            vals.forEach((el, i) => countUp(el, targets[i] || 0, i === 3 ? "N" : ""));
+          }
+        }
+
+        // Seven days of real activity: new conversations counted from each
+        // customer's own first_contact, and orders from the same daily totals
+        // the Analytics tab reads. Drawn as inline SVG rather than a chart
+        // library, because it is eight numbers and pulling Chart.js into Home
+        // would cost more than the picture is worth.
+        function homeWeekCard(d) {
+          const week = d.week || [];
+          if (!week.length) return "";
+          const maxNew = Math.max(1, ...week.map((x) => x.newCustomers));
+          const totalNew = week.reduce((a, x) => a + x.newCustomers, 0);
+          const totalOrders = week.reduce((a, x) => a + x.orders, 0);
+          const totalRev = week.reduce((a, x) => a + x.revenue, 0);
+          const today = new Date().toISOString().slice(0, 10);
+          const bars = week.map((x) => {
+            const h = Math.round((x.newCustomers / maxNew) * 100);
+            const dt = new Date(x.date + "T00:00:00");
+            const dayLetter = isNaN(dt) ? "" : dt.toLocaleDateString(undefined, { weekday: "narrow" });
+            const label = x.newCustomers + (x.newCustomers === 1 ? " new conversation" : " new conversations") +
+              (isNaN(dt) ? "" : " on " + dt.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" }));
+            return '' +
+              '<div class="wk-col' + (x.date === today ? " is-today" : "") + '" title="' + escapeHtml(label) + '">' +
+                '<div class="wk-bar-slot">' +
+                  '<div class="wk-bar" style="height:' + Math.max(h, x.newCustomers > 0 ? 8 : 2) + '%"></div>' +
+                '</div>' +
+                '<div class="wk-day">' + escapeHtml(dayLetter) + '</div>' +
+              '</div>';
+          }).join("");
+          return '' +
+            '<div class="home-card wk-card">' +
+              '<div class="home-card-head">' +
+                '<div><h3>Last 7 days</h3>' +
+                  '<div class="home-card-sub">New conversations per day.</div></div>' +
+              '</div>' +
+              '<div class="wk-chart">' + bars + '</div>' +
+              '<div class="wk-foot">' +
+                '<div class="wk-stat"><b>' + totalNew + '</b><span>new</span></div>' +
+                '<div class="wk-stat"><b>' + totalOrders + '</b><span>paid orders</span></div>' +
+                '<div class="wk-stat"><b>N' + totalRev.toLocaleString() + '</b><span>taken</span></div>' +
+              '</div>' +
+            '</div>';
+        }
+
         function homeCatalogueCard(d) {
           const c = d.catalogue;
           if (c.total === 0) {
@@ -7613,14 +7963,26 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '</div>';
           }
           // One honest ratio: how many of the three details each product could
-          // carry are actually filled in. Nothing is weighted or estimated.
+          // carry are actually filled in. Nothing weighted, nothing estimated.
           const slots = c.total * 3;
           const filled = slots - (c.missingPhoto + c.missingPrice + c.missingCategory);
           const pct = Math.round((filled / slots) * 100);
-          const R = 34, CIRC = 2 * Math.PI * R;
+          const R = 30, CIRC = 2 * Math.PI * R;
           const gap = (label, n) =>
             '<div class="gap-row"><span class="gap-label">' + label + '</span>' +
               '<span class="gap-count ' + (n === 0 ? "zero" : "some") + '">' + (n === 0 ? "none" : n) + '</span></div>';
+          const products = (c.topProducts || []).map((p) => {
+            const thumb = p.hasOwnPhoto && p.image
+              ? '<img src="' + escapeHtml(p.image) + '" alt="" loading="lazy">'
+              : '<span class="pmini-blank">' + ICON_IMAGE + '</span>';
+            return '' +
+              '<div class="pmini" data-home-action="go-catalog" title="' + escapeHtml(p.name) + '">' +
+                '<div class="pmini-thumb">' + thumb + '</div>' +
+                '<div class="pmini-name">' + escapeHtml(p.name) + '</div>' +
+                '<div class="pmini-meta">' + (p.price ? "N" + p.price.toLocaleString() : '<span class="pmini-warn">no price</span>') +
+                  (p.sold ? ' · ' + p.sold + ' sold' : '') + '</div>' +
+              '</div>';
+          }).join("");
           return '' +
             '<div class="home-card">' +
               '<div class="home-card-head">' +
@@ -7628,11 +7990,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   '<div class="home-card-sub">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell.</div></div>' +
                 '<span class="home-count-chip calm">' + c.total + '</span>' +
               '</div>' +
+              (products ? '<div class="pmini-row">' + products + '</div>' : '') +
               '<div class="cat-health">' +
                 '<div class="health-ring">' +
-                  '<svg viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="' + R + '"></circle>' +
-                  '<circle class="fill" cx="42" cy="42" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
-                  '<div class="health-num"><b>' + pct + '%</b><span>complete</span></div>' +
+                  '<svg viewBox="0 0 74 74"><circle class="track" cx="37" cy="37" r="' + R + '"></circle>' +
+                  '<circle class="fill" cx="37" cy="37" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
+                  '<div class="health-num"><b>' + pct + '%</b><span>filled in</span></div>' +
                 '</div>' +
                 '<div class="gap-list">' +
                   gap("Missing a photo", c.missingPhoto) +
@@ -7680,7 +8043,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="home-stats" id="homeStats"></div>' +
               '<div class="home-grid">' +
                 homeWaitingCard(d) +
-                homeCatalogueCard(d) +
+                '<div class="home-col">' + homeWeekCard(d) + homeCatalogueCard(d) + '</div>' +
               '</div>' +
               '<div class="catalog-msg" id="homeMsg" style="margin-top:14px;"></div>' +
             '</div>' +
@@ -7688,7 +8051,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // The live numbers come from the same poll that drives everything
           // else, so if it has already run we paint them immediately rather
           // than leaving a gap until the next tick.
-          if (lastStats) renderStats(lastStats);
+          renderHomeStats(d);
+          syncBrandAvatar(d.profile.avatarUrl, d.profile.businessName);
           const input = document.getElementById("brandPhotoInput");
           if (input) input.addEventListener("change", onBrandPhotoPicked);
         }
@@ -7697,6 +8061,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // markup above is built by string concatenation, and quoting a phone
         // number into an inline handler is exactly how this file's page
         // script has been broken before.
+        // Edit/Remove used to be inline onclick attributes with the product key
+        // quoted into them -- the exact shape that broke this page's script
+        // twice. Delegation keeps the key in a data attribute instead.
+        document.addEventListener("click", (e) => {
+          const el = e.target.closest && e.target.closest("[data-cat-action]");
+          if (!el) return;
+          const key = el.getAttribute("data-key");
+          if (!key) return;
+          if (el.getAttribute("data-cat-action") === "edit") editProduct(key);
+          else deleteProduct(key);
+        });
+
         let pendingPhotoKind = "avatar";
         document.addEventListener("click", (e) => {
           const el = e.target.closest("[data-home-action]");
@@ -7750,9 +8126,34 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             renderHome(true);
             // The business name appears in three places outside this card.
             syncBusinessName(data.profile.businessName);
+            toast("Profile saved");
           } catch (err) {
-            if (status) { status.className = "catalog-msg error"; status.textContent = err.message; }
+            if (status) { flash(status, err.message, "bad", "Couldn't save your profile"); }
           }
+        }
+
+        // Home is the only place that knows whether a profile picture exists,
+        // so it is what pushes it out to the sidebar and topbar.
+        function syncBrandAvatar(url, name) {
+          const initial = (name || "S").trim().charAt(0).toUpperCase();
+          [document.querySelector(".sidebar-profile-avatar"), document.querySelector(".topbar-avatar")].forEach((el) => {
+            if (!el) return;
+            if (url) {
+              if (el.querySelector("img")) {
+                el.querySelector("img").src = url;
+              } else {
+                const img = document.createElement("img");
+                img.alt = "";
+                img.src = url;
+                el.textContent = "";
+                el.appendChild(img);
+              }
+              el.classList.add("has-photo");
+            } else {
+              el.classList.remove("has-photo");
+              el.textContent = initial;
+            }
+          });
         }
 
         function syncBusinessName(name) {
@@ -7762,7 +8163,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const chip = document.querySelector(".topbar-biz span");
           if (chip) chip.textContent = name;
           const av = document.querySelector(".topbar-avatar");
-          if (av) av.textContent = name.trim().charAt(0).toUpperCase();
+          if (av && !av.classList.contains("has-photo")) av.textContent = name.trim().charAt(0).toUpperCase();
         }
 
         function homeSetupHidden() {
@@ -7800,13 +8201,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               else homeData.profile.avatarUrl = data.url;
               renderHome(true);
               const msg = document.getElementById("homeMsg");
-              if (msg) { msg.className = "catalog-msg ok"; msg.textContent = kind === "cover" ? "Cover updated." : "Profile picture updated."; }
+              if (msg) { flash(msg, "", "ok", kind === "cover" ? "Cover photo updated" : "Profile picture updated"); }
             }
           } catch (err) {
             // A modal alert would block the whole page; this says the same
             // thing in the card the seller is already looking at.
             const msg = document.getElementById("homeMsg");
-            if (msg) { msg.className = "catalog-msg error"; msg.textContent = err.message; }
+            if (msg) { flash(msg, err.message, "bad", "Upload failed"); }
           }
         }
 
@@ -7816,6 +8217,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const data = await res.json();
             if (data.error) return;
             window.nigeriaStates = data.nigeriaStates || [];
+            productSales = data.sales || {};
             populateStateSelect();
             renderCatalog(data.products, data.deliveryStates, data.deliveryDefaultFee, data.bankDetails, data.bankDetails2);
           } catch (err) {
@@ -7831,48 +8233,117 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             .join("");
         }
 
-        function renderCatalog(products, deliveryStates, deliveryDefaultFee, bankDetails, bankDetails2) {
-          // A visual grid, not a table row with a thumbnail: sellers pick a
-          // product out by its photo, and the photo is also exactly what
-          // Amara sends a customer, so it deserves to be the biggest thing
-          // on the card.
+        // Sales per product key, so the grid can show what is actually moving.
+        // Absent simply means nothing recorded yet -- never a zero invented to
+        // fill the space.
+        let productSales = {};
+
+        // The grid is rebuilt from the cache on every search keystroke, sort
+        // change and category switch, so all three compose instead of each one
+        // resetting the others.
+        function renderProductGrid() {
+          const products = window.catalogCache || {};
           const grid = document.getElementById("productGrid");
+          if (!grid) return;
+          const q = (document.getElementById("productSearch")?.value || "").trim().toLowerCase();
+          const sort = document.getElementById("productSort")?.value || "name";
           const keys = Object.keys(products);
-          renderCategoryFilter(products);
-          const visible = keys.filter((k) =>
-            currentCategory === "all" || (products[k].category || "") === currentCategory
-          );
-          grid.innerHTML = keys.length === 0
-            ? '<div class="empty"><div class="empty-icon">' + ICON_BOX + '</div><div class="empty-title">No products yet</div><div class="empty-sub">Add your first product and Amara can start quoting and selling it straight away.</div></div>'
-            : (visible.length === 0
-              ? '<div class="empty"><div class="empty-title">Nothing in this category</div><div class="empty-sub">Pick another category, or clear the filter to see everything.</div></div>'
-              : visible.map((k) => {
-                const p = products[k];
-                return '<div class="product-card">' +
-                  '<div class="product-thumb"><img src="' + escapeHtml(p.imageUrl) + '" alt="" loading="lazy"></div>' +
-                  '<div class="product-body">' +
-                    (p.category ? '<span class="product-cat">' + escapeHtml(p.category) + '</span>' : '') +
-                    '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
-                    '<div class="product-price">N' + Number(p.price).toLocaleString() + '</div>' +
-                    (p.description ? '<div class="product-desc">' + escapeHtml(p.description) + '</div>' : '') +
-                  '</div>' +
-                  '<div class="product-actions">' +
-                    '<button class="btn-quiet btn-tiny" onclick="editProduct(\\'' + k + '\\')">Edit</button>' +
-                    '<button class="btn-quiet btn-tiny danger-quiet" onclick="deleteProduct(\\'' + k + '\\')">Remove</button>' +
-                  '</div>' +
-                '</div>';
-              }).join(""));
-          // Broken/missing photos get a calm "No photo" placeholder instead
-          // of the browser's broken-image glyph. Done with a listener rather
-          // than an inline onerror attribute -- nesting quotes inside an
-          // attribute inside a JS string inside a template literal is exactly
-          // how the last escaping bug got in.
+
+          const incompleteCount = (k) => {
+            const p = products[k];
+            let n = 0;
+            if (!p.hasOwnPhoto) n++;
+            if (!Number(p.price)) n++;
+            if (!(p.category || "").trim()) n++;
+            return n;
+          };
+
+          let visible = keys.filter((k) => {
+            const p = products[k];
+            if (currentCategory !== "all" && (p.category || "") !== currentCategory) return false;
+            if (!q) return true;
+            return (p.name || "").toLowerCase().includes(q) ||
+              k.toLowerCase().includes(q) ||
+              (p.category || "").toLowerCase().includes(q) ||
+              (p.description || "").toLowerCase().includes(q);
+          });
+
+          visible.sort((a, b) => {
+            const pa = products[a], pb = products[b];
+            if (sort === "price-desc") return Number(pb.price) - Number(pa.price);
+            if (sort === "price-asc") return Number(pa.price) - Number(pb.price);
+            if (sort === "sold") return (productSales[b] || 0) - (productSales[a] || 0);
+            if (sort === "incomplete") return incompleteCount(b) - incompleteCount(a);
+            return String(pa.name || a).localeCompare(String(pb.name || b));
+          });
+
+          if (keys.length === 0) {
+            grid.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_BOX + '</div><div class="empty-title">No products yet</div><div class="empty-sub">Add your first product and Amara can start quoting and selling it straight away.</div></div>';
+          } else if (visible.length === 0) {
+            grid.innerHTML = '<div class="empty"><div class="empty-icon">' + ICON_SEARCH + '</div><div class="empty-title">Nothing matches</div><div class="empty-sub">' +
+              (q ? 'No product matches "' + escapeHtml(q) + '".' : "Nothing in this category.") + '</div></div>';
+          } else {
+            grid.innerHTML = visible.map((k) => {
+              const p = products[k];
+              const sold = productSales[k] || 0;
+              const missing = [];
+              if (!p.hasOwnPhoto) missing.push("photo");
+              if (!Number(p.price)) missing.push("price");
+              if (!(p.category || "").trim()) missing.push("category");
+              return '<div class="product-card' + (missing.length ? " needs-work" : "") + '" data-key="' + escapeHtml(k) + '">' +
+                '<div class="product-thumb">' +
+                  '<img src="' + escapeHtml(p.imageUrl || "") + '" alt="" loading="lazy">' +
+                  (p.category ? '<span class="thumb-cat">' + escapeHtml(p.category) + '</span>' : '') +
+                  (sold ? '<span class="thumb-sold">' + sold + ' sold</span>' : '') +
+                '</div>' +
+                '<div class="product-body">' +
+                  '<div class="product-name" title="' + escapeHtml(p.name) + '">' + escapeHtml(p.name) + '</div>' +
+                  '<div class="product-price">' + (Number(p.price) ? "N" + Number(p.price).toLocaleString() : '<span class="price-missing">No price set</span>') + '</div>' +
+                  (missing.length
+                    ? '<div class="product-flag">' + ICON_ALERT + 'Missing ' + missing.join(", ") + '</div>'
+                    : '') +
+                '</div>' +
+                '<div class="product-actions">' +
+                  '<button class="pact" data-cat-action="edit" data-key="' + escapeHtml(k) + '">' + ICON_PENCIL + 'Edit</button>' +
+                  '<button class="pact danger" data-cat-action="delete" data-key="' + escapeHtml(k) + '" aria-label="Remove ' + escapeHtml(p.name) + '">' + ICON_TRASH + '</button>' +
+                '</div>' +
+              '</div>';
+            }).join("");
+          }
+
+          // Broken or missing photos get a calm placeholder rather than the
+          // browser's broken-image glyph. A listener, not an inline onerror --
+          // nesting quotes inside an attribute inside a JS string inside a
+          // template literal is exactly how the last escaping bug got in.
           grid.querySelectorAll(".product-thumb img").forEach((img) => {
             const flag = () => { const t = img.closest(".product-thumb"); if (t) t.classList.add("no-photo"); };
-            if (img.complete && img.naturalWidth === 0) flag();
+            if (!img.getAttribute("src")) flag();
+            else if (img.complete && img.naturalWidth === 0) flag();
             img.addEventListener("error", flag);
           });
+
+          const summary = document.getElementById("catalogSummary");
+          if (summary) {
+            if (keys.length === 0) {
+              summary.innerHTML = "";
+            } else {
+              const totalValue = keys.reduce((sum, k) => sum + (Number(products[k].price) || 0), 0);
+              const needing = keys.filter((k) => incompleteCount(k) > 0).length;
+              summary.innerHTML =
+                '<span>' + keys.length + ' product' + (keys.length === 1 ? "" : "s") + '</span>' +
+                '<span>' + (visible.length === keys.length ? "all shown" : visible.length + " shown") + '</span>' +
+                '<span>N' + totalValue.toLocaleString() + ' listed value</span>' +
+                (needing
+                  ? '<span class="sum-warn">' + needing + ' need' + (needing === 1 ? "s" : "") + ' attention</span>'
+                  : '<span class="sum-ok">all complete</span>');
+            }
+          }
+        }
+
+        function renderCatalog(products, deliveryStates, deliveryDefaultFee, bankDetails, bankDetails2) {
           window.catalogCache = products;
+          renderCategoryFilter(products);
+          renderProductGrid();
           window.deliveryStatesCache = deliveryStates || {};
 
           renderDeliveryStates(window.deliveryStatesCache);
@@ -7922,15 +8393,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save the second account.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not save the second account.", "bad");
               return;
             }
             msg.textContent = data.warning || "Saved.";
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -7941,8 +8410,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const res = await fetch("/api/catalog/bank-details-2?" + ADMIN_QS, { method: "DELETE" });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not remove the second account.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not remove the second account.", "bad");
               return;
             }
             document.getElementById("bank2Name").value = "";
@@ -7951,8 +8419,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             document.getElementById("bank2Form").style.display = "none";
             document.getElementById("bank2Toggle").style.display = "block";
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8005,11 +8472,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const msg = document.getElementById("catalogMsg");
           if (!file) return clearPhotoPick();
           if (!/^image\\//.test(file.type)) {
-            if (msg) { msg.textContent = "That file isn't an image."; msg.className = "catalog-msg error"; }
+            if (msg) { flash(msg, "That file isn't an image.", "bad"); }
             return clearPhotoPick();
           }
           if (file.size > MAX_PHOTO_BYTES) {
-            if (msg) { msg.textContent = "That photo is over 1.5MB. Try a smaller one."; msg.className = "catalog-msg error"; }
+            if (msg) { flash(msg, "That photo is over 1.5MB. Try a smaller one.", "bad"); }
             return clearPhotoPick();
           }
           if (msg) { msg.textContent = ""; msg.className = "catalog-msg"; }
@@ -8053,7 +8520,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         let currentCategory = "all";
         function setCategory(cat) {
           currentCategory = cat;
-          renderCatalog(window.catalogCache || {}, window.deliveryStatesCache || {});
+          // Only the grid and the chips need redrawing. Re-running the whole of
+          // renderCatalog also refilled the delivery and bank inputs from the
+          // cache, which would quietly discard anything half-typed in them.
+          renderCategoryFilter(window.catalogCache || {});
+          renderProductGrid();
         }
         function renderCategoryFilter(products) {
           const wrap = document.getElementById("categoryFilter");
@@ -8120,8 +8591,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
           const nameValue = document.getElementById("pName").value.trim();
           if (!nameValue) {
-            msg.textContent = "Product name is required.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Product name is required.", "bad");
             return;
           }
 
@@ -8173,8 +8643,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save product.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not save product.", "bad");
               return;
             }
             // The confirmation goes to the status beside "Add product",
@@ -8190,8 +8659,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             }
             loadCatalog();
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8204,8 +8672,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const data = await res.json();
             if (data && data.warning) {
               const msg = document.getElementById("catalogMsg");
-              msg.textContent = data.warning;
-              msg.className = "catalog-msg error";
+              flash(msg, data.warning, "bad");
             }
             loadCatalog();
           } catch (err) {
@@ -8240,8 +8707,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const slug = document.getElementById("stateSelect").value;
           const fee = document.getElementById("stateFee").value;
           if (!slug) {
-            msg.textContent = "Pick a state first.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Pick a state first.", "bad");
             return;
           }
           try {
@@ -8252,8 +8718,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not add that state.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not add that state.", "bad");
               return;
             }
             document.getElementById("stateFee").value = "";
@@ -8261,8 +8726,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
             loadCatalog();
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8293,15 +8757,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save the fallback fee.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not save the fallback fee.", "bad");
               return;
             }
             msg.textContent = data.warning || "Saved.";
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8322,15 +8784,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save bank details.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not save bank details.", "bad");
               return;
             }
             msg.textContent = data.warning || "Saved.";
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8358,27 +8818,54 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           either: "Either",
         };
 
+        // Same reasoning as the bookings list: a service is a name, a price, a
+        // duration and how it is delivered -- four facts that read better laid
+        // out than lined up in a six-column table a phone can't show.
         function renderOfferings(offerings) {
-          const body = document.getElementById("offeringsTableBody");
+          const host = document.getElementById("offeringsList");
+          if (!host) return;
           const keys = Object.keys(offerings);
-          body.innerHTML = keys.length > 0
-            ? keys.map((k) => {
-                const o = offerings[k];
-                const deliveryLabel = DELIVERY_MODE_LABELS[o.deliveryMode] || '<span style="color:var(--warn-fg);">Not set</span>';
-                return '<tr>' +
-                  '<td>' + escapeHtml(o.name) + '</td>' +
-                  '<td><code>' + escapeHtml(k) + '</code></td>' +
-                  '<td>N' + Number(o.price).toLocaleString() + '</td>' +
-                  '<td>' + o.durationMinutes + ' min</td>' +
-                  '<td>' + deliveryLabel + '</td>' +
-                  '<td>' +
-                    '<button class="catalog-btn small" onclick="editOffering(\\'' + k + '\\')">Edit</button> ' +
-                    '<button class="catalog-btn danger" onclick="removeOffering(\\'' + k + '\\')">Remove</button>' +
-                  '</td>' +
-                '</tr>';
-              }).join("")
-            : '<tr><td colspan="6" style="color:var(--muted-2);">No services yet.</td></tr>';
+          if (keys.length === 0) {
+            host.innerHTML = '<div class="home-empty"><div class="home-empty-icon">' + ICON_BOX + '</div>' +
+              'No services yet. Add one and Amara can start quoting and booking it straight away.</div>';
+            return;
+          }
+          host.innerHTML = keys.map((k) => {
+            const o = offerings[k];
+            const mode = DELIVERY_MODE_LABELS[o.deliveryMode];
+            const hrs = Math.floor((o.durationMinutes || 0) / 60);
+            const mins = (o.durationMinutes || 0) % 60;
+            const dur = (hrs ? hrs + "h" : "") + (hrs && mins ? " " : "") + (mins ? mins + "m" : (hrs ? "" : "--"));
+            const incomplete = !mode || !Number(o.price) || !Number(o.durationMinutes);
+            return '<div class="svc-card' + (incomplete ? " needs-work" : "") + '">' +
+              '<div class="svc-main">' +
+                '<div class="svc-name">' + escapeHtml(o.name) + '</div>' +
+                '<div class="svc-meta">' +
+                  (Number(o.price)
+                    ? '<span class="svc-price">N' + Number(o.price).toLocaleString() + '</span>'
+                    : '<span class="svc-price warn">No price set</span>') +
+                  '<span>' + escapeHtml(dur) + '</span>' +
+                  (mode
+                    ? '<span class="svc-mode">' + escapeHtml(mode) + '</span>'
+                    : '<span class="svc-mode warn">Delivery not set</span>') +
+                '</div>' +
+                '<div class="svc-key">' + escapeHtml(k) + '</div>' +
+              '</div>' +
+              '<div class="svc-actions">' +
+                '<button class="pact" data-svc-action="edit" data-key="' + escapeHtml(k) + '">' + ICON_PENCIL + 'Edit</button>' +
+                '<button class="pact danger" data-svc-action="remove" data-key="' + escapeHtml(k) + '" aria-label="Remove ' + escapeHtml(o.name) + '">' + ICON_TRASH + '</button>' +
+              '</div>' +
+            '</div>';
+          }).join("");
         }
+
+        document.addEventListener("click", (e) => {
+          const el = e.target.closest && e.target.closest("[data-svc-action]");
+          if (!el) return;
+          const key = el.getAttribute("data-key");
+          if (el.getAttribute("data-svc-action") === "edit") editOffering(key);
+          else removeOffering(key);
+        });
 
         function editOffering(key) {
           const o = (window.offeringsCache || {})[key];
@@ -8412,8 +8899,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
           const nameValue = document.getElementById("oName").value.trim();
           if (!nameValue) {
-            msg.textContent = "Service name is required.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Service name is required.", "bad");
             return;
           }
 
@@ -8445,8 +8931,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not save service.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not save service.", "bad");
               return;
             }
             document.getElementById("oKey").value = "";
@@ -8460,8 +8945,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
             loadBookable();
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8508,16 +8992,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not add that window.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not add that window.", "bad");
               return;
             }
             msg.textContent = data.warning || "Added.";
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
             loadBookable();
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8548,8 +9030,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           msg.className = "catalog-msg";
           const date = document.getElementById("blockDate").value;
           if (!date) {
-            msg.textContent = "Pick a date first.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Pick a date first.", "bad");
             return;
           }
           try {
@@ -8560,8 +9041,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             });
             const data = await res.json();
             if (!res.ok || data.error) {
-              msg.textContent = data.error || "Could not block that date.";
-              msg.className = "catalog-msg error";
+              flash(msg, data.error || "Could not block that date.", "bad");
               return;
             }
             document.getElementById("blockDate").value = "";
@@ -8569,8 +9049,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
             loadBookable();
           } catch (err) {
-            msg.textContent = "Network error, please try again.";
-            msg.className = "catalog-msg error";
+            flash(msg, "Network error, please try again.", "bad");
           }
         }
 
@@ -8590,46 +9069,68 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           today.setHours(0, 0, 0, 0);
           const diffDays = Math.round((d - today) / 86400000);
           const label = d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-          if (diffDays === 0) return "Today -- " + label;
-          if (diffDays === 1) return "Tomorrow -- " + label;
+          if (diffDays === 0) return "Today \u00b7 " + label;
+          if (diffDays === 1) return "Tomorrow \u00b7 " + label;
           return label;
         }
 
+        // A six-column table on a phone is unreadable, and these rows carry a
+        // date, a time, a service, a person and a reference -- five things that
+        // want to be laid out, not lined up. Cards grouped by day instead, with
+        // the actions as real controls.
         function renderBookings(bookings) {
           const heading = document.getElementById("bookingsHeading");
           if (heading) heading.textContent = "Upcoming bookings (" + bookings.length + ")";
-
-          const body = document.getElementById("bookingsTableBody");
+          const host = document.getElementById("bookingsList");
+          if (!host) return;
           const offerings = window.offeringsCache || {};
           if (bookings.length === 0) {
-            body.innerHTML = '<tr><td colspan="6" style="color:var(--muted-2);">No upcoming bookings.</td></tr>';
+            host.innerHTML = '<div class="home-empty"><div class="home-empty-icon">' + ICON_CAL + '</div>' +
+              'No upcoming bookings. When Amara books someone in, they appear here.</div>';
             return;
           }
-
           let html = "";
           let lastDate = null;
           for (const b of bookings) {
             if (b.date !== lastDate) {
-              html += '<tr><td colspan="6" class="booking-date-header">' + escapeHtml(formatBookingDateHeader(b.date)) + '</td></tr>';
+              html += '<div class="bk-daygroup">' + escapeHtml(formatBookingDateHeader(b.date)) + '</div>';
               lastDate = b.date;
             }
             const offering = offerings[b.offeringKey];
             const serviceName = offering ? offering.name : b.offeringKey;
+            const mins = offering && offering.durationMinutes ? offering.durationMinutes : null;
+            const who = b.customerName ? b.customerName : formatPhoneDisplay(b.phone);
             html +=
-              '<tr id="booking-row-' + b.id + '">' +
-                '<td>' + b.date + '</td>' +
-                '<td>' + b.time + '</td>' +
-                '<td>' + escapeHtml(serviceName) + '</td>' +
-                '<td>' + escapeHtml(b.phone) + '</td>' +
-                '<td><code>' + escapeHtml(b.reference) + '</code></td>' +
-                '<td>' +
-                  '<button class="catalog-btn small" onclick="toggleReschedule(\\'' + b.id + '\\', \\'' + b.offeringKey + '\\')">Reschedule</button> ' +
-                  '<button class="catalog-btn danger" onclick="cancelBooking(\\'' + b.id + '\\')">Cancel</button>' +
-                '</td>' +
-              '</tr>';
+              '<div class="bk-card" id="booking-row-' + escapeHtml(b.id) + '">' +
+                '<div class="bk-time"><b>' + escapeHtml(b.time) + '</b>' +
+                  (mins ? '<span>' + mins + ' min</span>' : '') + '</div>' +
+                '<div class="bk-main">' +
+                  '<div class="bk-service">' + escapeHtml(serviceName) + '</div>' +
+                  '<div class="bk-who">' + escapeHtml(who) +
+                    (b.customerName ? ' <span class="bk-phone">' + escapeHtml(formatPhoneDisplay(b.phone)) + '</span>' : '') +
+                  '</div>' +
+                  '<div class="bk-ref">Ref ' + escapeHtml(b.reference || "--") + '</div>' +
+                '</div>' +
+                '<div class="bk-actions">' +
+                  '<button class="pact" data-bk-action="reschedule" data-id="' + escapeHtml(b.id) + '" data-offering="' + escapeHtml(b.offeringKey) + '">Reschedule</button>' +
+                  '<button class="pact danger" data-bk-action="cancel" data-id="' + escapeHtml(b.id) + '">Cancel</button>' +
+                '</div>' +
+              '</div>';
           }
-          body.innerHTML = html;
+          host.innerHTML = html;
         }
+
+        document.addEventListener("click", (e) => {
+          const el = e.target.closest && e.target.closest("[data-bk-action]");
+          if (el) {
+            const id = el.getAttribute("data-id");
+            if (el.getAttribute("data-bk-action") === "cancel") cancelBooking(id);
+            else toggleReschedule(id, el.getAttribute("data-offering"));
+            return;
+          }
+          const el2 = e.target.closest && e.target.closest("[data-bk-action2]");
+          if (el2) loadRescheduleSlots(el2.getAttribute("data-id"), el2.getAttribute("data-offering"));
+        });
 
         async function cancelBooking(id) {
           if (!confirm("Cancel this booking? The slot will open back up for other customers.")) return;
@@ -8653,16 +9154,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
           const row = document.getElementById("booking-row-" + id);
           if (!row) return;
-          const tr = document.createElement("tr");
+          const tr = document.createElement("div");
           tr.id = "reschedule-" + id;
+          tr.className = "bk-reschedule";
           tr.innerHTML =
-            '<td colspan="6" style="background:var(--surface-2);padding:10px;border-radius:0 0 8px 8px;">' +
-              '<div class="fees-row">' +
-                '<div><label>New date</label><input type="date" id="rDate-' + id + '"></div>' +
-                '<button class="catalog-btn small" onclick="loadRescheduleSlots(\\'' + id + '\\', \\'' + offeringKey + '\\')">Check open times</button>' +
-              '</div>' +
-              '<div id="rSlots-' + id + '" style="margin-top:8px;font-size:13px;"></div>' +
-            '</td>';
+            '<div class="bk-resched-row">' +
+              '<div class="profile-field" style="flex:1;min-width:150px;"><label>New date</label><input type="date" id="rDate-' + id + '"></div>' +
+              '<button class="catalog-btn" data-bk-action2="slots" data-id="' + id + '" data-offering="' + offeringKey + '">Check open times</button>' +
+            '</div>' +
+            '<div id="rSlots-' + id + '" class="bk-slots"></div>';
           row.parentNode.insertBefore(tr, row.nextSibling);
         }
 
@@ -8981,17 +9481,35 @@ app.get("/api/catalog", async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
   const products = {};
+  const selfHosted = `${BASE_URL}/catalog-photo/${seller.sellerId}/`;
   for (const key of Object.keys(seller.catalog.PRODUCT_PRICES)) {
+    const imageUrl = seller.catalog.PRODUCT_IMAGES[key];
     products[key] = {
       name: seller.catalog.PRODUCT_NAMES[key],
       price: seller.catalog.PRODUCT_PRICES[key],
-      imageUrl: seller.catalog.PRODUCT_IMAGES[key],
+      imageUrl,
+      // Whether this is a photo the seller actually provided, rather than the
+      // placeholder path a product gets by default. The dashboard needs the
+      // difference to say honestly which products still have no picture.
+      hasOwnPhoto: !!imageUrl && !String(imageUrl).startsWith(`${BASE_URL}/images/`),
       description: seller.catalog.PRODUCT_DESCRIPTIONS[key] || "",
       category: (seller.catalog.PRODUCT_CATEGORIES && seller.catalog.PRODUCT_CATEGORIES[key]) || "",
     };
   }
+  // Units sold per product, so the grid can sort by what is actually moving.
+  const sales = {};
+  try {
+    const soldKeys = (await redisCommand(["SMEMBERS", nsKey(seller.sellerId, "analytics:products_sold")])) || [];
+    await Promise.all(soldKeys.map(async (k) => {
+      const n = await redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:sold`)]);
+      if (Number(n)) sales[k] = Number(n);
+    }));
+  } catch (err) {
+    console.error("api/catalog: sales lookup failed:", err.message);
+  }
   res.json({
     products,
+    sales,
     deliveryStates: seller.catalog.DELIVERY_STATES,
     deliveryDefaultFee: seller.catalog.DELIVERY_DEFAULT_FEE,
     nigeriaStates: NIGERIA_STATES,
@@ -9270,9 +9788,63 @@ app.get("/api/home", async (req, res) => {
     const missingPrice = keys.filter((k) => !Number((catalog.PRODUCT_PRICES || {})[k]));
     const missingCategory = keys.filter((k) => !((catalog.PRODUCT_CATEGORIES || {})[k] || "").trim());
 
+    // ---- Last 7 days ----
+    // New customers per day is counted from each customer's own first_contact,
+    // so it is a real count of first-time conversations, not a stored metric
+    // that could drift. Revenue and orders come from the same daily keys the
+    // Analytics tab reads. Nothing here is projected or smoothed.
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    const newByDay = Object.fromEntries(days.map((d) => [d, 0]));
+    for (const c of customers) {
+      const day = (c.first_contact || "").slice(0, 10);
+      if (day in newByDay) newByDay[day] += 1;
+    }
+    const dailyRevenue = await Promise.all(
+      days.map((d) => redisCommand(["GET", nsKey(seller.sellerId, `analytics:day:${d}:revenue`)]).catch(() => null))
+    );
+    const dailyOrders = await Promise.all(
+      days.map((d) => redisCommand(["GET", nsKey(seller.sellerId, `analytics:day:${d}:orders`)]).catch(() => null))
+    );
+    const week = days.map((d, i) => ({
+      date: d,
+      newCustomers: newByDay[d],
+      revenue: Number(dailyRevenue[i]) || 0,
+      orders: Number(dailyOrders[i]) || 0,
+    }));
+
+    // The products the seller most needs to see: best sellers where there are
+    // sales, otherwise simply the most recently priced items so the card is
+    // never empty for a shop that hasn't sold yet.
+    const soldKeys = (await redisCommand(["SMEMBERS", nsKey(seller.sellerId, "analytics:products_sold")]).catch(() => [])) || [];
+    const soldCounts = {};
+    await Promise.all(
+      soldKeys.map(async (k) => {
+        const n = await redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:sold`)]).catch(() => null);
+        soldCounts[k] = Number(n) || 0;
+      })
+    );
+    const topProducts = keys
+      .map((k) => ({
+        key: k,
+        name: (catalog.PRODUCT_NAMES || {})[k] || k,
+        price: Number((catalog.PRODUCT_PRICES || {})[k]) || 0,
+        image: (catalog.PRODUCT_IMAGES || {})[k] || "",
+        hasOwnPhoto: String((catalog.PRODUCT_IMAGES || {})[k] || "").startsWith(selfHosted),
+        sold: soldCounts[k] || 0,
+      }))
+      .sort((a, b) => b.sold - a.sold)
+      .slice(0, 4);
+
     res.json({
       profile: publicProfile(seller),
       stats,
+      week,
+      newThisWeek: week.reduce((sum, d) => sum + d.newCustomers, 0),
       waiting,
       waitingTotal: customers.filter((c) => c.last_message_role === "user").length,
       catalogue: {
@@ -9280,6 +9852,7 @@ app.get("/api/home", async (req, res) => {
         missingPhoto: missingPhoto.length,
         missingPrice: missingPrice.length,
         missingCategory: missingCategory.length,
+        topProducts,
       },
       connection: {
         // Amara genuinely cannot send or receive without both of these, so
@@ -10044,7 +10617,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 23";
+const BUILD_ROUND = "Round 24";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
