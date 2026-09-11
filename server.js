@@ -4724,7 +4724,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sk-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
         .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; padding-top: 3px; }
         .sk-line { height: 10px; }
-        @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+        @media (prefers-reduced-motion: reduce) {
+          .sk { animation: none; }
+          /* The live dot pulses forever, so it is the one piece of motion that
+             never stops on its own -- exactly the kind someone with reduced
+             motion set has asked not to see. It keeps its colour, loses the
+             pulse. */
+          .live-dot, .pulse-dot { animation: none; }
+          .inline-panel { animation: none; }
+        }
         @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .stat-tile.tile-in { animation: tileIn 0.4s ease-out backwards; }
         /* A newly arrived message lands from its own side, so you can see
@@ -4946,6 +4954,34 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
         .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .inline-panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+        /* Grouped form steps. Six fields and a save button all visible at once
+           with no grouping is the thing that reads as noise -- the eye has
+           nowhere to start. Three numbered groups give it somewhere. */
+        .form-step { padding: 15px 0; border-top: 1px solid var(--border); }
+        .form-step:first-of-type { border-top: none; padding-top: 4px; }
+        .form-step-label { display: flex; align-items: center; gap: 9px; font-family: var(--font-heading); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 11px; letter-spacing: -0.005em; }
+        .form-step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-sans); }
+        .edit-note { font-size: 12.5px; color: var(--muted); background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 9px; padding: 8px 11px; margin-bottom: 13px; }
+        .edit-note b { color: var(--text); }
+
+        /* A unit that belongs to a field belongs inside it, not in the label. */
+        .input-prefix, .input-suffix { display: flex; align-items: stretch; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+        .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .input-prefix span, .input-suffix span { display: flex; align-items: center; padding: 0 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); flex-shrink: 0; }
+        .input-prefix span { border-right: 1px solid var(--border); }
+        .input-suffix span { border-left: 1px solid var(--border); }
+        .input-prefix input, .input-suffix input { flex: 1; min-width: 0; border: none; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 13px; font-family: inherit; color: var(--text); }
+        .input-prefix input:focus, .input-suffix input:focus { outline: none; box-shadow: none; }
+
+        /* Four options is a row of buttons, not a dropdown you have to open to
+           discover what is in it. The <select> stays as the value's home. */
+        .choice-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .choice { padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .12s ease; }
+        .choice:hover { border-color: var(--accent); color: var(--accent); }
+        .choice:active { transform: scale(0.96); }
+        .choice.on { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 8px var(--accent-shadow); }
+        .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
         @media (max-width: 700px) { .field-grid { grid-template-columns: 1fr; } }
         /* Settings rows: label + explanation on the left, the control on the
            right. Every control here changes something that genuinely works. */
@@ -5194,17 +5230,40 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-stat b { font-family: var(--font-heading); font-size: 17px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
         .wk-stat span { font-size: 11px; color: var(--muted-2); }
 
-        /* A real look at the shop's own products, not just counts about them. */
-        .pmini-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
-        .pmini { min-width: 0; cursor: pointer; }
-        .pmini-thumb { aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; background: var(--surface-3); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); transition: border-color .15s ease, transform .18s ease; }
-        .pmini:hover .pmini-thumb { border-color: var(--accent); transform: translateY(-2px); }
-        .pmini-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .pmini-blank { color: var(--muted-2); display: flex; }
-        .pmini-blank svg { width: 20px; height: 20px; }
-        .pmini-name { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .pmini-meta { font-size: 11px; color: var(--muted-2); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .pmini-warn { color: var(--warn-fg); font-weight: 600; }
+        /* The catalogue card. The point of it is the products, so they get the
+           space: the price sits on the image rather than on a line of its own,
+           and the completeness ring became a badge beside the title because it
+           is a status, not a section. */
+        .ring-badge { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
+        .ring-badge svg { width: 44px; height: 44px; transform: rotate(-90deg); }
+        .ring-badge .track { fill: none; stroke: var(--surface-3); stroke-width: 4.5; }
+        .ring-badge .fill { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke-dashoffset .9s cubic-bezier(.22,1,.36,1); }
+        .ring-badge b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 12.5px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
+        .ring-badge b i { font-style: normal; font-size: 8px; margin-left: 0.5px; color: var(--muted-2); }
+
+        .ptile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; margin-top: 18px; }
+        .ptile { min-width: 0; cursor: pointer; }
+        .ptile-img { position: relative; aspect-ratio: 1 / 1; border-radius: 13px; overflow: hidden; background: var(--surface-3); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s ease, border-color .2s ease; }
+        .ptile-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .45s cubic-bezier(.22,1,.36,1); }
+        .ptile:hover .ptile-img { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 10px 24px rgba(15,23,42,0.14); }
+        [data-theme="dark"] .ptile:hover .ptile-img { box-shadow: 0 10px 24px rgba(0,0,0,0.45); }
+        .ptile:hover .ptile-img img { transform: scale(1.07); }
+        .ptile:active .ptile-img { transform: translateY(-1px) scale(0.985); }
+        .ptile-blank { color: var(--muted-2); display: flex; }
+        .ptile-blank svg { width: 22px; height: 22px; }
+        /* The price rides up out of the image on hover; the veil is what keeps
+           it readable over a photograph of any brightness. */
+        .ptile-veil { position: absolute; left: 0; right: 0; bottom: 0; height: 54%; background: linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0)); opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+        .ptile-price { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 11.5px; font-weight: 750; color: #fff; letter-spacing: -0.01em; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ptile:hover .ptile-veil { opacity: 1; }
+        .ptile:hover .ptile-price { opacity: 1; transform: none; }
+        .ptile-sold { position: absolute; right: 7px; top: 7px; font-size: 9.5px; font-weight: 750; padding: 2.5px 7px; border-radius: 999px; background: rgba(17,24,39,0.82); color: #fff; }
+        .ptile-name { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .gap-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border-light); }
+        .gchip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); }
+        .gchip.ok { background: var(--ok-bg); color: var(--ok-fg); }
+        .gchip svg { width: 11px; height: 11px; }
         /* min-width:0 on the tracks. A grid item defaults to min-content
            width, so a card holding rows with negative margins (the waiting
            list) pushed itself 46px wider than its own column -- invisible on a
@@ -5296,27 +5355,37 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .fees-row div { width: 100%; }
           /* The live numbers are Home's content now, not a band under the
              topbar on every tab. Two per row, compact. */
-          /* Two tiles per row, and the context line stays -- it is the part
-             that makes a bare number mean something. */
+          /* On a phone the tile is restacked: the icon sits on its own line as
+             a tinted mark, the number gets the room, and the context line is
+             clipped to one line so four tiles can never turn into a wall of
+             sentences. */
           .home-stats { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-          .htile { padding: 13px 13px 12px; border-radius: 15px; }
-          .htile-icon { width: 28px; height: 28px; border-radius: 9px; }
-          .htile-icon svg { width: 14px; height: 14px; }
-          .htile-value { font-size: 21px; }
-          .htile-label { font-size: 12px; margin-top: 10px; }
-          .htile-context { font-size: 10.5px; }
-          .htile::after { width: 84px; height: 84px; right: -32px; top: -40px; }
+          .htile { padding: 13px 13px 12px; border-radius: 16px; }
+          .htile-top { flex-direction: column; align-items: flex-start; gap: 9px; }
+          .htile-icon { width: 30px; height: 30px; border-radius: 10px; }
+          .htile-icon svg { width: 15px; height: 15px; }
+          .htile-value { font-size: 25px; }
+          .htile-label { font-size: 12px; margin-top: 8px; }
+          .htile-context { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .htile::after { width: 82px; height: 82px; right: -30px; top: -38px; }
+          /* A thin accent rule at the top of each tile, so the four read as a
+             set of distinct things at a glance rather than four grey boxes. */
+          .htile::before { content: ""; position: absolute; left: 13px; right: 13px; top: 0; height: 2.5px; border-radius: 0 0 3px 3px; background: var(--tint); opacity: 0.9; }
           .home-col { gap: 14px; }
           .wk-chart { height: 76px; gap: 5px; margin-top: 14px; }
           .wk-foot { margin-top: 13px; padding-top: 12px; }
           .wk-stat b { font-size: 15.5px; }
           .wk-stat span { font-size: 10.5px; }
-          .pmini-row { grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
-          .pmini-name { font-size: 11px; margin-top: 6px; }
-          .pmini-meta { font-size: 10px; }
-          .pmini-thumb { border-radius: 10px; }
-          .cat-health { gap: 13px; margin-top: 15px; padding-top: 14px; }
-          .health-ring, .health-ring svg { width: 66px; height: 66px; }
+          /* Two across on a phone, bigger than four squeezed ones, and the
+             price stays visible rather than waiting for a hover that a touch
+             screen never delivers. */
+          .ptile-row { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+          .ptile-img { border-radius: 12px; }
+          .ptile-veil, .ptile-price { opacity: 1; transform: none; }
+          .ptile-name { font-size: 11.5px; margin-top: 7px; }
+          .ring-badge, .ring-badge svg { width: 40px; height: 40px; }
+          .gap-chips { gap: 6px; margin-top: 14px; padding-top: 13px; }
+          .gchip { font-size: 11px; padding: 4px 9px; }
           .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; flex-direction: row-reverse; align-items: center; gap: 9px; }
           .stat-tile::before { height: 0; }
           .stat-tile::after { display: none; }
@@ -5704,45 +5773,74 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <h2>Services</h2>
               <div class="card-sub">What Amara can quote, describe and book on your behalf.</div>
             </div>
+            <button class="catalog-btn" id="addServiceBtn" onclick="openOfferingForm()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add service
+            </button>
           </div>
           <div id="offeringsList"></div>
-          <div id="offeringEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:8px;">
-            Editing "<b id="offeringEditingName"></b>" -- <a href="#" onclick="cancelEditOffering();return false;">cancel, add a new service instead</a>
-          </div>
-          <div class="catalog-form">
+          <div class="inline-panel" id="offeringPanel" style="display:none;">
+            <div class="inline-panel-head">
+              <span id="offeringPanelTitle">New service</span>
+              <button class="icon-btn small-icon-btn" onclick="closeOfferingForm()" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
             <input type="hidden" id="oKey">
-            <div>
-              <label>Name</label>
-              <input id="oName" placeholder="e.g. Strategy Call (30 min)">
+            <div id="offeringEditingNote" style="display:none;" class="edit-note">
+              Editing <b id="offeringEditingName"></b> &mdash; <a href="#" onclick="cancelEditOffering();return false;">cancel and add a new one instead</a>
             </div>
-            <div>
-              <label>Price (N)</label>
-              <input id="oPrice" type="number" min="1" placeholder="15000">
+
+            <div class="form-step">
+              <div class="form-step-label"><span class="form-step-num">1</span>What it is</div>
+              <div class="field-grid">
+                <div class="field field-full">
+                  <label for="oName">Service name</label>
+                  <input id="oName" placeholder="e.g. Knotless Box Braids">
+                </div>
+                <div class="field field-full">
+                  <label for="oDescription">What's included</label>
+                  <div class="field-hint">Anything a customer would ask before booking. Amara answers from this.</div>
+                  <textarea id="oDescription" rows="2" placeholder="e.g. Washing, sectioning and braiding. Extensions not included."></textarea>
+                </div>
+              </div>
             </div>
-            <button class="catalog-btn" onclick="saveOffering()">Save service</button>
-          </div>
-          <div class="catalog-form" style="grid-template-columns: 1fr 1fr; margin-top:10px;">
-            <div>
-              <label>Duration (minutes)</label>
-              <input id="oDuration" type="number" min="1" max="480" placeholder="30">
+
+            <div class="form-step">
+              <div class="form-step-label"><span class="form-step-num">2</span>Price and how long it takes</div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="oPrice">Price</label>
+                  <div class="input-prefix"><span>N</span><input id="oPrice" type="number" min="1" placeholder="15000"></div>
+                </div>
+                <div class="field">
+                  <label for="oDuration">Duration</label>
+                  <div class="input-suffix"><input id="oDuration" type="number" min="1" max="480" placeholder="30"><span>minutes</span></div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Delivery (so Amara can answer "is this online?" herself)</label>
-              <select id="oDeliveryMode">
-                <option value="">Not set yet -- Amara will ask you when a customer asks</option>
+
+            <div class="form-step">
+              <div class="form-step-label"><span class="form-step-num">3</span>How it's delivered</div>
+              <div class="field-hint" style="margin-bottom:9px;">So Amara can answer "is this online?" without coming back to you.</div>
+              <div class="choice-row" id="oDeliveryChoices">
+                <button type="button" class="choice" data-delivery="in_person">In person</button>
+                <button type="button" class="choice" data-delivery="online">Online</button>
+                <button type="button" class="choice" data-delivery="either">Either</button>
+                <button type="button" class="choice" data-delivery="">Not sure yet</button>
+              </div>
+              <select id="oDeliveryMode" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                <option value="">Not set</option>
                 <option value="online">Online only</option>
                 <option value="in_person">In-person only</option>
-                <option value="either">Either -- online or in-person</option>
+                <option value="either">Either</option>
               </select>
             </div>
-          </div>
-          <div class="catalog-form" style="grid-template-columns: 1fr; margin-top:10px;">
-            <div>
-              <label>Description (what's included, anything Amara should know)</label>
-              <input id="oDescription" placeholder="e.g. A focused 30-minute strategy session">
+
+            <div class="inline-panel-actions">
+              <button class="catalog-btn" onclick="saveOffering()">Save service</button>
+              <button class="btn-quiet" onclick="closeOfferingForm()">Cancel</button>
+              <span class="catalog-msg" id="offeringsMsg"></span>
             </div>
           </div>
-          <div class="catalog-msg" id="offeringsMsg"></div>
         </div>
         <div class="catalog-card">
           <h2>Weekly availability</h2>
@@ -7965,44 +8063,51 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // One honest ratio: how many of the three details each product could
           // carry are actually filled in. Nothing weighted, nothing estimated.
           const slots = c.total * 3;
-          const filled = slots - (c.missingPhoto + c.missingPrice + c.missingCategory);
-          const pct = Math.round((filled / slots) * 100);
-          const R = 30, CIRC = 2 * Math.PI * R;
-          const gap = (label, n) =>
-            '<div class="gap-row"><span class="gap-label">' + label + '</span>' +
-              '<span class="gap-count ' + (n === 0 ? "zero" : "some") + '">' + (n === 0 ? "none" : n) + '</span></div>';
-          const products = (c.topProducts || []).map((p) => {
+          const missingTotal = c.missingPhoto + c.missingPrice + c.missingCategory;
+          const pct = Math.round(((slots - missingTotal) / slots) * 100);
+          const R = 19, CIRC = 2 * Math.PI * R;
+
+          // The gaps read as chips rather than three labelled rows -- same
+          // three facts, a third of the words, and the ones that are fine
+          // simply aren't mentioned.
+          const chips = [];
+          if (c.missingPhoto) chips.push('<span class="gchip">' + c.missingPhoto + ' need a photo</span>');
+          if (c.missingPrice) chips.push('<span class="gchip">' + c.missingPrice + ' need a price</span>');
+          if (c.missingCategory) chips.push('<span class="gchip">' + c.missingCategory + ' need a category</span>');
+          const gapLine = chips.length
+            ? '<div class="gap-chips">' + chips.join("") + '</div>'
+            : '<div class="gap-chips"><span class="gchip ok">' + ICON_TICK + 'Every product is complete</span></div>';
+
+          const products = (c.topProducts || []).map((p, i) => {
             const thumb = p.hasOwnPhoto && p.image
               ? '<img src="' + escapeHtml(p.image) + '" alt="" loading="lazy">'
-              : '<span class="pmini-blank">' + ICON_IMAGE + '</span>';
+              : '<span class="ptile-blank">' + ICON_IMAGE + '</span>';
             return '' +
-              '<div class="pmini" data-home-action="go-catalog" title="' + escapeHtml(p.name) + '">' +
-                '<div class="pmini-thumb">' + thumb + '</div>' +
-                '<div class="pmini-name">' + escapeHtml(p.name) + '</div>' +
-                '<div class="pmini-meta">' + (p.price ? "N" + p.price.toLocaleString() : '<span class="pmini-warn">no price</span>') +
-                  (p.sold ? ' · ' + p.sold + ' sold' : '') + '</div>' +
+              '<div class="ptile" data-home-action="go-catalog" style="--i:' + i + '" title="' + escapeHtml(p.name) + '">' +
+                '<div class="ptile-img">' + thumb +
+                  (p.sold ? '<span class="ptile-sold">' + p.sold + ' sold</span>' : '') +
+                  '<span class="ptile-veil"></span>' +
+                  '<span class="ptile-price">' + (p.price ? "N" + p.price.toLocaleString() : "No price") + '</span>' +
+                '</div>' +
+                '<div class="ptile-name">' + escapeHtml(p.name) + '</div>' +
               '</div>';
           }).join("");
+
           return '' +
-            '<div class="home-card">' +
+            '<div class="home-card cat-card">' +
               '<div class="home-card-head">' +
                 '<div><h3>Your catalogue</h3>' +
                   '<div class="home-card-sub">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell.</div></div>' +
-                '<span class="home-count-chip calm">' + c.total + '</span>' +
-              '</div>' +
-              (products ? '<div class="pmini-row">' + products + '</div>' : '') +
-              '<div class="cat-health">' +
-                '<div class="health-ring">' +
-                  '<svg viewBox="0 0 74 74"><circle class="track" cx="37" cy="37" r="' + R + '"></circle>' +
-                  '<circle class="fill" cx="37" cy="37" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
-                  '<div class="health-num"><b>' + pct + '%</b><span>filled in</span></div>' +
-                '</div>' +
-                '<div class="gap-list">' +
-                  gap("Missing a photo", c.missingPhoto) +
-                  gap("Missing a price", c.missingPrice) +
-                  gap("Missing a category", c.missingCategory) +
+                // The ring moved into the header: it is a status, and a status
+                // belongs beside the title, not in a block of its own.
+                '<div class="ring-badge" title="' + pct + '% of product details filled in">' +
+                  '<svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="' + R + '"></circle>' +
+                  '<circle class="fill" cx="22" cy="22" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
+                  '<b>' + pct + '<i>%</i></b>' +
                 '</div>' +
               '</div>' +
+              (products ? '<div class="ptile-row">' + products + '</div>' : '') +
+              gapLine +
               '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-catalog">Open catalogue</button></div>' +
             '</div>';
         }
@@ -8023,6 +8128,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const host = document.getElementById("homeView");
           if (!host || !homeData) return;
           const d = homeData;
+          // A first paint, or a return to a tab that was empty, is worth
+          // animating. A poll that happens to find changed data is not -- the
+          // page would visibly re-deal itself every few seconds.
+          const fresh = !host.querySelector(".home-inner");
           if (!force) {
             if (editingProfile && host.querySelector("#pfName")) return;
             const sig = homeSignature(d);
@@ -8053,8 +8162,62 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // than leaving a gap until the next tick.
           renderHomeStats(d);
           syncBrandAvatar(d.profile.avatarUrl, d.profile.businessName);
+          if (fresh) staggerHomeIn(host);
           const input = document.getElementById("brandPhotoInput");
           if (input) input.addEventListener("change", onBrandPhotoPicked);
+        }
+
+        // Home arrives in sequence rather than all at once: masthead, then the
+        // numbers, then the two cards. Each is 40ms behind the last, which is
+        // long enough to read as deliberate and short enough that the whole
+        // thing is settled in under a third of a second. WAAPI on opacity and
+        // transform only, so it stays on the compositor.
+        function staggerHomeIn(host) {
+          if (!host || !host.animate || prefersReducedMotion()) return;
+          const rows = [
+            host.querySelector(".brand-card"),
+            host.querySelector(".home-alert"),
+            host.querySelector(".setup-card"),
+            host.querySelector(".home-section-head"),
+            host.querySelector(".home-stats"),
+            host.querySelector(".home-grid > *:first-child"),
+            host.querySelector(".home-grid .home-col"),
+          ].filter(Boolean);
+          rows.forEach((el, i) => {
+            if (!el.animate) return;
+            el.animate(
+              [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }],
+              { duration: 300, delay: i * 40, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+            );
+          });
+          // The four numbers count up, and their tiles land one after another
+          // rather than as a single block of four.
+          host.querySelectorAll(".home-stats .htile").forEach((el, i) => {
+            if (!el.animate) return;
+            el.animate(
+              [{ opacity: 0, transform: "translateY(8px) scale(0.985)" }, { opacity: 1, transform: "none" }],
+              { duration: 320, delay: 160 + i * 45, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+            );
+          });
+          // Product tiles deal in from the left, in order.
+          host.querySelectorAll(".ptile").forEach((el, i) => {
+            if (!el.animate) return;
+            el.animate(
+              [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }],
+              { duration: 300, delay: 320 + i * 55, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+            );
+          });
+          // The week bars grow from the baseline instead of appearing at full
+          // height. transform on a bar anchored at its bottom edge, so this is
+          // still a compositor property and not a layout animation.
+          host.querySelectorAll(".wk-bar").forEach((el, i) => {
+            if (!el.animate) return;
+            el.style.transformOrigin = "bottom";
+            el.animate(
+              [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }],
+              { duration: 520, delay: 300 + i * 50, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+            );
+          });
         }
 
         // One delegated listener rather than inline onclick handlers: the
@@ -8867,6 +9030,51 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           else removeOffering(key);
         });
 
+        // The form used to sit open under the list with all six fields and the
+        // save button visible at once, and "Save service" wedged between Price
+        // and Duration. It is a panel now, opened deliberately, with the fields
+        // in the order a person actually thinks about them: what it is, then
+        // what it costs, then how it is delivered.
+        function openOfferingForm() {
+          const panel = document.getElementById("offeringPanel");
+          if (!panel) return;
+          panel.style.display = "block";
+          const t = document.getElementById("offeringPanelTitle");
+          if (t && !document.getElementById("oKey").value) t.textContent = "New service";
+          syncDeliveryChoices();
+          const name = document.getElementById("oName");
+          if (name) name.focus();
+          panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+        function closeOfferingForm() {
+          const panel = document.getElementById("offeringPanel");
+          if (panel) panel.style.display = "none";
+          cancelEditOffering();
+          const msg = document.getElementById("offeringsMsg");
+          if (msg) { msg.textContent = ""; msg.className = "catalog-msg"; }
+        }
+
+        // The delivery mode is one of four choices, so it is four buttons
+        // rather than a dropdown you have to open to find out what is in it.
+        // The <select> stays in the DOM as the single source of truth, which
+        // means saveOffering() and every validation path are untouched.
+        function setDeliveryChoice(value) {
+          const sel = document.getElementById("oDeliveryMode");
+          if (sel) sel.value = value;
+          syncDeliveryChoices();
+        }
+        function syncDeliveryChoices() {
+          const sel = document.getElementById("oDeliveryMode");
+          const current = sel ? sel.value : "";
+          document.querySelectorAll("#oDeliveryChoices .choice").forEach((b) => {
+            b.classList.toggle("on", b.getAttribute("data-delivery") === current);
+          });
+        }
+        document.addEventListener("click", (e) => {
+          const b = e.target.closest && e.target.closest("#oDeliveryChoices .choice");
+          if (b) setDeliveryChoice(b.getAttribute("data-delivery"));
+        });
+
         function editOffering(key) {
           const o = (window.offeringsCache || {})[key];
           if (!o) return;
@@ -8878,8 +9086,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           document.getElementById("oDescription").value = o.description || "";
           document.getElementById("offeringEditingName").textContent = o.name;
           document.getElementById("offeringEditingNote").style.display = "block";
-          document.getElementById("oName").focus();
-          document.getElementById("oName").scrollIntoView({ behavior: "smooth", block: "center" });
+          const t = document.getElementById("offeringPanelTitle");
+          if (t) t.textContent = "Edit service";
+          openOfferingForm();
         }
 
         function cancelEditOffering() {
@@ -8890,6 +9099,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           document.getElementById("oDeliveryMode").value = "";
           document.getElementById("oDescription").value = "";
           document.getElementById("offeringEditingNote").style.display = "none";
+          const t = document.getElementById("offeringPanelTitle");
+          if (t) t.textContent = "New service";
+          syncDeliveryChoices();
         }
 
         async function saveOffering() {
@@ -8934,15 +9146,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               flash(msg, data.error || "Could not save service.", "bad");
               return;
             }
-            document.getElementById("oKey").value = "";
-            document.getElementById("oName").value = "";
-            document.getElementById("oPrice").value = "";
-            document.getElementById("oDuration").value = "";
-            document.getElementById("oDeliveryMode").value = "";
-            document.getElementById("oDescription").value = "";
-            document.getElementById("offeringEditingNote").style.display = "none";
-            msg.textContent = data.warning || "Saved.";
-            msg.className = data.warning ? "catalog-msg error" : "catalog-msg ok";
+            const savedName = body.name;
+            cancelEditOffering();
+            if (data.warning) {
+              flash(msg, data.warning, "bad");
+            } else {
+              closeOfferingForm();
+              toast("Service saved", { sub: savedName });
+            }
             loadBookable();
           } catch (err) {
             flash(msg, "Network error, please try again.", "bad");
@@ -10617,7 +10828,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 24";
+const BUILD_ROUND = "Round 25";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
