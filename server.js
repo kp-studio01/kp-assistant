@@ -1882,16 +1882,26 @@ async function recordOrderAnalytics(sellerId, order) {
   }
 }
 
-async function getAnalyticsSummary(sellerId, customers, catalog) {
-  // Last 14 days of revenue + order count, oldest to newest. Always
-  // generates the full 14-day range and lets a missing key read as 0,
-  // rather than needing a separate index of "which days have data" —
-  // one GET per day per metric, cheap at this scale.
+async function getAnalyticsSummary(sellerId, customers, catalog, windowDays) {
+  // The window is the seller's choice (7 / 14 / 30). Always generates the
+  // full range and lets a missing key read as 0, rather than needing a
+  // separate index of "which days have data" — one GET per day per metric,
+  // cheap at this scale.
+  const span = [7, 14, 30].includes(Number(windowDays)) ? Number(windowDays) : 14;
   const days = [];
-  for (let i = 13; i >= 0; i--) {
+  for (let i = span - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     days.push(d.toISOString().slice(0, 10));
+  }
+  // The window immediately before this one, so every headline number can be
+  // stated against a real comparison instead of standing alone. Nothing is
+  // projected: if the previous window has no data, the comparison says so.
+  const prevDays = [];
+  for (let i = span * 2 - 1; i >= span; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    prevDays.push(d.toISOString().slice(0, 10));
   }
   const trend = [];
   for (const dateStr of days) {
@@ -1909,6 +1919,51 @@ async function getAnalyticsSummary(sellerId, customers, catalog) {
     }
     trend.push({ date: dateStr, revenue, orders });
   }
+
+  // Previous window, totals only -- it is a comparison, not a second chart.
+  let prevRevenue = 0, prevOrders = 0, prevHasData = false;
+  try {
+    const raws = await Promise.all(prevDays.map((d) => Promise.all([
+      redisCommand(["GET", nsKey(sellerId, `analytics:day:${d}:revenue`)]),
+      redisCommand(["GET", nsKey(sellerId, `analytics:day:${d}:orders`)]),
+    ])));
+    for (const [r, o] of raws) {
+      if (r !== null && r !== undefined) prevHasData = true;
+      if (o !== null && o !== undefined) prevHasData = true;
+      prevRevenue += Number(r) || 0;
+      prevOrders += Number(o) || 0;
+    }
+  } catch (err) {
+    console.error("getAnalyticsSummary: previous-window lookup failed:", err.message);
+  }
+
+  // Which days of the week actually bring in orders, summed across the
+  // window. Counted from the same daily totals the chart draws.
+  const weekdayOrders = [0, 0, 0, 0, 0, 0, 0];
+  const weekdayRevenue = [0, 0, 0, 0, 0, 0, 0];
+  for (const t of trend) {
+    const dow = new Date(t.date + "T00:00:00").getDay();
+    if (Number.isInteger(dow)) {
+      weekdayOrders[dow] += t.orders;
+      weekdayRevenue[dow] += t.revenue;
+    }
+  }
+
+  // New versus returning, over the same window: a customer whose very first
+  // message landed inside it is new; one who first wrote earlier but has
+  // been back since is returning. Both come from stored contact dates.
+  const windowStart = days[0];
+  let newCustomers = 0, returningCustomers = 0;
+  for (const c of customers) {
+    const first = (c.first_contact || "").slice(0, 10);
+    const last = (c.last_contact || "").slice(0, 10);
+    if (!first) continue;
+    if (first >= windowStart) newCustomers += 1;
+    else if (last >= windowStart) returningCustomers += 1;
+  }
+
+  // How much of the work Amara is carrying unaided right now.
+  const handledByOwner = customers.filter((c) => c.paused === "yes").length;
 
   // Best sellers, sorted by units sold.
   let bestSellers = [];
@@ -1947,8 +2002,12 @@ async function getAnalyticsSummary(sellerId, customers, catalog) {
   const conversionPct = totalCustomers > 0 ? Math.round((paidCustomerCount / totalCustomers) * 1000) / 10 : 0;
 
   return {
+    span,
     trend,
     bestSellers,
+    previous: { revenue: prevRevenue, orders: prevOrders, hasData: prevHasData },
+    weekday: { orders: weekdayOrders, revenue: weekdayRevenue },
+    customers: { new: newCustomers, returning: returningCustomers, handledByOwner, total: customers.length },
     conversion: { totalCustomers, paidCustomers: paidCustomerCount, conversionPct },
   };
 }
@@ -3640,12 +3699,24 @@ function authPageHtml({ title, heading, formHtml, error }) {
         .business-type-choice { display:flex; flex-direction:column; gap:8px; }
         .business-type-option { display:flex; align-items:center; gap:8px; font-size:13px; color:#1e293b; font-weight:400; margin:0; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; }
         .business-type-option input { width:auto; }
+        .google-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:10px; margin:0; background:#fff; color:#1f2937; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; text-decoration:none; box-sizing:border-box; transition:background .15s, border-color .15s; }
+        .google-btn:hover { background:#f8fafc; border-color:#94a3b8; }
+        .google-btn svg { width:17px; height:17px; flex-shrink:0; }
+        .auth-or { display:flex; align-items:center; gap:12px; margin:18px 0 4px; color:var(--muted-2); font-size:11.5px; font-weight:600; letter-spacing:0.04em; }
+        .auth-or::before, .auth-or::after { content:""; flex:1; height:1px; background:#e2e8f0; }
       </style>
     </head>
     <body>
       <div class="auth-card">
         <div class="brand-row">${brandMark()}</div>
         <h1>${escapeHtmlServer(heading)}</h1>
+        ${googleAuthEnabled() ? `
+          <a class="google-btn" href="/auth/google${title === "Sign up" ? "?mode=signup" : ""}">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Continue with Google
+          </a>
+          <div class="auth-or">OR</div>
+        ` : ""}
         <form method="POST">
           ${formHtml}
           <button type="submit">${escapeHtmlServer(title)}</button>
@@ -3683,6 +3754,157 @@ function businessTypeFieldHtml(selected) {
         </div>
   `;
 }
+
+// ---------- SIGN IN WITH GOOGLE ----------
+// Most sellers already have a Gmail address, and asking them to invent and
+// remember another password is the kind of friction that loses a signup.
+//
+// This is off unless GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set, and
+// the button is simply not rendered when it is off -- a sign-in button that
+// leads to an error page is worse than no button at all.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+function googleAuthEnabled() {
+  return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+}
+function googleRedirectUri() {
+  return `${BASE_URL}/auth/google/callback`;
+}
+
+// The state parameter is what stops a third party from feeding us a code of
+// their own choosing (a login-CSRF). It's signed with the same secret as the
+// session cookie and carries its own five-minute expiry, so nothing has to be
+// stored server-side between the two requests.
+function signOAuthState(mode) {
+  const payload = `${mode}.${Date.now() + 5 * 60 * 1000}.${crypto.randomBytes(8).toString("hex")}`;
+  const sig = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+function verifyOAuthState(state) {
+  if (!state) return null;
+  const parts = String(state).split(".");
+  if (parts.length !== 4) return null;
+  const [mode, expires, nonce, sig] = parts;
+  const expected = crypto.createHmac("sha256", SESSION_SECRET).update(`${mode}.${expires}.${nonce}`).digest("hex");
+  const a = Buffer.from(sig, "hex");
+  const b = Buffer.from(expected, "hex");
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  if (Date.now() > Number(expires)) return null;
+  return mode;
+}
+
+app.get("/auth/google", (req, res) => {
+  if (!googleAuthEnabled()) return res.redirect("/login");
+  const mode = req.query.mode === "signup" ? "signup" : "login";
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: googleRedirectUri(),
+    response_type: "code",
+    scope: "openid email profile",
+    state: signOAuthState(mode),
+    // We only ever need the email once, at sign-in, so there is no refresh
+    // token to store and nothing to keep in sync afterwards.
+    access_type: "online",
+    prompt: "select_account",
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+app.get("/auth/google/callback", async (req, res) => {
+  if (!googleAuthEnabled()) return res.redirect("/login");
+
+  const authFail = (message) =>
+    res.status(400).send(authPageHtml({
+      title: "Log in",
+      heading: "Log in to Stafly.AI",
+      error: message,
+      formHtml: `
+        <label>Email</label>
+        <input type="email" name="email" required maxlength="200">
+        <label>Password</label>
+        <input type="password" name="password" required maxlength="200">
+      `,
+    }));
+
+  const mode = verifyOAuthState(req.query.state);
+  if (!mode) return authFail("That sign-in link has expired. Please try again.");
+  if (req.query.error || !req.query.code) return authFail("Google sign-in was cancelled.");
+
+  let profile;
+  try {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: String(req.query.code),
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: googleRedirectUri(),
+        grant_type: "authorization_code",
+      }).toString(),
+    });
+    const token = await tokenRes.json();
+    if (!tokenRes.ok || !token.access_token) {
+      console.error("google token exchange failed:", token.error_description || token.error || tokenRes.status);
+      return authFail("Could not complete Google sign-in. Please try again.");
+    }
+    const infoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token.access_token}` },
+    });
+    profile = await infoRes.json();
+    if (!infoRes.ok || !profile.email) {
+      console.error("google userinfo failed:", infoRes.status);
+      return authFail("Could not read your Google account. Please try again.");
+    }
+  } catch (err) {
+    console.error("google oauth failed:", err.message);
+    return authFail("Could not reach Google just now. Please try again.");
+  }
+
+  // An unverified Google email could belong to someone else, and this is the
+  // key an account is found by -- so it is not good enough to sign in with.
+  if (profile.email_verified === false) {
+    return authFail("That Google account's email isn't verified, so it can't be used to sign in.");
+  }
+
+  const email = String(profile.email).trim().toLowerCase();
+  try {
+    let seller = await getSellerByEmail(email);
+    if (!seller) {
+      if (mode === "login") {
+        return authFail("No Stafly account uses that Google address yet. Create one first.");
+      }
+      // A Google signup has no password, and must never get a guessable one.
+      // A long random value is hashed and stored so the shape of the record
+      // stays identical to a password account, while being impossible to
+      // sign in with through the password form.
+      const placeholder = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+      const sellerId = await createSeller({
+        businessName: String(profile.name || email.split("@")[0]).trim().slice(0, 120),
+        email,
+        passwordHash: placeholder,
+        // Google tells us nothing about what the seller sells, so this stays
+        // at the default and they can change it in Settings. Guessing here
+        // would silently put a hairdresser on the products path.
+        businessType: "goods",
+      });
+      await updateSellerRecord(sellerId, { authProvider: "google" });
+      seller = await getSellerById(sellerId);
+    }
+    res.cookie("session", signSession(seller.sellerId), {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    invalidateSellerContextCache(seller.sellerId);
+    return res.redirect("/dashboard");
+  } catch (err) {
+    console.error("google sign-in failed:", err.message);
+    return authFail("Something went wrong signing you in. Please try again.");
+  }
+});
 
 app.get("/signup", (req, res) => {
   res.send(
@@ -4592,14 +4814,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .detail-pane textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
         .icon-btn.active-toggle { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
         .compose-hint { font-size: 11px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
-        .thread-header { padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .thread-header { padding: 11px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        .thread-avatar { position: relative; width: 44px; height: 44px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .thread-avatar { position: relative; width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
         .thread-avatar svg { width: 23px; height: 23px; opacity: 0.95; }
         .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--surface); }
-        .thread-name { display: flex; align-items: center; gap: 7px; font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.2; min-width: 0; }
+        .thread-name { display: flex; align-items: center; gap: 6px; font-family: var(--font-heading); font-size: 16.5px; font-weight: 700; color: var(--text); letter-spacing: -0.015em; font-variant-numeric: tabular-nums; line-height: 1.25; min-width: 0; }
         .thread-num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-        .thread-phone-sub { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 1px; }
         .detail-phone-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -3px; }
         /* Initials when the customer's WhatsApp name is known; the person
            mark stays for everyone else. */
@@ -4607,14 +4828,40 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .list-avatar .avatar-initials { font-size: 14px; }
         .thread-avatar .avatar-initials { font-size: 15px; }
         .detail-avatar .avatar-initials { font-size: 19px; }
-        .thread-star-mark { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--star); background: var(--warn-bg); border: 1px solid var(--warn-border); padding: 2px 8px 2px 6px; border-radius: 999px; flex-shrink: 0; white-space: nowrap; }
-        .thread-star-mark svg { width: 11px; height: 11px; }
+        .thread-star-mark { display: inline-flex; align-items: center; color: var(--star); flex-shrink: 0; }
+        .thread-star-mark svg { width: 14px; height: 14px; }
         .lbl-short { display: none; }
-        .thread-sub-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
-        .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px 2px 7px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); border: 1px solid var(--ok-border); white-space: nowrap; }
-        .thread-status-chip.is-paused { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
-        .thread-status-chip .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-        .thread-sub { font-size: 12px; color: var(--muted); }
+        /* The status is one fact on a meta line, so it reads as text with a
+           dot -- a bordered pill made it compete with the name above it. */
+        .thread-id-text { min-width: 0; }
+        .thread-meta { display: flex; align-items: center; gap: 0 9px; margin-top: 2px; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
+        .thread-meta > * { flex-shrink: 0; }
+        .tm-phone { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .thread-meta > * + *::before { content: "·"; margin-right: 9px; color: var(--muted-2); }
+        /* The thread column is narrow whenever the details pane is open, and
+           that has nothing to do with the viewport width -- a 1440px screen
+           with details showing leaves the header about 216px for a meta line
+           that wants 267. Measured, not guessed. So the pane's own class is
+           what drives this: the last-message time goes first, then the status
+           falls back to its short wording, and the number truncates last
+           because it is the identifier that matters. */
+        .layout.details-on .thread-meta .thread-sub { display: none; }
+        .layout.details-on .thread-meta .lbl-full { display: none; }
+        .layout.details-on .thread-meta .lbl-short { display: inline; }
+        .layout.details-on .tm-phone { flex-shrink: 1; }
+        /* Below about 1200px the header actions alone leave the meta line
+           around 100px even with the details pane closed, so the same
+           degradation applies on width as well as on that class. */
+        @media (max-width: 1200px) {
+          .thread-meta .thread-sub { display: none; }
+          .thread-meta .lbl-full { display: none; }
+          .thread-meta .lbl-short { display: inline; }
+          .tm-phone { flex-shrink: 1; }
+        }
+        .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ok-fg); white-space: nowrap; }
+        .thread-status-chip.is-paused { color: var(--warn-fg); }
+        .thread-status-chip .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .thread-sub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
         .icon-btn svg { width: 16px; height: 16px; }
@@ -4638,42 +4885,49 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Same doodle tile, redrawn in a dark-friendly stroke -- a data URI
            can't read a CSS variable, so the dark theme swaps the whole image. */
         [data-theme="dark"] .thread { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%232b3446' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
-        .msg-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 3px; }
-        .msg-row.group-end { margin-bottom: 14px; }
+        .msg-row { display: flex; align-items: flex-end; gap: 7px; margin-bottom: 2px; }
+        .msg-row.group-end { margin-bottom: 11px; }
         .msg-row.from-assistant { flex-direction: row-reverse; }
-        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
+        .msg-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
         .msg-avatar svg { width: 15px; height: 15px; opacity: 0.95; }
         .msg-avatar.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); }
         /* Rows inside a group keep the avatar's footprint so their bubbles
            stay aligned with the one row that actually shows it. */
-        .msg-avatar-spacer { width: 28px; flex-shrink: 0; }
+        .msg-avatar-spacer { width: 26px; flex-shrink: 0; }
         /* .msg-avatar.user gets its background set inline per-contact (see
            avatarStyleFor) so the same customer's initials chip matches the
            one already shown for them in the list and thread header. */
-        .bubble-col { display: flex; flex-direction: column; max-width: 68%; }
+        /* Shorter lines are easier to read and are what makes a thread look
+           like a conversation rather than a document. */
+        .bubble-col { display: flex; flex-direction: column; max-width: 58%; }
         .msg-row.from-user .bubble-col { align-items: flex-start; }
         .msg-row.from-assistant .bubble-col { align-items: flex-end; }
-        .bubble { position: relative; padding: 8px 12px 8px 13px; font-size: 14px; line-height: 1.45; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,23,42,0.10); max-width: 100%; }
+        /* 14px is already WhatsApp's own message size -- what read as "big"
+           was everything around it: a 1.45 line-height, 8px of vertical
+           padding, a 14px radius and lines running to 68% of a wide screen.
+           Tightened to WhatsApp's actual rhythm, the same words take about a
+           fifth less vertical space at the same legibility. */
+        .bubble { position: relative; padding: 6px 10px 7px 11px; font-size: 14px; line-height: 1.38; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 9px; box-shadow: 0 1px 1.5px rgba(15,23,42,0.09); max-width: 100%; }
         .bubble-text { white-space: pre-wrap; }
         .bubble.user { background: var(--surface); color: var(--text); }
         .bubble.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; }
         /* Only the last bubble of a group gets a real tail, pointing back at
            that side's avatar -- same rhythm WhatsApp uses. */
-        .bubble.has-tail.user { border-bottom-left-radius: 2px; }
-        .bubble.has-tail.assistant { border-bottom-right-radius: 2px; }
-        .bubble.has-tail::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 11px; }
-        .bubble.has-tail.user::after { left: -7px; background: var(--surface); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
-        .bubble.has-tail.assistant::after { right: -7px; background: var(--accent-dark); clip-path: polygon(0 0, 0 100%, 100% 100%); }
+        .bubble.has-tail.user { border-bottom-left-radius: 3px; }
+        .bubble.has-tail.assistant { border-bottom-right-radius: 3px; }
+        .bubble.has-tail::after { content: ""; position: absolute; bottom: 0; width: 8px; height: 9px; }
+        .bubble.has-tail.user::after { left: -6px; background: var(--surface); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+        .bubble.has-tail.assistant::after { right: -6px; background: var(--accent-dark); clip-path: polygon(0 0, 0 100%, 100% 100%); }
         /* Real per-message time -- only rendered when the stored message
            actually has one (see history.push's "at" field server-side).
            Older messages saved before this existed simply show no time,
            on purpose, rather than a guessed one. Floated so the message
            text wraps around it and it settles bottom-right in the bubble,
            exactly like WhatsApp, instead of adding another line of text. */
-        .bubble-time { float: right; font-size: 10.5px; line-height: 1; margin: 6px -2px -2px 10px; opacity: 0.75; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .bubble-time { float: right; font-size: 10px; line-height: 1; margin: 5px -1px -2px 9px; opacity: 0.75; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .bubble.user .bubble-time { color: var(--muted-2); }
         .bubble.assistant .bubble-time { color: rgba(255,255,255,0.85); }
-        .day-divider { display: flex; align-items: center; justify-content: center; margin: 18px 0; }
+        .day-divider { display: flex; align-items: center; justify-content: center; margin: 14px 0; }
         .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface); padding: 5px 14px; border-radius: 999px; box-shadow: var(--shadow-md); }
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
@@ -4820,6 +5074,47 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Analytics */
         .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .kpi-sub { font-size: 11px; color: var(--muted-2); margin-top: 3px; }
+
+        /* ---- Analytics ---- */
+        .an-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+        .an-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--text); }
+        .an-range { flex-shrink: 0; }
+        .an-range button { min-width: 46px; font-variant-numeric: tabular-nums; }
+        .an-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+        .an-two > * { min-width: 0; }
+
+        /* A period-over-period change, stated only when there is a previous
+           period with records in it to compare against. */
+        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; margin-top: 4px; }
+        .kpi-delta svg { width: 11px; height: 11px; }
+        .kpi-delta.up { color: var(--ok-fg); }
+        .kpi-delta.down { color: var(--danger); }
+        .kpi-delta.down svg { transform: scaleY(-1); }
+        .kpi-delta.flat, .kpi-delta.none { color: var(--muted-2); font-weight: 500; }
+
+        .dow-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 18px; position: relative; padding-bottom: 30px; }
+        .dow { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+        .dow-slot { width: 100%; height: 86px; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
+        .dow-bar { width: 100%; border-radius: 8px; background: var(--surface-3); transition: height .6s cubic-bezier(.22,1,.36,1); }
+        .dow.is-best .dow-bar { background: linear-gradient(to top, var(--accent-dark), var(--accent)); }
+        .dow-n { font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+        .dow-name { font-size: 11px; font-weight: 600; color: var(--muted-2); }
+        .dow.is-best .dow-name { color: var(--accent); }
+        .dow-note { position: absolute; left: 0; bottom: 0; font-size: 12px; color: var(--muted); }
+        .dow-note b { color: var(--text); }
+
+        .nr-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-3); margin-top: 18px; }
+        .nr-seg { height: 100%; transition: width .6s cubic-bezier(.22,1,.36,1); }
+        .nr-seg.nr-new { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
+        .nr-seg.nr-ret { background: var(--ok-fg); }
+        .nr-legend { display: flex; gap: 20px; margin-top: 14px; flex-wrap: wrap; }
+        .nr-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
+        .nr-item b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+        .nr-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .nr-dot.nr-new { background: var(--accent); }
+        .nr-dot.nr-ret { background: var(--ok-fg); }
+        .nr-foot { font-size: 12.5px; color: var(--muted); margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--border-light); line-height: 1.5; }
+        .nr-foot b { color: var(--text); }
         .period-chip { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; flex-shrink: 0; }
         .seller-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
         .seller-row:last-child { border-bottom: none; }
@@ -5006,7 +5301,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         [data-density="compact"] .stat-tile { padding: 10px 14px; }
         [data-density="compact"] .catalog-card { padding: 15px; margin-bottom: 14px; }
         [data-density="compact"] .setting-row { padding: 10px 0; }
+        /* Compact density now reaches the messages themselves, so it is a real
+           lever on how dense a thread reads rather than only page padding. */
         [data-density="compact"] .thread { padding: 16px; }
+        [data-density="compact"] .bubble { font-size: 13.5px; line-height: 1.34; padding: 5px 9px 6px 10px; }
+        [data-density="compact"] .msg-row.group-end { margin-bottom: 8px; }
+        [data-density="compact"] .bubble-col { max-width: 62%; }
         [data-density="compact"] .msg-row.group-end { margin-bottom: 10px; }
         [data-density="compact"] .detail-pane { padding: 12px; gap: 10px; }
         [data-density="compact"] .product-grid { gap: 10px; }
@@ -5328,6 +5628,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            icon fought for the same space. Two clean rows of two instead. */
         @media (min-width: 701px) and (max-width: 1080px) {
           .kpi-row, .home-stats { grid-template-columns: 1fr 1fr; }
+          .an-two { grid-template-columns: minmax(0, 1fr); }
           .home-grid { grid-template-columns: 1fr; }
           .stat-tile { min-width: 0; }
           .brand-name { font-size: 26px; }
@@ -5470,11 +5771,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .thread-avatar svg { width: 18px; height: 18px; }
           button.mobile-back-btn.icon-btn { width: 30px; height: 30px; }
           .thread-header-id { gap: 8px; }
-          /* Icon-only on a phone so the star chip and the status chip stay on
-             one line instead of pushing the header to two rows. */
-          .thread-star-mark .star-word { display: none; }
-          .thread-star-mark { padding: 3px 6px; }
+          /* On a phone the meta line drops the last-message time -- the number
+             and who is handling it are what matter at a glance, and three
+             facts would ellipsis the number. */
+          .thread-meta .thread-sub { display: none; }
+          .thread-meta { gap: 0 8px; }
+          .thread-meta > * + *::before { margin-right: 8px; }
           .thread-name { font-size: 15.5px; }
+          .bubble-col { max-width: 80%; }
           .thread-sub { display: none; }
           .thread-actions { gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
           .thread-actions .icon-btn.hide-sm { display: none; }
@@ -5560,6 +5864,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              label and a sub-line each, four of them, before the chart even
              started. Halved in height, two per row. */
           .kpi-row { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+          .an-head { gap: 12px; margin-bottom: 13px; }
+          .an-title { font-size: 18px; }
+          .an-range { width: 100%; }
+          .an-range button { flex: 1; }
+          .an-two { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+          .dow-row { gap: 5px; margin-top: 15px; }
+          .dow-slot { height: 68px; border-radius: 7px; }
+          .dow-n { font-size: 11px; }
+          .nr-legend { gap: 16px; }
           .kpi-row .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; gap: 9px; }
           .kpi-row .stat-tile .stat-icon { width: 29px; height: 29px; border-radius: 9px; flex-shrink: 0; }
           .kpi-row .stat-tile .stat-icon svg { width: 14px; height: 14px; }
@@ -6083,16 +6396,46 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         <!-- Every figure below is derived from the same 14-day trend the
              chart draws, or from stored payment records. Nothing here is
              projected, estimated or benchmarked. -->
+        <div class="an-head">
+          <div>
+            <h2 class="an-title">Analytics</h2>
+            <div class="card-sub" id="anRangeLabel">Last 14 days</div>
+          </div>
+          <div class="seg-control an-range" id="anRange">
+            <button data-days="7" onclick="setAnalyticsRange(7)">7d</button>
+            <button data-days="14" class="seg-active" onclick="setAnalyticsRange(14)">14d</button>
+            <button data-days="30" onclick="setAnalyticsRange(30)">30d</button>
+          </div>
+        </div>
         <div class="kpi-row" id="analyticsKpis"></div>
         <div class="catalog-card">
           <div class="card-head">
             <div>
               <h2>Revenue</h2>
-              <div class="card-sub">Paid orders over the last 14 days.</div>
+              <div class="card-sub" id="revenueCardSub">Paid orders over the last 14 days.</div>
             </div>
-            <span class="period-chip">14 days</span>
           </div>
           <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="an-two">
+          <div class="catalog-card">
+            <div class="card-head">
+              <div>
+                <h2>Busiest days</h2>
+                <div class="card-sub">Which days of the week orders actually land on.</div>
+              </div>
+            </div>
+            <div class="dow-row" id="dowRow"></div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-head">
+              <div>
+                <h2>New and returning</h2>
+                <div class="card-sub" id="nrSub">People who messaged you in this window.</div>
+              </div>
+            </div>
+            <div id="newReturning"></div>
+          </div>
         </div>
         <div class="catalog-card">
           <div class="card-head">
@@ -6729,18 +7072,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="thread-header-id" style="--thread-accent:' + avatarColorFor(phone) + ';">' +
                 '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
                 '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + (avatarTextFor(customer) ? '<span class="avatar-initials">' + escapeHtml(avatarTextFor(customer)) + '</span>' : ICON_PERSON) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
-                '<div style="min-width:0;">' +
-                  '<div class="thread-name"><span class="thread-num">' + escapeHtml(displayNameFor(customer)) + '</span></div>' +
-                  // When a profile name is showing, the number still has to be
-                  // on screen: it's the identifier that actually ties to a
-                  // payment, and a WhatsApp name is neither unique nor verified.
-                  (hasWaName(customer) ? '<div class="thread-phone-sub">' + escapeHtml(formatPhoneDisplay(phone)) + '</div>' : '') +
-                  '<div class="thread-sub-row">' +
-                    // The star button folds into the ⋮ menu on a phone, so the
-                    // starred state needs its own mark. It sits on this row
-                    // rather than beside the number, which on a 390px screen
-                    // would have pushed the number into an ellipsis.
-                    '<span class="thread-star-mark" id="threadStarMark"' + ((customer && customer.starred === "yes") ? '' : ' style="display:none;"') + ' title="Starred">' + ICON_STAR_FILLED + '<span class="star-word">Starred</span></span>' +
+                // Two lines, the way a messaging app does it: who, then one
+                // meta line. This used to be four stacked rows -- name, number,
+                // then a wrapping row carrying a starred pill, a bordered
+                // status pill and the last-message time -- which is what made
+                // the header feel crowded next to the thread below it.
+                '<div class="thread-id-text">' +
+                  '<div class="thread-name">' +
+                    '<span class="thread-num">' + escapeHtml(displayNameFor(customer)) + '</span>' +
+                    '<span class="thread-star-mark" id="threadStarMark"' + ((customer && customer.starred === "yes") ? '' : ' style="display:none;"') + ' title="Starred">' + ICON_STAR_FILLED + '</span>' +
+                  '</div>' +
+                  '<div class="thread-meta">' +
+                    // The number still has to be on screen when a profile name
+                    // is showing: it is the identifier that ties to a payment,
+                    // and a WhatsApp name is neither unique nor verified.
+                    (hasWaName(customer) ? '<span class="tm-phone">' + escapeHtml(formatPhoneDisplay(phone)) + '</span>' : '') +
                     threadStatusChipHtml(isPaused) +
                     '<span class="thread-sub">' + threadSubtitle(customer) + '</span>' +
                   '</div>' +
@@ -7606,9 +7952,78 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           document.body.classList.remove("mobile-thread-open");
         }
 
+        // Which weekdays orders actually land on, summed across the window.
+        // Useful in a way a daily line isn't: it answers "when should I be at
+        // my phone" rather than "what happened last Tuesday".
+        function renderWeekdays(data) {
+          const host = document.getElementById("dowRow");
+          if (!host) return;
+          const w = (data.weekday && data.weekday.orders) || [];
+          const rev = (data.weekday && data.weekday.revenue) || [];
+          const max = Math.max(1, ...w);
+          const anyOrders = w.some((n) => n > 0);
+          if (!anyOrders) {
+            host.innerHTML = '<div class="home-empty">No paid orders in this window yet, so there is no pattern to show.</div>';
+            return;
+          }
+          const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const fullNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+          const best = w.indexOf(Math.max(...w));
+          host.innerHTML = w.map((n, i) =>
+            '<div class="dow' + (i === best ? " is-best" : "") + '" title="' + n + ' order' + (n === 1 ? "" : "s") +
+              ', N' + (rev[i] || 0).toLocaleString() + ' on ' + fullNames[i] + '">' +
+              '<div class="dow-slot"><div class="dow-bar" style="height:' + Math.max(Math.round((n / max) * 100), n > 0 ? 10 : 3) + '%"></div></div>' +
+              '<div class="dow-n">' + n + '</div>' +
+              '<div class="dow-name">' + names[i].slice(0, 1) + '</div>' +
+            '</div>'
+          ).join("") +
+          '<div class="dow-note">Busiest: <b>' + fullNames[best] + '</b></div>';
+        }
+
+        // New versus returning over the same window, both counted from stored
+        // contact dates rather than a stored metric that could drift.
+        function renderNewReturning(data, span) {
+          const host = document.getElementById("newReturning");
+          if (!host) return;
+          const c = data.customers || { new: 0, returning: 0, total: 0, handledByOwner: 0 };
+          const sub = document.getElementById("nrSub");
+          if (sub) sub.textContent = "People who messaged you in the last " + span + " days.";
+          const active = c.new + c.returning;
+          if (active === 0) {
+            host.innerHTML = '<div class="home-empty">Nobody messaged you in this window.</div>';
+            return;
+          }
+          const newPct = Math.round((c.new / active) * 100);
+          host.innerHTML =
+            '<div class="nr-bar">' +
+              (c.new ? '<div class="nr-seg nr-new" style="width:' + newPct + '%"></div>' : '') +
+              (c.returning ? '<div class="nr-seg nr-ret" style="width:' + (100 - newPct) + '%"></div>' : '') +
+            '</div>' +
+            '<div class="nr-legend">' +
+              '<div class="nr-item"><span class="nr-dot nr-new"></span><b>' + c.new + '</b> new</div>' +
+              '<div class="nr-item"><span class="nr-dot nr-ret"></span><b>' + c.returning + '</b> came back</div>' +
+            '</div>' +
+            '<div class="nr-foot">' +
+              (c.handledByOwner
+                ? '<b>' + c.handledByOwner + '</b> of your ' + c.total + ' conversation' + (c.total === 1 ? " is" : "s are") + ' with you rather than Amara right now.'
+                : 'Amara is handling all ' + c.total + ' of your conversations right now.') +
+            '</div>';
+        }
+
+        // 7 / 14 / 30 days. Every number on the page follows it, including the
+        // comparison against the window immediately before.
+        let analyticsRange = 14;
+        function setAnalyticsRange(days) {
+          analyticsRange = days;
+          document.querySelectorAll("#anRange button").forEach((b) => {
+            b.classList.toggle("seg-active", Number(b.dataset.days) === days);
+          });
+          loadAnalytics();
+        }
+
         async function loadAnalytics() {
           try {
-            const res = await fetch("/api/analytics?" + ADMIN_QS);
+            const res = await fetch("/api/analytics?days=" + analyticsRange + "&" + ADMIN_QS);
             const data = await res.json();
             if (data.error) return;
             renderAnalytics(data);
@@ -7744,16 +8159,44 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
           let bestIdx = -1;
           values.forEach((v, i) => { if (v > 0 && (bestIdx === -1 || v > values[bestIdx])) bestIdx = i; });
+          const span = data.span || 14;
+          const windowLabel = "last " + span + " days";
+          const rl = document.getElementById("anRangeLabel");
+          if (rl) rl.textContent = "Last " + span + " days, compared with the " + span + " before";
+          const rcs = document.getElementById("revenueCardSub");
+          if (rcs) rcs.textContent = "Paid orders over the " + windowLabel + ".";
+
+          // A comparison is only shown when the previous window actually has
+          // records to compare against. "up 100%" from a window nobody was
+          // selling in yet is a made-up number, so it says so instead.
+          const prev = data.previous || { hasData: false };
+          const delta = (now, before) => {
+            if (!prev.hasData) return { html: '<span class="kpi-delta none">no earlier data</span>', };
+            if (!before) {
+              return { html: now > 0
+                ? '<span class="kpi-delta up">' + ICON_TREND + 'first in ' + span + ' days</span>'
+                : '<span class="kpi-delta none">nothing either window</span>' };
+            }
+            const pctChange = Math.round(((now - before) / before) * 100);
+            if (pctChange === 0) return { html: '<span class="kpi-delta flat">level with last ' + span + ' days</span>' };
+            const up = pctChange > 0;
+            return { html: '<span class="kpi-delta ' + (up ? "up" : "down") + '">' + ICON_TREND +
+              (up ? "+" : "") + pctChange + '% vs last ' + span + ' days</span>' };
+          };
+
           const kpi = (cls, icon, value, label, sub) =>
             '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div>' +
             '<div class="stat-label">' + label + '</div>' +
             (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>' +
             '<div class="stat-icon">' + icon + '</div></div>';
           document.getElementById("analyticsKpis").innerHTML =
-            kpi("tile-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", "last 14 days") +
-            kpi("tile-total", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", "last 14 days") +
+            kpi("tile-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
+            kpi("tile-total", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", delta(totalOrders, prev.orders).html) +
             kpi("tile-active", ICON_WALLET, totalOrders > 0 ? "N" + avgOrder.toLocaleString() : "\u2014", "Average order", totalOrders > 0 ? "across " + totalOrders + " order" + (totalOrders === 1 ? "" : "s") : "no orders yet") +
             kpi("tile-paused", ICON_TREND, bestIdx === -1 ? "\u2014" : "N" + values[bestIdx].toLocaleString(), "Best day", bestIdx === -1 ? "no sales in this window" : escapeHtml(labels[bestIdx]));
+
+          renderWeekdays(data);
+          renderNewReturning(data, span);
 
           const maxSold = Math.max(1, ...data.bestSellers.map((p) => p.sold));
           const list = document.getElementById("bestSellersList");
@@ -9608,7 +10051,7 @@ app.get("/api/analytics", async (req, res) => {
   if (!seller) return res.status(403).json({ error: "unauthorized" });
   try {
     const customers = await listAllCustomers(seller.sellerId);
-    const summary = await getAnalyticsSummary(seller.sellerId, customers, seller.catalog);
+    const summary = await getAnalyticsSummary(seller.sellerId, customers, seller.catalog, req.query.days);
     res.json(summary);
   } catch (err) {
     console.error("api/analytics failed:", err.message);
@@ -10828,7 +11271,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 25";
+const BUILD_ROUND = "Round 26";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
