@@ -4881,25 +4881,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            makes WhatsApp read as a conversation instead of a document.
            Inlined as a data URI (no external request) for the same
            reliability reason the fonts and Chart.js are self-hosted. */
-        .thread { flex: 1; overflow-y: auto; padding: 24px; background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23b9c6dc' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.26'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
+        .thread { flex: 1; overflow-y: auto; padding: 16px 26px 20px; background-color: var(--chat-bg); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23b9c6dc' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.26'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
         /* Same doodle tile, redrawn in a dark-friendly stroke -- a data URI
            can't read a CSS variable, so the dark theme swaps the whole image. */
         [data-theme="dark"] .thread { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%232b3446' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'%3E%3Ccircle cx='18' cy='22' r='4.5'/%3E%3Cpath d='M62 12v9M57.5 16.5h9'/%3E%3Cpath d='M96 30c3.5-4.5 8-4.5 11.5 0'/%3E%3Crect x='30' y='58' width='10' height='10' rx='3'/%3E%3Cpath d='M78 62l6 6-6 6-6-6z'/%3E%3Ccircle cx='104' cy='84' r='3.5'/%3E%3Cpath d='M14 92c4-5 9-5 13 0'/%3E%3Cpath d='M50 100v8M46 104h8'/%3E%3C/g%3E%3C/svg%3E"); }
-        .msg-row { display: flex; align-items: flex-end; gap: 7px; margin-bottom: 2px; }
-        .msg-row.group-end { margin-bottom: 11px; }
-        .msg-row.from-assistant { flex-direction: row-reverse; }
-        .msg-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
-        .msg-avatar svg { width: 15px; height: 15px; opacity: 0.95; }
-        .msg-avatar.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); }
-        /* Rows inside a group keep the avatar's footprint so their bubbles
-           stay aligned with the one row that actually shows it. */
-        .msg-avatar-spacer { width: 26px; flex-shrink: 0; }
-        /* .msg-avatar.user gets its background set inline per-contact (see
-           avatarStyleFor) so the same customer's initials chip matches the
-           one already shown for them in the list and thread header. */
+        /* No per-message avatar. This is a one-to-one thread: the header
+           already says who the customer is, and repeating a 26px chip plus a
+           7px gap on every single row cost 33px of width on each side of a
+           390px phone -- which is what made the bubbles look stranded in the
+           middle of the screen. WhatsApp itself only shows avatars in group
+           chats, for exactly this reason. Who wrote an outgoing message is
+           now said in words on the bubble itself (see .bubble-by), which is
+           information the avatar never actually carried. */
+        .msg-row { display: flex; align-items: flex-end; margin-bottom: 2px; }
+        .msg-row.group-end { margin-bottom: 10px; }
+        .msg-row.from-assistant { justify-content: flex-end; }
         /* Shorter lines are easier to read and are what makes a thread look
            like a conversation rather than a document. */
-        .bubble-col { display: flex; flex-direction: column; max-width: 58%; }
+        .bubble-col { display: flex; flex-direction: column; max-width: 66%; min-width: 0; }
         .msg-row.from-user .bubble-col { align-items: flex-start; }
         .msg-row.from-assistant .bubble-col { align-items: flex-end; }
         /* 14px is already WhatsApp's own message size -- what read as "big"
@@ -4907,24 +4906,31 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            padding, a 14px radius and lines running to 68% of a wide screen.
            Tightened to WhatsApp's actual rhythm, the same words take about a
            fifth less vertical space at the same legibility. */
-        .bubble { position: relative; padding: 6px 10px 7px 11px; font-size: 14px; line-height: 1.38; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 9px; box-shadow: 0 1px 1.5px rgba(15,23,42,0.09); max-width: 100%; }
+        .bubble { position: relative; padding: 7px 11px 8px 12px; font-size: 14.5px; line-height: 1.42; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 12px; box-shadow: 0 1px 1px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.06); max-width: 100%; }
         .bubble-text { white-space: pre-wrap; }
         .bubble.user { background: var(--surface); color: var(--text); }
         .bubble.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; }
         /* Only the last bubble of a group gets a real tail, pointing back at
            that side's avatar -- same rhythm WhatsApp uses. */
-        .bubble.has-tail.user { border-bottom-left-radius: 3px; }
-        .bubble.has-tail.assistant { border-bottom-right-radius: 3px; }
-        .bubble.has-tail::after { content: ""; position: absolute; bottom: 0; width: 8px; height: 9px; }
+        .bubble.has-tail.user { border-bottom-left-radius: 4px; }
+        .bubble.has-tail.assistant { border-bottom-right-radius: 4px; }
+        .bubble.has-tail::after { content: ""; position: absolute; bottom: 0; width: 8px; height: 10px; }
         .bubble.has-tail.user::after { left: -6px; background: var(--surface); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
         .bubble.has-tail.assistant::after { right: -6px; background: var(--accent-dark); clip-path: polygon(0 0, 0 100%, 100% 100%); }
+        /* Who sent an outgoing message. Only ever rendered when the stored
+           record actually says the owner typed it from the dashboard (the
+           "by" field written by /api/send-message) -- an outgoing message
+           without that field is left unlabelled rather than credited to
+           Amara on a guess. */
+        .bubble-by { float: right; font-size: 10px; line-height: 1; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin: 5px -1px -2px 9px; color: rgba(255,255,255,0.92); }
+        .bubble-by + .bubble-time { margin-left: 5px; }
         /* Real per-message time -- only rendered when the stored message
            actually has one (see history.push's "at" field server-side).
            Older messages saved before this existed simply show no time,
            on purpose, rather than a guessed one. Floated so the message
            text wraps around it and it settles bottom-right in the bubble,
            exactly like WhatsApp, instead of adding another line of text. */
-        .bubble-time { float: right; font-size: 10px; line-height: 1; margin: 5px -1px -2px 9px; opacity: 0.75; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .bubble-time { float: right; font-size: 10.5px; line-height: 1; margin: 6px -1px -2px 10px; opacity: 0.72; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .bubble.user .bubble-time { color: var(--muted-2); }
         .bubble.assistant .bubble-time { color: rgba(255,255,255,0.85); }
         .day-divider { display: flex; align-items: center; justify-content: center; margin: 14px 0; }
@@ -5001,6 +5007,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            because these views are centred, everything on the page slides
            sideways by its width on every switch. */
         .catalog-view { flex: 1; min-height: 0; padding: 24px; max-width: 800px; margin: 0 auto; overflow-y: auto; scrollbar-gutter: stable; width: 100%; }
+        /* Analytics is the one view that is a dashboard rather than a form or
+           a reading column, so it gets the room a dashboard needs. Capping it
+           at the same 800px as Settings is what squeezed four KPI cards into
+           172px each and made them read as one crowded strip. */
+        .catalog-view#analyticsView { max-width: 1260px; padding: 24px 28px 30px; }
         .catalog-card { background: var(--surface); border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: box-shadow .15s ease; }
         /* Settings is around 2650px of form. Revealing it laid the whole thing
            out in a single frame, which measured as a 57ms stall right as the
@@ -5072,7 +5083,41 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .table-wrap { overflow-x: auto; }
         .card-head-products { align-items: center; }
         /* Analytics */
-        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        /* minmax(0, 1fr), not minmax(150px, 1fr): a grid item's default
+           min-width is min-content, so .stat-tile's own min-width: 190px made
+           every card 15px wider than its 175px track. Four of them overflowed
+           into each other and the 12px gap measured -2.7px -- the cards were
+           literally touching. Tracks that can shrink, plus min-width: 0 on the
+           card, is the fix. */
+        .kpi-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+        .kpi-row > * { min-width: 0; }
+        @media (min-width: 1080px) { .kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+        .kpi-card { position: relative; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px 15px; box-shadow: var(--shadow-sm); overflow: hidden; --tint: var(--accent); --tint-bg: var(--accent-light); transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease, border-color .2s ease; }
+        .kpi-card.k-revenue { --tint: var(--info-fg); --tint-bg: var(--info-bg); }
+        .kpi-card.k-orders { --tint: var(--accent); --tint-bg: var(--accent-light); }
+        .kpi-card.k-average { --tint: var(--ok-fg); --tint-bg: var(--ok-bg); }
+        .kpi-card.k-best { --tint: var(--warn-fg); --tint-bg: var(--warn-bg); }
+        .kpi-card::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: var(--tint); opacity: 0.9; }
+        .kpi-card::after { content: ""; position: absolute; inset: 0; background: radial-gradient(125% 95% at 100% 0%, var(--tint-bg), transparent 60%); opacity: 0.8; pointer-events: none; }
+        .kpi-card > * { position: relative; z-index: 1; }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--tint); }
+        .kpi-card:hover .kpi-mark { transform: scale(1.08) rotate(-5deg); }
+        .kpi-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .kpi-mark { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tint-bg); color: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-bg); transition: transform .25s cubic-bezier(.22,1,.36,1); }
+        .kpi-mark svg { width: 15px; height: 15px; }
+        .kpi-name { font-size: 11px; font-weight: 700; letter-spacing: 0.055em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .kpi-figure { font-family: var(--font-heading); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; color: var(--text); font-variant-numeric: tabular-nums; margin-top: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .kpi-foot { margin-top: 10px; display: flex; align-items: center; min-height: 21px; min-width: 0; }
+        .kpi-bottom { display: flex; flex-direction: column; min-width: 0; }
+        /* Measured, not guessed: side-by-side, a 270px card could not hold
+           "N173,436" at 29px next to "-9% vs prev 14d" -- both ellipsised.
+           The figure and its comparison stack; the figure just gets bigger
+           to use the width instead. */
+        @media (min-width: 1080px) {
+          .kpi-card { padding: 17px 20px 16px; }
+          .kpi-bottom .kpi-figure { font-size: 30px; margin-top: 15px; }
+          .kpi-bottom .kpi-foot { margin-top: 12px; }
+        }
         .kpi-sub { font-size: 11px; color: var(--muted-2); margin-top: 3px; }
 
         /* ---- Analytics ---- */
@@ -5085,29 +5130,42 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         /* A period-over-period change, stated only when there is a previous
            period with records in it to compare against. */
-        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; margin-top: 4px; }
-        .kpi-delta svg { width: 11px; height: 11px; }
-        .kpi-delta.up { color: var(--ok-fg); }
-        .kpi-delta.down { color: var(--danger); }
+        /* A pill, not loose red text. At 172px the old two-line "-37% vs last
+           14 days" wrapped out of its own card; one line that can ellipsis
+           cannot. */
+        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; font-size: 11px; font-weight: 650; line-height: 1.2; padding: 4px 9px 4px 7px; border-radius: 999px; white-space: nowrap; }
+        .kpi-delta .d-txt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .kpi-delta svg { width: 11px; height: 11px; flex-shrink: 0; }
+        .kpi-delta.up { color: var(--ok-fg); background: var(--ok-bg); }
+        .kpi-delta.down { color: var(--danger); background: var(--danger-bg); }
         .kpi-delta.down svg { transform: scaleY(-1); }
-        .kpi-delta.flat, .kpi-delta.none { color: var(--muted-2); font-weight: 500; }
+        .kpi-delta.flat, .kpi-delta.none { color: var(--muted-2); background: var(--surface-3); font-weight: 550; padding-left: 9px; }
 
-        .dow-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 18px; position: relative; padding-bottom: 30px; }
-        .dow { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-        .dow-slot { width: 100%; height: 86px; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
-        .dow-bar { width: 100%; border-radius: 8px; background: var(--surface-3); transition: height .6s cubic-bezier(.22,1,.36,1); }
-        .dow.is-best .dow-bar { background: linear-gradient(to top, var(--accent-dark), var(--accent)); }
-        .dow-n { font-size: 12px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-        .dow-name { font-size: 11px; font-weight: 600; color: var(--muted-2); }
+        /* The slot used to carry its own grey fill, so a day with no orders
+           read as a full-height empty box rather than as a zero. The slot is
+           transparent now: what you see is the bar, sitting on one baseline. */
+        .dow-row { display: flex; align-items: flex-end; gap: 10px; margin-top: 20px; position: relative; padding-bottom: 34px; }
+        .dow { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
+        .dow-slot { position: relative; width: 100%; height: 100px; display: flex; align-items: flex-end; }
+        .dow-slot::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--border); }
+        .dow-bar { position: relative; z-index: 1; width: 100%; min-height: 3px; border-radius: 8px 8px 3px 3px; background: linear-gradient(to top, var(--accent-soft), var(--accent-light)); box-shadow: inset 0 0 0 1px var(--accent-light); transition: height .7s cubic-bezier(.22,1,.36,1), transform .2s ease, box-shadow .2s ease; }
+        .dow.is-zero .dow-bar { background: var(--surface-3); box-shadow: none; border-radius: 3px; }
+        .dow.is-best .dow-bar { background: linear-gradient(to top, var(--accent-dark), var(--accent)); box-shadow: 0 4px 12px var(--accent-shadow); }
+        .dow:hover .dow-bar { transform: translateY(-3px); }
+        .dow.is-zero:hover .dow-bar { transform: none; }
+        .dow-n { font-size: 12.5px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+        .dow.is-zero .dow-n { color: var(--muted-2); font-weight: 600; }
+        .dow.is-best .dow-n { color: var(--accent); }
+        .dow-name { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-2); line-height: 1; }
         .dow.is-best .dow-name { color: var(--accent); }
-        .dow-note { position: absolute; left: 0; bottom: 0; font-size: 12px; color: var(--muted); }
+        .dow-note { position: absolute; left: 0; bottom: 0; font-size: 12.5px; color: var(--muted); }
         .dow-note b { color: var(--text); }
 
-        .nr-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-3); margin-top: 18px; }
-        .nr-seg { height: 100%; transition: width .6s cubic-bezier(.22,1,.36,1); }
-        .nr-seg.nr-new { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
-        .nr-seg.nr-ret { background: var(--ok-fg); }
-        .nr-legend { display: flex; gap: 20px; margin-top: 14px; flex-wrap: wrap; }
+        .nr-bar { display: flex; gap: 3px; height: 14px; margin-top: 20px; }
+        .nr-seg { height: 100%; border-radius: 999px; min-width: 0; transition: width .7s cubic-bezier(.22,1,.36,1); }
+        .nr-seg.nr-new { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); box-shadow: 0 2px 8px var(--accent-shadow); }
+        .nr-seg.nr-ret { background: linear-gradient(90deg, var(--ok-fg), var(--ok-fg)); }
+        .nr-legend { display: flex; gap: 22px; margin-top: 16px; flex-wrap: wrap; }
         .nr-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
         .nr-item b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
         .nr-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
@@ -5303,10 +5361,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         [data-density="compact"] .setting-row { padding: 10px 0; }
         /* Compact density now reaches the messages themselves, so it is a real
            lever on how dense a thread reads rather than only page padding. */
-        [data-density="compact"] .thread { padding: 16px; }
-        [data-density="compact"] .bubble { font-size: 13.5px; line-height: 1.34; padding: 5px 9px 6px 10px; }
+        [data-density="compact"] .thread { padding: 12px 18px 16px; }
+        [data-density="compact"] .bubble { font-size: 13.5px; line-height: 1.36; padding: 6px 10px 7px 11px; }
         [data-density="compact"] .msg-row.group-end { margin-bottom: 8px; }
-        [data-density="compact"] .bubble-col { max-width: 62%; }
+        [data-density="compact"] .bubble-col { max-width: 70%; }
         [data-density="compact"] .msg-row.group-end { margin-bottom: 10px; }
         [data-density="compact"] .detail-pane { padding: 12px; gap: 10px; }
         [data-density="compact"] .product-grid { gap: 10px; }
@@ -5356,6 +5414,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
         .notes-box-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
+        @media (min-width: 1080px) { .trend-chart-wrap { height: 300px; } }
         .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
         .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
         .conversion-stat { font-family: var(--font-heading); font-size: 32px; font-weight: 700; color: var(--text); }
@@ -5627,7 +5686,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            its own underneath -- and squeezed each one so the number and its
            icon fought for the same space. Two clean rows of two instead. */
         @media (min-width: 701px) and (max-width: 1080px) {
-          .kpi-row, .home-stats { grid-template-columns: 1fr 1fr; }
+          .kpi-row, .home-stats { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+          .catalog-view#analyticsView { padding: 22px 20px 26px; }
           .an-two { grid-template-columns: minmax(0, 1fr); }
           .home-grid { grid-template-columns: 1fr; }
           .stat-tile { min-width: 0; }
@@ -5650,7 +5710,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           button.mobile-back-btn.icon-btn { display: flex; }
           .thread-header { flex-wrap: wrap; gap: 10px; }
           .thread-actions { flex-wrap: wrap; }
-          .bubble-col { max-width: 85%; }
+          .bubble-col { max-width: 78%; }
           .catalog-form { grid-template-columns: 1fr !important; }
           .fees-row { flex-direction: column; }
           .fees-row div { width: 100%; }
@@ -5765,25 +5825,38 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           /* Thread header: identity on one line, one primary action beside it.
              Search, star and details move into the ⋮ menu rather than wrapping
              onto a second row. */
-          .thread-header { flex-wrap: nowrap; gap: 8px; padding: 10px 14px; }
+          .thread-header { flex-wrap: nowrap; gap: 8px; padding: 9px 12px; }
           .thread-header-id { gap: 9px; flex: 1; min-width: 0; }
           .thread-avatar { width: 34px; height: 34px; }
           .thread-avatar svg { width: 18px; height: 18px; }
           button.mobile-back-btn.icon-btn { width: 30px; height: 30px; }
           .thread-header-id { gap: 8px; }
-          /* On a phone the meta line drops the last-message time -- the number
-             and who is handling it are what matter at a glance, and three
-             facts would ellipsis the number. */
+          /* On a phone the meta line carries ONE fact, and it is a sentence:
+             who is answering this customer right now. The number was fighting
+             it for a 150px slot and losing -- which is what reduced the status
+             to the bare word "Amara" with a green dot beside it, a label that
+             says nothing. The number is still on the customer's row in the
+             list and in the details panel, so nothing is actually lost. */
           .thread-meta .thread-sub { display: none; }
-          .thread-meta { gap: 0 8px; }
-          .thread-meta > * + *::before { margin-right: 8px; }
+          .thread-meta .tm-phone { display: none; }
+          .thread-meta .thread-status-chip .lbl-full { display: inline; }
+          .thread-meta .thread-status-chip .lbl-short { display: none; }
+          .thread-status-chip { font-size: 12px; }
+          .thread-meta { gap: 0 8px; margin-top: 1px; }
+          /* One item on the line, so no separator. A display:none sibling is
+             still a sibling to "* + *", which is why a stray middot was
+             floating on its own between the avatar and the status. */
+          .thread-meta > * + *::before { content: none; margin-right: 0; }
           .thread-name { font-size: 15.5px; }
-          .bubble-col { max-width: 80%; }
+          .bubble-col { max-width: 84%; }
+          .bubble { font-size: 14px; line-height: 1.41; padding: 7px 10px 8px 11px; }
+          .thread { padding: 10px 14px 14px; }
+          .day-divider { margin: 11px 0; }
           .thread-sub { display: none; }
           .thread-actions { gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
           .thread-actions .icon-btn.hide-sm { display: none; }
           .more-menu-dropdown button.menu-sm-only { display: block; }
-          button.takeover-btn { padding: 7px 11px; font-size: 12.5px; max-width: 42vw; }
+          button.takeover-btn { padding: 7px 10px; font-size: 12.5px; max-width: 34vw; }
           .lbl-full { display: none; }
           .lbl-short { display: inline; }
           .thread-name { font-size: 15px; }
@@ -5863,7 +5936,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              The KPI tiles were desktop tiles at phone width: icon, big number,
              label and a sub-line each, four of them, before the chart even
              started. Halved in height, two per row. */
-          .kpi-row { grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+          .kpi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-bottom: 16px; }
           .an-head { gap: 12px; margin-bottom: 13px; }
           .an-title { font-size: 18px; }
           .an-range { width: 100%; }
@@ -5873,12 +5946,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .dow-slot { height: 68px; border-radius: 7px; }
           .dow-n { font-size: 11px; }
           .nr-legend { gap: 16px; }
-          .kpi-row .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; gap: 9px; }
-          .kpi-row .stat-tile .stat-icon { width: 29px; height: 29px; border-radius: 9px; flex-shrink: 0; }
-          .kpi-row .stat-tile .stat-icon svg { width: 14px; height: 14px; }
-          .kpi-row .stat-tile .stat-value { font-size: 15.5px; letter-spacing: -0.2px; }
-          .kpi-row .stat-tile .stat-label { font-size: 10.5px; }
-          .kpi-row .stat-tile .kpi-sub { font-size: 9.5px; margin-top: 1px; }
+          /* Same card, phone proportions: the mark shrinks, the figure stays
+             the biggest thing in the card, and the pill gets its own line
+             with room to ellipsis instead of wrapping out of the border. */
+          .catalog-view#analyticsView { padding: 16px 14px 24px; }
+          .kpi-card { padding: 11px 12px 11px 13px; border-radius: 14px; }
+          .kpi-card::before { width: 2.5px; top: 9px; bottom: 9px; }
+          .kpi-top { gap: 7px; }
+          .kpi-mark { width: 25px; height: 25px; border-radius: 8px; }
+          .kpi-mark svg { width: 13px; height: 13px; }
+          .kpi-name { font-size: 9.5px; letter-spacing: 0.045em; }
+          .kpi-figure { font-size: 19px; margin-top: 9px; letter-spacing: -0.025em; }
+          .kpi-foot { margin-top: 7px; min-height: 18px; }
+          .kpi-delta { font-size: 9.5px; padding: 3px 7px 3px 6px; gap: 3px; }
+          .kpi-delta svg { width: 9px; height: 9px; }
           .trend-chart-wrap { height: 190px; padding-top: 4px; }
           .seller-row { padding: 10px 0; gap: 10px; }
           .seller-name { font-size: 13px; }
@@ -6932,7 +7013,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // everywhere on the page. Amara's own avatar stays a fixed "S" --
           // that's a brand identity, not a per-contact one, same idea as the
           // sidebar profile mark.
-          const userAvatarStyle = avatarStyleFor(selectedPhone);
           const dayKeyOf = (msg) => {
             if (!msg || !msg.at) return null;
             const d = new Date(msg.at);
@@ -6954,20 +7034,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const nextDayKey = dayKeyOf(next);
             const endsGroup = !next || next.role !== m.role || (!!nextDayKey && nextDayKey !== lastDayKey);
             const isUser = m.role === "user";
-            const avatarHtml = endsGroup
-              ? (isUser
-                ? '<div class="msg-avatar user" style="' + userAvatarStyle + '">' + ICON_PERSON + '</div>'
-                : '<div class="msg-avatar assistant">S</div>')
-              : '<div class="msg-avatar-spacer"></div>';
             // The time now sits inside the bubble, bottom-right, the way it
             // does in WhatsApp -- it stays outside .bubble-text so search
             // never matches or overwrites it (see filterThreadSearch).
             const timeHtml = m.at ? '<span class="bubble-time">' + formatBubbleTime(m.at) + '</span>' : "";
+            // Only messages the dashboard itself sent carry by:"owner". An
+            // outgoing message without it gets no label at all rather than a
+            // guessed one.
+            const byHtml = (!isUser && m.by === "owner") ? '<span class="bubble-by">You</span>' : "";
             html += '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + (endsGroup ? " group-end" : "") + '">' +
-              avatarHtml +
               '<div class="bubble-col">' +
                 '<div class="bubble ' + (isUser ? "user" : "assistant") + (endsGroup ? " has-tail" : "") + '">' +
-                  '<span class="bubble-text">' + escapeHtml(m.content) + '</span>' + timeHtml +
+                  '<span class="bubble-text">' + escapeHtml(m.content) + '</span>' + byHtml + timeHtml +
                 '</div>' +
               '</div>' +
               '</div>';
@@ -7027,7 +7105,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             statusChip.className = "thread-status-chip" + (isPaused ? " is-paused" : "");
             statusChip.innerHTML = '<span class="chip-dot"></span>' + (isPaused
               ? '<span class="lbl-full">You&#39;re handling this</span><span class="lbl-short">You&#39;re on it</span>'
-              : '<span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara</span>');
+              : '<span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara replying</span>');
           }
           // Keep the details panel current too, but never while the owner is
           // mid-sentence in the note -- re-rendering would wipe what they've
@@ -7061,7 +7139,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // the starred chip together wrapped the header onto a second row.
           return isPaused
             ? '<span class="thread-status-chip is-paused" id="threadStatusChip"><span class="chip-dot"></span><span class="lbl-full">You\\'re handling this</span><span class="lbl-short">You\\'re on it</span></span>'
-            : '<span class="thread-status-chip" id="threadStatusChip"><span class="chip-dot"></span><span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara</span></span>';
+            : '<span class="thread-status-chip" id="threadStatusChip"><span class="chip-dot"></span><span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara replying</span></span>';
         }
 
         function renderThread(phone, history, customer) {
@@ -7970,9 +8048,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const fullNames = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
           const best = w.indexOf(Math.max(...w));
           host.innerHTML = w.map((n, i) =>
-            '<div class="dow' + (i === best ? " is-best" : "") + '" title="' + n + ' order' + (n === 1 ? "" : "s") +
+            '<div class="dow' + (i === best ? " is-best" : "") + (n === 0 ? " is-zero" : "") +
+              '" title="' + n + ' order' + (n === 1 ? "" : "s") +
               ', N' + (rev[i] || 0).toLocaleString() + ' on ' + fullNames[i] + '">' +
-              '<div class="dow-slot"><div class="dow-bar" style="height:' + Math.max(Math.round((n / max) * 100), n > 0 ? 10 : 3) + '%"></div></div>' +
+              '<div class="dow-slot"><div class="dow-bar" style="height:' + (n > 0 ? Math.max(Math.round((n / max) * 100), 12) : 0) + '%"></div></div>' +
               '<div class="dow-n">' + n + '</div>' +
               '<div class="dow-name">' + names[i].slice(0, 1) + '</div>' +
             '</div>'
@@ -8170,30 +8249,40 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // records to compare against. "up 100%" from a window nobody was
           // selling in yet is a made-up number, so it says so instead.
           const prev = data.previous || { hasData: false };
+          // "vs prev 14d" rather than "vs last 14 days": the same fact, on one
+          // line, in a card that is 172px wide on a laptop.
+          const pill = (cls, icon, text) =>
+            '<span class="kpi-delta ' + cls + '">' + (icon ? ICON_TREND : "") +
+            '<span class="d-txt">' + text + '</span></span>';
           const delta = (now, before) => {
-            if (!prev.hasData) return { html: '<span class="kpi-delta none">no earlier data</span>', };
+            if (!prev.hasData) return { html: pill("none", false, "no earlier data") };
             if (!before) {
               return { html: now > 0
-                ? '<span class="kpi-delta up">' + ICON_TREND + 'first in ' + span + ' days</span>'
-                : '<span class="kpi-delta none">nothing either window</span>' };
+                ? pill("up", true, "first in " + span + " days")
+                : pill("none", false, "nothing either window") };
             }
             const pctChange = Math.round(((now - before) / before) * 100);
-            if (pctChange === 0) return { html: '<span class="kpi-delta flat">level with last ' + span + ' days</span>' };
+            if (pctChange === 0) return { html: pill("flat", false, "level with prev " + span + "d") };
             const up = pctChange > 0;
-            return { html: '<span class="kpi-delta ' + (up ? "up" : "down") + '">' + ICON_TREND +
-              (up ? "+" : "") + pctChange + '% vs last ' + span + ' days</span>' };
+            return { html: pill(up ? "up" : "down", true, (up ? "+" : "") + pctChange + "% vs prev " + span + "d") };
           };
 
-          const kpi = (cls, icon, value, label, sub) =>
-            '<div class="stat-tile ' + cls + '"><div><div class="stat-value">' + value + '</div>' +
-            '<div class="stat-label">' + label + '</div>' +
-            (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>' +
-            '<div class="stat-icon">' + icon + '</div></div>';
+          const kpi = (cls, icon, value, label, footHtml) =>
+            '<div class="kpi-card ' + cls + '">' +
+              '<div class="kpi-top"><span class="kpi-mark">' + icon + '</span>' +
+              '<span class="kpi-name">' + label + '</span></div>' +
+              '<div class="kpi-bottom">' +
+                '<div class="kpi-figure">' + value + '</div>' +
+                '<div class="kpi-foot">' + (footHtml || "") + '</div>' +
+              '</div>' +
+            '</div>';
           document.getElementById("analyticsKpis").innerHTML =
-            kpi("tile-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
-            kpi("tile-total", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", delta(totalOrders, prev.orders).html) +
-            kpi("tile-active", ICON_WALLET, totalOrders > 0 ? "N" + avgOrder.toLocaleString() : "\u2014", "Average order", totalOrders > 0 ? "across " + totalOrders + " order" + (totalOrders === 1 ? "" : "s") : "no orders yet") +
-            kpi("tile-paused", ICON_TREND, bestIdx === -1 ? "\u2014" : "N" + values[bestIdx].toLocaleString(), "Best day", bestIdx === -1 ? "no sales in this window" : escapeHtml(labels[bestIdx]));
+            kpi("k-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
+            kpi("k-orders", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", delta(totalOrders, prev.orders).html) +
+            kpi("k-average", ICON_WALLET, totalOrders > 0 ? "N" + avgOrder.toLocaleString() : "\u2014", "Average order",
+              pill("none", false, totalOrders > 0 ? "across " + totalOrders + " order" + (totalOrders === 1 ? "" : "s") : "no orders yet")) +
+            kpi("k-best", ICON_TREND, bestIdx === -1 ? "\u2014" : "N" + values[bestIdx].toLocaleString(), "Best day",
+              pill("none", false, bestIdx === -1 ? "no sales in this window" : escapeHtml(labels[bestIdx])));
 
           renderWeekdays(data);
           renderNewReturning(data, span);
@@ -10073,7 +10162,7 @@ app.post("/api/send-message", async (req, res) => {
     const sent = await sendWhatsApp(seller, phone, text);
     if (!sent) return res.status(502).json({ error: "WhatsApp rejected the message, please try again" });
     let history = await getConversation(seller.sellerId, phone);
-    history.push({ role: "assistant", content: text, at: Date.now() });
+    history.push({ role: "assistant", content: text, at: Date.now(), by: "owner" });
     history = history.slice(-10);
     await saveConversation(seller.sellerId, phone, history);
     console.log(`Dashboard manual message: owner messaged ${phone} directly from the dashboard.`);
@@ -11271,7 +11360,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 26";
+const BUILD_ROUND = "Round 27";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
