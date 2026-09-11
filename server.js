@@ -49,6 +49,8 @@ app.get("/vendor/chart.js", (req, res) => {
 // itself, no path-rewriting required.
 app.use("/vendor/fonts/inter", express.static(path.join(__dirname, "node_modules", "@fontsource", "inter")));
 app.use("/vendor/fonts/plus-jakarta-sans", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "plus-jakarta-sans")));
+app.use("/vendor/fonts/geist", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "geist")));
+app.use("/vendor/fonts/geist-mono", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "geist-mono")));
 
 // ---------- SETTINGS (come from environment variables) ----------
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
@@ -3549,7 +3551,7 @@ app.get("/subscribe", async (req, res) => {
 // clickable actions (buttons, active tabs, links, chart bars) so those
 // stand out from the chrome around them instead of everything being the
 // same dark navy.
-// Same two fonts as the public marketing site now, not Sora -- Sora was a
+// Geist and Geist Mono, self-hosted. See the /vendor/fonts/* static routes
 // reasonable pick when this was the only surface that existed, but once
 // the marketing site landed on Inter (body/UI) + Plus Jakarta Sans
 // (headlines and the logo) for exactly this kind of product, running a
@@ -3559,12 +3561,22 @@ app.get("/subscribe", async (req, res) => {
 // bundling Chart.js locally: no dependency on fonts.googleapis.com being
 // reachable, which this sandbox's own network policy already proved can
 // silently fail.
-const BRAND_FONT_LINKS = `<link rel="stylesheet" href="/vendor/fonts/inter/400.css"><link rel="stylesheet" href="/vendor/fonts/inter/500.css"><link rel="stylesheet" href="/vendor/fonts/inter/600.css"><link rel="stylesheet" href="/vendor/fonts/plus-jakarta-sans/wght.css">`;
+const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/geist/files/geist-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/geist/index.css"><link rel="stylesheet" href="/vendor/fonts/geist-mono/index.css">`;
 
 const BRAND_TOKENS_CSS = `
   :root {
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-heading: 'Plus Jakarta Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* Geist, one variable family across the whole product. Inter is the
+       default face of every AI dashboard on the internet, which is exactly
+       why it stopped reading as a choice -- and pairing it with Plus Jakarta
+       meant two faces doing one job. Geist is drawn for product interfaces:
+       its figures and small UI text hold up at 10-12px, where this dashboard
+       lives, and it carries real character at 30px+ where a headline needs
+       it. Weight and tracking do the hierarchy, not a second family.
+       Geist Mono is reserved for identifiers -- order and booking
+       references -- where fixed-width, unambiguous characters are the point. */
+    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-heading: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
     /* --navy is a structural dark surface (the sidebar, page headers), NOT a
        text colour -- it deliberately stays dark in both themes. Text uses
        --text so it can flip. */
@@ -3675,61 +3687,440 @@ function brandMark({ dark = false, size = "normal" } = {}) {
 }
 
 // ---------- SELLER SIGNUP / LOGIN PAGES ----------
-function authPageHtml({ title, heading, formHtml, error }) {
+function authPageHtml({ title, heading, sub, formHtml, error }) {
+  const isSignup = title === "Sign up";
+  // The scene is a depiction of what the product actually does -- a real
+  // Amara exchange -- not stock art and not invented social proof. It is the
+  // same scene the marketing site's hero uses, so the two surfaces read as
+  // one product rather than two different companies.
+  const scene =
+    '<div class="scene-thread" style="--d:.10s">' +
+      '<div class="st-head">' +
+        '<span class="st-dot"></span>' +
+        '<span class="st-name">Ada Nwosu</span>' +
+        '<span class="st-live">Amara is replying</span>' +
+      '</div>' +
+      '<div class="st-body">' +
+        '<div class="st-row in"><div class="st-bub">Do you still have the blue Ankara gown in size 14?</div></div>' +
+        '<div class="st-row out"><div class="st-bub">Yes, size 14 is in stock at N18,500. Want a photo?</div></div>' +
+        '<div class="st-row in"><div class="st-bub">Yes please</div></div>' +
+        '<div class="st-row out"><div class="st-bub">Sent. Delivery to Lekki is N2,000, so N20,500 altogether.</div></div>' +
+        '<div class="st-row typing"><div class="st-bub st-typing"><i></i><i></i><i></i></div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="scene-chip chip-pay" style="--d:.30s">' +
+      '<span class="chip-mark">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+      '</span>' +
+      '<span class="chip-text"><b>Payment confirmed</b><small>Order closed without you</small></span>' +
+    '</div>' +
+    '<div class="scene-chip chip-clock" style="--d:.44s">' +
+      '<span class="chip-mark alt">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>' +
+      '</span>' +
+      '<span class="chip-text"><b>2:14 AM</b><small>Still answering</small></span>' +
+    '</div>';
+
   return `
-    <html>
+    <!doctype html>
+    <html lang="en">
     <head>
       <title>${title} — Stafly.AI</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+      <meta name="theme-color" content="#0b1020">
       ${BRAND_FONT_LINKS}
+      <script>
+        // Applied before any paint so a dark-mode seller never gets a white flash.
+        (function () {
+          try {
+            var saved = localStorage.getItem("stafly-theme");
+            var dark = saved ? saved === "dark"
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            if (dark) document.documentElement.setAttribute("data-theme", "dark");
+          } catch (e) {}
+        })();
+      </script>
       <style>
         ${BRAND_TOKENS_CSS}
-        body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh; }
-        .auth-card { background:white; padding:32px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); width:100%; max-width:360px; }
-        .auth-card .brand-row { margin-bottom:20px; }
-        .auth-card h1 { font-family:var(--font-heading); font-size:18px; margin:0 0 4px; }
-        .auth-card label { font-size:12px; color:var(--muted); display:block; margin:14px 0 4px; }
-        .auth-card input { width:100%; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; box-sizing:border-box; }
-        .auth-card input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light); }
-        .auth-card button { width:100%; margin-top:20px; padding:10px; background:var(--accent); color:white; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; }
-        .auth-card button:hover { background:var(--accent-dark); }
-        .auth-error { background:var(--danger-bg); color:var(--danger); padding:8px 10px; border-radius:6px; font-size:13px; margin-top:14px; }
-        .auth-footer { text-align:center; font-size:13px; color:var(--muted); margin-top:16px; }
-        .auth-footer a { color:var(--accent); font-weight:600; text-decoration:none; }
-        .business-type-choice { display:flex; flex-direction:column; gap:8px; }
-        .business-type-option { display:flex; align-items:center; gap:8px; font-size:13px; color:#1e293b; font-weight:400; margin:0; padding:9px 10px; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; }
-        .business-type-option input { width:auto; }
-        .google-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:10px; margin:0; background:#fff; color:#1f2937; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; text-decoration:none; box-sizing:border-box; transition:background .15s, border-color .15s; }
-        .google-btn:hover { background:#f8fafc; border-color:#94a3b8; }
-        .google-btn svg { width:17px; height:17px; flex-shrink:0; }
-        .auth-or { display:flex; align-items:center; gap:12px; margin:18px 0 4px; color:var(--muted-2); font-size:11.5px; font-weight:600; letter-spacing:0.04em; }
-        .auth-or::before, .auth-or::after { content:""; flex:1; height:1px; background:#e2e8f0; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; padding: 0; }
+        body {
+          font-family: var(--font-sans); color: var(--text); background: var(--bg);
+          min-height: 100dvh; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+        }
+
+        /* ---- preloader ------------------------------------------------
+           Capped hard at 1.1s and dismissed on load, whichever comes first,
+           so it can never become the thing standing between a seller and
+           their dashboard. */
+        .pre { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 22px;
+          background: radial-gradient(120% 90% at 50% 40%, #1a2140 0%, #0b1020 62%);
+          transition: opacity .5s ease, visibility .5s ease; }
+        .pre.done { opacity: 0; visibility: hidden; }
+        .pre-mark { width: 52px; height: 52px; border-radius: 15px; display: flex; align-items: center;
+          justify-content: center; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          color: #fff; font-family: var(--font-heading); font-weight: 700; font-size: 24px;
+          box-shadow: 0 14px 40px rgba(79,70,229,.42); animation: preMark .9s cubic-bezier(.22,1,.36,1) both; }
+        .pre-bar { width: 116px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
+        .pre-bar i { display: block; height: 100%; width: 40%; border-radius: 2px;
+          background: linear-gradient(90deg, transparent, #fff, transparent); animation: preSweep 1.05s ease-in-out infinite; }
+        @keyframes preMark { from { opacity: 0; transform: scale(.82) translateY(8px); } to { opacity: 1; transform: none; } }
+        @keyframes preSweep { from { transform: translateX(-120%); } to { transform: translateX(320%); } }
+
+        /* ---- shell ----------------------------------------------------
+           Full bleed on purpose: an auth screen has one job and no reading
+           column to protect, so the width goes to the thing worth looking at. */
+        .shell { display: grid; grid-template-columns: 1.06fr .94fr; min-height: 100dvh; }
+
+        /* ---- stage (left) --------------------------------------------- */
+        .stage { position: relative; overflow: hidden; display: flex; flex-direction: column;
+          padding: 40px 46px 44px; color: #fff;
+          background: linear-gradient(163deg, #080b22 0%, #1b1856 38%, #3a2694 70%, #6b2ea8 100%); }
+        /* Three light sources rather than a tinted overlay -- a flat wash over
+           a flat gradient was the reason the first pass read as a dark block
+           instead of a lit surface. No blur filter: it was averaging the
+           three into one muddy colour. */
+        .stage-glow { position: absolute; inset: 0; pointer-events: none; will-change: transform;
+          background:
+            radial-gradient(58% 50% at 16% 12%, rgba(129,140,248,.62), transparent 72%),
+            radial-gradient(64% 56% at 88% 84%, rgba(232,74,232,.44), transparent 74%),
+            radial-gradient(48% 40% at 74% 6%, rgba(56,205,248,.30), transparent 70%),
+            radial-gradient(46% 52% at 2% 76%, rgba(99,102,241,.40), transparent 72%);
+          animation: drift 26s ease-in-out infinite alternate; }
+        /* Grain, so the panel has a material rather than a colour. */
+        .stage-grain { position: absolute; inset: 0; pointer-events: none; opacity: .13;
+          mix-blend-mode: soft-light;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"); }
+        @keyframes drift {
+          from { transform: translate3d(-2%, -1.5%, 0) scale(1.04); }
+          to   { transform: translate3d(2.5%, 2%, 0) scale(1.14); }
+        }
+        /* A woven texture rather than a flat fill, so the panel reads as a
+           surface with light on it instead of a pasted-on gradient. */
+        .stage-weave { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+          background-image:
+            linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+          background-size: 46px 46px;
+          -webkit-mask-image: radial-gradient(90% 80% at 50% 45%, #000 20%, transparent 78%);
+          mask-image: radial-gradient(90% 80% at 50% 45%, #000 20%, transparent 78%); }
+        .stage-top, .stage-scene, .stage-foot { position: relative; z-index: 1; }
+
+        .stage-scene { flex: 1; display: flex; align-items: center; justify-content: center;
+          position: relative; padding: 30px 12px; min-height: 0; }
+
+        .scene-thread { width: min(400px, 100%); border-radius: 22px; padding: 6px 6px 10px;
+          background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.26);
+          box-shadow: 0 34px 80px rgba(4,6,24,.55), inset 0 1px 0 rgba(255,255,255,.34);
+          backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+          animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobA 9s ease-in-out 1.2s infinite; }
+        .st-head { display: flex; align-items: center; gap: 9px; padding: 11px 14px 12px; }
+        .st-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; flex-shrink: 0;
+          box-shadow: 0 0 0 3px rgba(52,211,153,.22); }
+        .st-name { font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
+        .st-live { margin-left: auto; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.62); }
+        .st-body { background: rgba(6,9,26,.30); border-radius: 16px; padding: 13px 13px 14px;
+          display: flex; flex-direction: column; gap: 7px; }
+        .st-row { display: flex; }
+        .st-row.out, .st-row.typing { justify-content: flex-end; }
+        .st-bub { max-width: 82%; padding: 8px 12px 9px; font-size: 12.8px; line-height: 1.45;
+          border-radius: 13px; }
+        .st-row.in .st-bub { background: rgba(255,255,255,.94); color: #131a2e; border-bottom-left-radius: 5px; }
+        .st-row.out .st-bub, .st-row.typing .st-bub {
+          background: linear-gradient(135deg, #6366f1, #4338ca); color: #fff; border-bottom-right-radius: 5px;
+          box-shadow: 0 6px 18px rgba(67,56,202,.42); }
+        .st-typing { display: flex; align-items: center; gap: 4px; padding: 11px 14px; }
+        .st-typing i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.9);
+          animation: blip 1.25s ease-in-out infinite; }
+        .st-typing i:nth-child(2) { animation-delay: .16s; }
+        .st-typing i:nth-child(3) { animation-delay: .32s; }
+        @keyframes blip { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+        .scene-chip { position: absolute; display: flex; align-items: center; gap: 10px;
+          padding: 10px 15px 10px 11px; border-radius: 14px;
+          background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.30);
+          box-shadow: 0 18px 44px rgba(4,6,24,.45), inset 0 1px 0 rgba(255,255,255,.34);
+          backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); white-space: nowrap;
+          animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 7.5s ease-in-out 1.4s infinite; }
+        .chip-pay { left: 4px; bottom: 13%; }
+        .chip-clock { right: 6px; top: 10%; animation-name: dealIn, bobA; }
+        .chip-mark { width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center;
+          justify-content: center; flex-shrink: 0; background: rgba(52,211,153,.20); color: #6ee7b7; }
+        .chip-mark.alt { background: rgba(147,197,253,.18); color: #93c5fd; }
+        .chip-mark svg { width: 15px; height: 15px; }
+        .chip-text { display: flex; flex-direction: column; line-height: 1.25; }
+        .chip-text b { font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; }
+        .chip-text small { font-size: 10.5px; color: rgba(255,255,255,.60); margin-top: 2px; }
+
+        @keyframes dealIn { from { opacity: 0; transform: translateY(20px) scale(.965); } to { opacity: 1; transform: none; } }
+        @keyframes bobA { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+        @keyframes bobB { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
+
+        .stage-foot { max-width: 440px; padding-top: 8px; }
+        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(22px, 1.95vw, 29px);
+          font-weight: 650; letter-spacing: -.035em; line-height: 1.22; margin: 0 0 14px;
+          text-wrap: balance; animation: riseIn .75s cubic-bezier(.22,1,.36,1) .50s both; }
+        .stage-lines { position: relative; height: 24px; animation: riseIn .75s cubic-bezier(.22,1,.36,1) .58s both; }
+        .stage-line { position: absolute; inset: 0; display: flex; align-items: center; gap: 10px;
+          font-size: 13.5px; color: rgba(255,255,255,.78); opacity: 0;
+          transition: opacity .55s ease, transform .55s cubic-bezier(.22,1,.36,1); transform: translateY(6px); }
+        .stage-line.on { opacity: 1; transform: none; }
+        .stage-line::before { content: ""; width: 6px; height: 6px; border-radius: 50%;
+          background: #c7d2fe; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(199,210,254,.18); }
+        .stage-top { animation: riseIn .7s cubic-bezier(.22,1,.36,1) .06s both; }
+        @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+        /* ---- form panel (right) --------------------------------------- */
+        .panel { position: relative; display: grid; grid-template-rows: 1fr auto;
+          align-items: center; justify-items: center; padding: 40px 32px 0; background: var(--surface); }
+        .panel::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+          background:
+            radial-gradient(48% 38% at 88% 4%, var(--accent-light), transparent 70%),
+            radial-gradient(40% 34% at 4% 96%, var(--accent-light), transparent 72%);
+          opacity: .55; }
+        .panel > * { position: relative; z-index: 1; }
+        .panel-foot { padding: 26px 0 22px; font-size: 11.5px; color: var(--muted-2);
+          display: flex; align-items: center; gap: 14px; animation: riseIn .7s cubic-bezier(.22,1,.36,1) .46s both; }
+        .panel-foot span { opacity: .62; }
+        .card { width: 100%; max-width: 408px; }
+        .card > * { animation: riseIn .68s cubic-bezier(.22,1,.36,1) var(--d, 0s) both; }
+        .card-brand { display: none; margin-bottom: 26px; --d: .04s; }
+        .card h1 { font-family: var(--font-heading); font-size: 28px; font-weight: 700;
+          letter-spacing: -.035em; line-height: 1.2; margin: 0; color: var(--text); --d: .10s; }
+        .card-sub { font-size: 14px; color: var(--muted); margin: 9px 0 0; line-height: 1.55; --d: .16s; }
+
+        .google-btn { display: flex; align-items: center; justify-content: center; gap: 10px;
+          width: 100%; padding: 12px; margin-top: 26px; border-radius: 11px; --d: .22s;
+          background: var(--surface); color: var(--text); border: 1px solid var(--border-strong, var(--border));
+          font-size: 14px; font-weight: 550; font-family: inherit; cursor: pointer; text-decoration: none;
+          transition: background .18s, border-color .18s, transform .16s cubic-bezier(.22,1,.36,1), box-shadow .18s; }
+        .google-btn:hover { background: var(--surface-2); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .google-btn:active { transform: translateY(0) scale(.99); }
+        .google-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+        .auth-or { display: flex; align-items: center; gap: 13px; margin: 22px 0 4px; --d: .26s;
+          color: var(--muted-2); font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+        .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        form { --d: .30s; }
+        form label { display: block; font-size: 12.5px; font-weight: 550; color: var(--text);
+          margin: 18px 0 7px; letter-spacing: -.005em; }
+        form input { width: 100%; padding: 12px 13px; font-size: 14.5px; font-family: inherit;
+          color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+          border-radius: 11px; transition: border-color .18s, box-shadow .18s, background .18s; }
+        form input::placeholder { color: var(--muted-2); }
+        form input:hover { border-color: var(--border-strong, var(--muted-2)); }
+        form input:focus { outline: none; background: var(--surface);
+          border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
+
+        .business-type-choice { display: grid; gap: 9px; margin-top: 2px; }
+        .business-type-option { display: flex; align-items: center; gap: 10px; margin: 0;
+          padding: 13px 14px; font-size: 13.5px; font-weight: 500; color: var(--text);
+          background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; cursor: pointer;
+          transition: border-color .18s, background .18s, box-shadow .18s; }
+        .business-type-option:hover { border-color: var(--muted-2); }
+        .business-type-option input { width: auto; margin: 0; accent-color: var(--accent); flex-shrink: 0; }
+        .business-type-option:has(input:checked) { border-color: var(--accent);
+          background: var(--accent-light); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+        .submit-btn { position: relative; overflow: hidden; width: 100%; margin-top: 26px;
+          padding: 13px; border: none; border-radius: 11px; cursor: pointer;
+          background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff;
+          font-family: inherit; font-size: 14.5px; font-weight: 600; letter-spacing: -.005em;
+          box-shadow: 0 6px 18px var(--accent-shadow);
+          transition: transform .16s cubic-bezier(.22,1,.36,1), box-shadow .2s; }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px var(--accent-shadow-strong); }
+        .submit-btn:active { transform: translateY(0) scale(.99); }
+        /* A single pass of light across the button on hover -- one gesture,
+           not a looping shimmer that would read as a loading state. */
+        .submit-btn::after { content: ""; position: absolute; top: 0; bottom: 0; width: 42%;
+          left: -50%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.26), transparent);
+          transform: skewX(-18deg); transition: left .6s cubic-bezier(.4,0,.2,1); }
+        .submit-btn:hover::after { left: 120%; }
+        .submit-btn.busy { pointer-events: none; opacity: .82; }
+        .submit-btn.busy .btn-label { visibility: hidden; }
+        .submit-btn .btn-spin { position: absolute; inset: 0; margin: auto; width: 17px; height: 17px;
+          border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+          display: none; animation: spin .7s linear infinite; }
+        .submit-btn.busy .btn-spin { display: block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .auth-error { display: flex; align-items: flex-start; gap: 9px; --d: .08s;
+          background: var(--danger-bg); color: var(--danger); padding: 11px 13px;
+          border: 1px solid var(--danger); border-radius: 11px; font-size: 13px; line-height: 1.45;
+          margin-top: 20px; }
+        .auth-error svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; }
+
+        .auth-footer { font-size: 13.5px; color: var(--muted); margin-top: 24px; text-align: center; --d: .36s; }
+        .auth-footer a { color: var(--accent); font-weight: 600; text-decoration: none;
+          border-bottom: 1px solid transparent; transition: border-color .18s; }
+        .auth-footer a:hover { border-bottom-color: var(--accent); }
+        .auth-legal { font-size: 11.5px; color: var(--muted-2); margin-top: 26px; text-align: center;
+          line-height: 1.6; --d: .40s; }
+
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+        :focus:not(:focus-visible) { outline: none; }
+
+        /* ---- narrow --------------------------------------------------
+           Below 980 the stage stops being a column and becomes a short
+           banner: the scene needs real width to read, and half a scene is
+           worse than none. Below 620 it goes entirely and the brand mark
+           moves into the card, so the form gets the whole screen. */
+        @media (max-width: 980px) {
+          .shell { grid-template-columns: 1fr; }
+          .stage { min-height: 210px; padding: 22px 24px 24px; justify-content: space-between; }
+          .stage-scene { display: none; }
+          .stage-foot h2 { font-size: 21px; }
+          .panel { padding: 34px 24px 44px; }
+        }
+        @media (max-width: 620px) {
+          /* The scene needs width to read, so on a phone it goes and the
+             brand band carries the identity instead -- 96px of the gradient
+             rather than a cropped, unreadable half-scene. */
+          /* 220px of gradient was a quarter of a phone screen given to
+             decoration. A 112px band is enough to carry the brand. */
+          .stage { min-height: 112px; padding: 0 20px; justify-content: center; }
+          .stage-foot, .stage-scene { display: none; }
+          .panel { align-items: center; padding: 34px 20px 40px; }
+          .card h1 { font-size: 25px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .stage-glow, .scene-thread, .scene-chip, .st-typing i, .pre-mark, .pre-bar i { animation: none !important; }
+          .scene-thread, .scene-chip { opacity: 1; transform: none; }
+          .card > *, .stage-top, .stage-foot h2, .stage-lines { animation: none !important; opacity: 1; transform: none; }
+          .submit-btn::after { display: none; }
+          .google-btn:hover, .submit-btn:hover { transform: none; }
+        }
       </style>
     </head>
     <body>
-      <div class="auth-card">
-        <div class="brand-row">${brandMark()}</div>
-        <h1>${escapeHtmlServer(heading)}</h1>
-        ${googleAuthEnabled() ? `
-          <a class="google-btn" href="/auth/google${title === "Sign up" ? "?mode=signup" : ""}">
-            <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-            Continue with Google
-          </a>
-          <div class="auth-or">OR</div>
-        ` : ""}
-        <form method="POST">
-          ${formHtml}
-          <button type="submit">${escapeHtmlServer(title)}</button>
-        </form>
-        ${error ? `<div class="auth-error">${escapeHtmlServer(error)}</div>` : ""}
-        ${
-          title === "Sign up"
-            ? '<div class="auth-footer">Already have an account? <a href="/login">Log in</a></div>'
-            : '<div class="auth-footer">New seller? <a href="/signup">Create an account</a></div>'
-        }
+      <div class="pre" id="pre">
+        <div class="pre-mark">S</div>
+        <div class="pre-bar"><i></i></div>
       </div>
+      <main class="shell">
+        <section class="stage">
+          <div class="stage-glow"></div>
+          <div class="stage-weave"></div>
+          <div class="stage-grain"></div>
+          <div class="stage-top">${brandMark({ dark: true })}</div>
+          <div class="stage-scene">${scene}</div>
+          <div class="stage-foot">
+            <h2>Your shop keeps selling while you sleep.</h2>
+            <div class="stage-lines" id="lines">
+              <div class="stage-line on">Answers from your own catalogue, never a guess</div>
+              <div class="stage-line">Takes the order and confirms the payment</div>
+              <div class="stage-line">Hands the chat to you the moment it matters</div>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="card">
+            <div class="card-brand">${brandMark()}</div>
+            <h1>${escapeHtmlServer(heading)}</h1>
+            <p class="card-sub">${escapeHtmlServer(sub || (isSignup ? "Set up your assistant in a couple of minutes. No card needed." : "Welcome back. Pick up where you left off."))}</p>
+            ${error ? `<div class="auth-error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 7.6v5.2"/><path d="M12 16.3h.01"/></svg><span>${escapeHtmlServer(error)}</span></div>` : ""}
+            ${googleAuthEnabled() ? `
+              <a class="google-btn" href="/auth/google${isSignup ? "?mode=signup" : ""}">
+                <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                Continue with Google
+              </a>
+              <div class="auth-or">or</div>
+            ` : ""}
+            <form method="POST" id="authForm">
+              ${formHtml}
+              <button type="submit" class="submit-btn" id="authSubmit">
+                <span class="btn-label">${escapeHtmlServer(isSignup ? "Create account" : "Log in")}</span>
+                <span class="btn-spin"></span>
+              </button>
+            </form>
+            ${
+              isSignup
+                ? '<div class="auth-footer">Already have an account? <a href="/login">Log in</a></div>'
+                : '<div class="auth-footer">New seller? <a href="/signup">Create an account</a></div>'
+            }
+            ${isSignup ? '<div class="auth-legal">By creating an account you agree to our terms and privacy policy.</div>' : ""}
+          </div>
+          <div class="panel-foot">
+            <span>Stafly.AI</span>
+            <span>&middot;</span>
+            <span>WhatsApp sales, answered for you</span>
+          </div>
+        </section>
+      </main>
+      <script>
+        (function () {
+          var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+          // Preloader: dismissed on load, and unconditionally after 1.1s so a
+          // slow font or a blocked request can never leave someone staring at it.
+          var pre = document.getElementById("pre");
+          var t0 = Date.now();
+          function dropPre() {
+            if (!pre || pre.classList.contains("done")) return;
+            var wait = reduce ? 0 : Math.max(0, 420 - (Date.now() - t0));
+            setTimeout(function () { pre.classList.add("done"); }, wait);
+          }
+          if (document.readyState === "complete") dropPre();
+          else window.addEventListener("load", dropPre);
+          setTimeout(dropPre, 1100);
+
+          // The three lines are real capabilities, not testimonials.
+          var lines = document.getElementById("lines");
+          if (lines && !reduce) {
+            var items = lines.querySelectorAll(".stage-line");
+            var i = 0;
+            setInterval(function () {
+              items[i].classList.remove("on");
+              i = (i + 1) % items.length;
+              items[i].classList.add("on");
+            }, 3800);
+          }
+
+          // A real pending state on submit, so a slow network does not look
+          // like a dead button and cannot be double-submitted.
+          var form = document.getElementById("authForm");
+          var btn = document.getElementById("authSubmit");
+          if (form && btn) {
+            form.addEventListener("submit", function () {
+              if (!form.checkValidity || form.checkValidity()) btn.classList.add("busy");
+            });
+          }
+
+          var first = document.querySelector("form input");
+          if (first && window.innerWidth > 980) setTimeout(function () { first.focus(); }, 700);
+        })();
+      </script>
     </body>
     </html>
+  `;
+}
+
+// The login and signup fields, built in one place each. These were four
+// near-identical copies across the GET routes and the POST-failure
+// re-renders, which is exactly how a placeholder or an autocomplete hint
+// ends up on one of them and not the others.
+function loginFieldsHtml(email = "") {
+  return `
+        <label for="liEmail">Email</label>
+        <input id="liEmail" type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@yourshop.com" value="${escapeHtmlServer(email)}">
+        <label for="liPass">Password</label>
+        <input id="liPass" type="password" name="password" required maxlength="200" autocomplete="current-password" placeholder="Your password">
+  `;
+}
+
+function signupFieldsHtml({ businessName = "", email = "", businessType = "" } = {}) {
+  return `
+        <label for="suName">Business name</label>
+        <input id="suName" name="businessName" required maxlength="120" autocomplete="organization" placeholder="KP Collections" value="${escapeHtmlServer(businessName)}">
+        <label for="suEmail">Email</label>
+        <input id="suEmail" type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@yourshop.com" value="${escapeHtmlServer(email)}">
+        <label for="suPass">Password</label>
+        <input id="suPass" type="password" name="password" required minlength="8" maxlength="200" autocomplete="new-password" placeholder="At least 8 characters">
+        ${businessTypeFieldHtml(businessType)}
   `;
 }
 
@@ -3819,12 +4210,7 @@ app.get("/auth/google/callback", async (req, res) => {
       title: "Log in",
       heading: "Log in to Stafly.AI",
       error: message,
-      formHtml: `
-        <label>Email</label>
-        <input type="email" name="email" required maxlength="200">
-        <label>Password</label>
-        <input type="password" name="password" required maxlength="200">
-      `,
+      formHtml: loginFieldsHtml(),
     }));
 
   const mode = verifyOAuthState(req.query.state);
@@ -3911,15 +4297,7 @@ app.get("/signup", (req, res) => {
     authPageHtml({
       title: "Sign up",
       heading: "Create your seller account",
-      formHtml: `
-        <label>Business name</label>
-        <input name="businessName" required maxlength="120">
-        <label>Email</label>
-        <input type="email" name="email" required maxlength="200">
-        <label>Password</label>
-        <input type="password" name="password" required minlength="8" maxlength="200">
-        ${businessTypeFieldHtml("")}
-      `,
+      formHtml: signupFieldsHtml(),
     })
   );
 });
@@ -3936,15 +4314,7 @@ app.post("/signup", async (req, res) => {
         title: "Sign up",
         heading: "Create your seller account",
         error: msg,
-        formHtml: `
-          <label>Business name</label>
-          <input name="businessName" required maxlength="120" value="${escapeHtmlServer(businessName)}">
-          <label>Email</label>
-          <input type="email" name="email" required maxlength="200" value="${escapeHtmlServer(email)}">
-          <label>Password</label>
-          <input type="password" name="password" required minlength="8" maxlength="200">
-          ${businessTypeFieldHtml(businessType)}
-        `,
+        formHtml: signupFieldsHtml({ businessName, email, businessType }),
       })
     );
 
@@ -3977,12 +4347,7 @@ app.get("/login", (req, res) => {
     authPageHtml({
       title: "Log in",
       heading: "Log in to Stafly.AI",
-      formHtml: `
-        <label>Email</label>
-        <input type="email" name="email" required maxlength="200">
-        <label>Password</label>
-        <input type="password" name="password" required maxlength="200">
-      `,
+      formHtml: loginFieldsHtml(),
     })
   );
 });
@@ -3997,12 +4362,7 @@ app.post("/login", async (req, res) => {
         title: "Log in",
         heading: "Log in to Stafly.AI",
         error: msg,
-        formHtml: `
-          <label>Email</label>
-          <input type="email" name="email" required maxlength="200" value="${escapeHtmlServer(email)}">
-          <label>Password</label>
-          <input type="password" name="password" required maxlength="200">
-        `,
+        formHtml: loginFieldsHtml(email),
       })
     );
 
@@ -8190,8 +8550,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   backgroundColor: "#1e293b",
                   padding: 10,
                   cornerRadius: 8,
-                  titleFont: { family: "Inter", weight: "600" },
-                  bodyFont: { family: "Inter" },
+                  titleFont: { family: "Geist Variable", weight: "600" },
+                  bodyFont: { family: "Geist Variable" },
                   callbacks: {
                     label: (item) => {
                       const i = item.dataIndex;
@@ -8205,7 +8565,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   grid: { display: false },
                   ticks: {
                     color: axisColor,
-                    font: { family: "Inter", size: narrow ? 10 : 11 },
+                    font: { family: "Geist Variable", size: narrow ? 10 : 11 },
                     maxRotation: 0,
                     minRotation: 0,
                     autoSkip: true,
@@ -8218,7 +8578,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   border: { display: false },
                   ticks: {
                     color: axisColor,
-                    font: { family: "Inter", size: narrow ? 10 : 11 },
+                    font: { family: "Geist Variable", size: narrow ? 10 : 11 },
                     maxTicksLimit: narrow ? 4 : 6,
                     padding: narrow ? 4 : 8,
                     callback: (v) => v >= 1000 ? "N" + Math.round(v / 1000) + "k" : "N" + v,
@@ -11360,7 +11720,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 27";
+const BUILD_ROUND = "Round 28";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
