@@ -51,6 +51,10 @@ app.use("/vendor/fonts/inter", express.static(path.join(__dirname, "node_modules
 app.use("/vendor/fonts/plus-jakarta-sans", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "plus-jakarta-sans")));
 app.use("/vendor/fonts/geist", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "geist")));
 app.use("/vendor/fonts/geist-mono", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "geist-mono")));
+// Headings only. Geist is a fine interface face but every heading in the
+// product was set in it too, so nothing on the page had a voice of its own.
+app.use("/vendor/fonts/display", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "schibsted-grotesk")));
+app.use("/vendor/fonts/serif", express.static(path.join(__dirname, "node_modules", "@fontsource", "instrument-serif")));
 
 // ---------- SETTINGS (come from environment variables) ----------
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;   // Meta access token
@@ -3685,7 +3689,7 @@ app.get("/subscribe", async (req, res) => {
 // bundling Chart.js locally: no dependency on fonts.googleapis.com being
 // reachable, which this sandbox's own network policy already proved can
 // silently fail.
-const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/geist/files/geist-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/geist/index.css"><link rel="stylesheet" href="/vendor/fonts/geist-mono/index.css">`;
+const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/geist/files/geist-latin-wght-normal.woff2" crossorigin><link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/display/files/schibsted-grotesk-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/geist/index.css"><link rel="stylesheet" href="/vendor/fonts/geist-mono/index.css"><link rel="stylesheet" href="/vendor/fonts/display/index.css"><link rel="stylesheet" href="/vendor/fonts/serif/latin-400-italic.css">`;
 
 const BRAND_TOKENS_CSS = `
   :root {
@@ -3699,7 +3703,13 @@ const BRAND_TOKENS_CSS = `
        Geist Mono is reserved for identifiers -- order and booking
        references -- where fixed-width, unambiguous characters are the point. */
     --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-heading: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* Headings carry the voice; the interface stays on Geist. Schibsted is a
+       newspaper grotesk -- tighter apertures, flatter terminals, a heavier
+       display weight -- so a title reads as set rather than as the same UI
+       font at a larger size. Instrument Serif italic is the counterweight,
+       used once, on the turn of the login headline. */
+    --font-heading: 'Schibsted Grotesk Variable', 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
     --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
     /* --navy is a structural dark surface (the sidebar, page headers), NOT a
        text colour -- it deliberately stays dark in both themes. Text uses
@@ -4008,11 +4018,36 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            signed off, so the whole scene scales as a single unit instead:
            every gap, overlap and gutter keeps its proportion, and nothing can
            ever land on top of anything that was clear at 1440. */
-        .scene-3d { position: absolute; top: 0; bottom: 0; left: 50%;
+        .scene-3d { position: absolute; top: 0; bottom: 0; left: 50%; z-index: 1;
           width: max(647px, calc(100% - 24px));
           display: flex; align-items: center; justify-content: center;
           transform: translateX(-50%) scale(var(--scene-s, 1)); transform-origin: 50% 50%;
           perspective: 1700px; perspective-origin: 50% 46%; }
+        /* The three small cards used to float with no relationship to the
+           conversation they describe, which is what made them read as stickers
+           dropped on a background. Each one is now tethered to the surface it
+           is talking about by a thin orthogonal trace with a rounded corner --
+           drawn behind both, so each end tucks under an edge rather than
+           stopping in mid-air. The geometry is measured at runtime from the
+           rendered boxes, so it holds at every width and at every scale step
+           rather than being three hand-placed lines that are right at 1440. */
+        .scene-links { position: absolute; inset: 0; z-index: 0; overflow: visible;
+          pointer-events: none; opacity: 0; transition: opacity .5s ease .1s; }
+        .scene-links.ready { opacity: 1; }
+        .link-trace { fill: none; stroke: rgba(206,214,255,.34); stroke-width: 1.4;
+          stroke-linecap: round; stroke-linejoin: round; }
+        .link-draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+          animation: linkDraw 1.1s cubic-bezier(.22,1,.36,1) var(--d, 0s) forwards; }
+        .link-flow { fill: none; stroke: rgba(224,231,255,.95); stroke-width: 1.6;
+          stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(165,180,252,.85));
+          stroke-dasharray: 16 var(--gap); stroke-dashoffset: 16;
+          animation: linkFlow 3.4s linear var(--d, 0s) infinite; opacity: 0; }
+        .scene-links.ready .link-flow { opacity: 1; }
+        .link-node { fill: rgba(224,231,255,.92); }
+        .link-halo { fill: rgba(165,180,252,.16); stroke: rgba(206,214,255,.30); stroke-width: 1; }
+        @keyframes linkDraw { to { stroke-dashoffset: 0; } }
+        @keyframes linkFlow { to { stroke-dashoffset: calc(-1 * var(--len)); } }
+
         .tilt { transform-style: preserve-3d; }
         .tilt-thread { transform: rotateY(-5deg) rotateX(1.8deg); }
         /* Sits on the same left edge as the brand mark and the headline. The
@@ -4152,14 +4187,18 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           color: rgba(210,218,255,.72); margin: 0 0 16px;
           animation: riseIn .7s cubic-bezier(.22,1,.36,1) .40s both; }
         .stage-eyebrow::before { content: ""; width: 22px; height: 1px; background: rgba(210,218,255,.45); }
-        /* One weight, both lines. A light second line read as washed out
-           rather than as hierarchy -- at this size the contrast has to come
-           from scale and tracking, not from thinning half the sentence. */
+        /* Thinning the second line read as washed out, so the contrast is a
+           change of voice instead of a change of weight: the statement in the
+           display grotesk, the turn in an italic serif. Same optical size,
+           same colour -- serifs sit smaller at a given point size, so the
+           italic is set a touch larger to land on the same line. */
         .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(28px, 2.85vw, 45px);
           font-weight: 580; letter-spacing: -.052em; line-height: 1.05; margin: 0 0 22px; color: #fff; }
         .stage-foot h2 span { display: block; }
         .hl-a { animation: riseIn .8s cubic-bezier(.22,1,.36,1) .48s both; }
-        .hl-b { animation: riseIn .8s cubic-bezier(.22,1,.36,1) .56s both; }
+        .hl-b { font-family: var(--font-serif); font-style: italic; font-weight: 400;
+          font-size: 1.1em; letter-spacing: -.012em; color: rgba(255,255,255,.94);
+          animation: riseIn .8s cubic-bezier(.22,1,.36,1) .56s both; }
         /* Two lines per item now, so the rotator carries a real claim and its
            substantiation instead of one orphaned phrase. Fixed height, because
            a block that resizes every four seconds makes the whole panel twitch. */
@@ -4334,6 +4373,9 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           .shot.on { transform: none; }
           .hl-a, .hl-b { animation: none !important; opacity: 1; transform: none; }
           .tick-path, .pulse-ring, .chip-spark i, .tilt::after { animation: none !important; }
+          .link-draw, .link-flow { animation: none !important; stroke-dashoffset: 0 !important; }
+          .link-flow { display: none; }
+          .scene-links { opacity: 1; transition: none; }
           .tick-path { stroke-dashoffset: 0; }
           .pulse-ring { opacity: 0; }
           .chip-spark i { height: var(--h); opacity: 1; }
@@ -4358,7 +4400,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           <div class="stage-weave"></div>
           <div class="stage-grain"></div>
           <div class="stage-top">${brandMark({ dark: true })}</div>
-          <div class="stage-scene">${scene}</div>
+          <div class="stage-scene"><svg class="scene-links" id="sceneLinks" aria-hidden="true" focusable="false"></svg>${scene}</div>
           <div class="stage-foot">
             <p class="stage-eyebrow">WhatsApp sales, answered for you</p>
             <h2><span class="hl-a">Your shop keeps selling</span> <span class="hl-b">while you sleep.</span></h2>
@@ -4443,6 +4485,190 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           if (document.readyState === "complete") dropPre();
           else window.addEventListener("load", dropPre);
           setTimeout(dropPre, 1600);
+
+          // ---- connector traces ------------------------------------------
+          // Each floating card is joined to the conversation surface by a thin
+          // orthogonal trace. The endpoints are measured from the rendered
+          // boxes rather than written down, because the whole scene scales in
+          // six steps below 1440 and every card is on its own 3D plane, so any
+          // fixed coordinate would be right at one width and wrong at the rest.
+          // Traces are painted behind the cards, so both ends run under an edge.
+          (function () {
+            var svg = document.getElementById("sceneLinks");
+            var scene = document.querySelector(".scene-3d");
+            if (!svg || !scene) return;
+            var NS = "http://www.w3.org/2000/svg";
+            var R = 9; // corner radius of the elbow
+
+            function box(sel, host) {
+              var el = document.querySelector(sel);
+              if (!el) return null;
+              var r = el.getBoundingClientRect();
+              return { l: r.left - host.left, t: r.top - host.top,
+                       r: r.right - host.left, b: r.bottom - host.top,
+                       w: r.width, h: r.height };
+            }
+            // An L with one rounded corner: out along the first axis, turn once,
+            // in along the second. Written as a path so the corner is a real arc
+            // rather than a mitre, which is what makes it read as drawn.
+            function elbow(sx, sy, ex, ey, firstVertical) {
+              var d, rx, ry, sweep;
+              if (firstVertical) {
+                var dy = ey - sy, dx = ex - sx;
+                var r = Math.min(R, Math.abs(dy) / 2, Math.abs(dx) / 2);
+                var vy = ey - (dy > 0 ? r : -r);
+                var hx = sx + (dx > 0 ? r : -r);
+                sweep = (dy > 0) === (dx > 0) ? 0 : 1;
+                d = "M" + sx + " " + sy + "V" + vy +
+                    "A" + r + " " + r + " 0 0 " + sweep + " " + hx + " " + ey +
+                    "H" + ex;
+              } else {
+                var dx2 = ex - sx, dy2 = ey - sy;
+                var r2 = Math.min(R, Math.abs(dx2) / 2, Math.abs(dy2) / 2);
+                var hx2 = ex - (dx2 > 0 ? r2 : -r2);
+                var vy2 = sy + (dy2 > 0 ? r2 : -r2);
+                sweep = (dx2 > 0) === (dy2 > 0) ? 1 : 0;
+                d = "M" + sx + " " + sy + "H" + hx2 +
+                    "A" + r2 + " " + r2 + " 0 0 " + sweep + " " + ex + " " + vy2 +
+                    "V" + ey;
+              }
+              return d;
+            }
+            function node(x, y) {
+              var g = document.createDocumentFragment();
+              var halo = document.createElementNS(NS, "circle");
+              halo.setAttribute("cx", x); halo.setAttribute("cy", y);
+              halo.setAttribute("r", 5.5); halo.setAttribute("class", "link-halo");
+              var c = document.createElementNS(NS, "circle");
+              c.setAttribute("cx", x); c.setAttribute("cy", y);
+              c.setAttribute("r", 2.6); c.setAttribute("class", "link-node");
+              g.appendChild(halo); g.appendChild(c);
+              return g;
+            }
+            function trace(d, delay) {
+              var g = document.createDocumentFragment();
+              var base = document.createElementNS(NS, "path");
+              base.setAttribute("d", d);
+              base.setAttribute("class", "link-trace" + (reduce ? "" : " link-draw"));
+              g.appendChild(base);
+              if (!reduce) {
+                var len = 0;
+                try { len = base.getTotalLength(); } catch (e) { len = 220; }
+                base.style.setProperty("--len", len);
+                base.style.setProperty("--d", delay + "s");
+                var flow = document.createElementNS(NS, "path");
+                flow.setAttribute("d", d);
+                flow.setAttribute("class", "link-trace link-flow");
+                flow.style.setProperty("--len", len);
+                flow.style.setProperty("--gap", Math.max(1, len - 16));
+                flow.style.setProperty("--d", (delay + 0.9) + "s");
+                g.appendChild(flow);
+              }
+              return g;
+            }
+
+            // Where the card stops being painted, which is not where its
+            // bounding box ends. It is rotated, so the box is the axis-aligned
+            // hull of a tilted rectangle -- at 1440 the hull's top sat 9px
+            // above the real edge on the right-hand side, which put a node
+            // behind the card instead of clear of it -- and its cast shadow
+            // reaches further still. So: start at a point that is certainly
+            // inside the card group, walk outwards, and stop at the first
+            // pixel the group no longer owns. Measured, not corrected.
+            function clearEdge(group, cx, cy, dx, dy, limit) {
+              var owns = function (x, y) {
+                var el = document.elementFromPoint(x, y);
+                return !!(el && (el === group || group.contains(el)));
+              };
+              if (!owns(cx, cy)) return null; // not inside to begin with
+              var i = 0;
+              for (; i <= limit; i += 2) {
+                if (!owns(cx + dx * i, cy + dy * i)) break;
+              }
+              if (i > limit) return null;
+              for (var j = Math.max(0, i - 2); j <= i; j++) {
+                if (!owns(cx + dx * j, cy + dy * j)) return { x: cx + dx * j, y: cy + dy * j };
+              }
+              return { x: cx + dx * i, y: cy + dy * i };
+            }
+
+            function draw() {
+              // Held until the page is released, so the traces draw themselves
+              // in with everything else rather than finishing behind the cover.
+              if (!document.body.classList.contains("ready")) { setTimeout(draw, 120); return; }
+              var host = svg.getBoundingClientRect();
+              if (host.width < 40 || getComputedStyle(scene).display === "none") {
+                svg.innerHTML = ""; return;
+              }
+              var card = box(".scene-thread", host);
+              var clock = box(".tilt-clock", host);
+              var cat = box(".tilt-cat", host);
+              var pay = box(".tilt-pay", host);
+              if (!card || !clock || !cat || !pay) return;
+              svg.setAttribute("viewBox", "0 0 " + host.width + " " + host.height);
+              svg.setAttribute("width", host.width);
+              svg.setAttribute("height", host.height);
+              svg.innerHTML = "";
+
+              // Every trace leaves its card, turns once, and stops on a node
+              // GAP px clear of the conversation surface rather than under it.
+              // Ending inside meant the turn and the node were hidden behind
+              // the card on two of the three, so the same construction read as
+              // three different things. Outside, all three read alike.
+              var GAP = 9;
+              var group = document.querySelector(".tilt-thread");
+              var midX = host.left + (card.l + card.r) / 2;
+              var midY = host.top + (card.t + card.b) / 2;
+              var paths = [];
+              // Clock sits above the card: down out of its underside, one turn,
+              // then in along the clear strip above the card.
+              if (clock.b < card.t - 3 * GAP) {
+                var s1x = clock.l + Math.min(34, clock.w * 0.2), s1y = clock.b - 2;
+                var e1x = Math.min(card.r - 24, Math.max(card.l + 24, s1x - 56));
+                var c1 = clearEdge(group, host.left + e1x, midY, 0, -1, 400);
+                var e1y = (c1 ? c1.y - host.top : card.t) - GAP;
+                paths.push([elbow(s1x, s1y, e1x, e1y, true), 0, e1x, e1y]);
+              }
+              // Catalogue sits below the card: up out of its top edge, turn,
+              // in along the strip under the card.
+              if (cat.t > card.b + 3 * GAP) {
+                var s2x = cat.l + Math.min(34, cat.w * 0.2), s2y = cat.t + 2;
+                var e2x = Math.min(card.r - 24, Math.max(card.l + 24, s2x - 62));
+                var c2 = clearEdge(group, host.left + e2x, midY, 0, 1, 400);
+                var e2y = (c2 ? c2.y - host.top : card.b) + GAP;
+                if (e2y < s2y - 12) paths.push([elbow(s2x, s2y, e2x, e2y, true), 0.22, e2x, e2y]);
+              }
+              // Payment overlaps the card's lower left, so its trace runs up the
+              // clear strip to its left and turns in toward the card's edge.
+              if (pay.l < card.l - 3 * GAP) {
+                var s3x = Math.max(6, pay.l + Math.min(56, pay.w * 0.24)), s3y = pay.t + 2;
+                var e3y = Math.max(card.t + 34, card.t + card.h * 0.54);
+                var c3 = clearEdge(group, midX, host.top + e3y, -1, 0, 500);
+                var e3x = (c3 ? c3.x - host.left : card.l) - GAP;
+                if (e3x > s3x + 24) paths.push([elbow(s3x, s3y, e3x, e3y, true), 0.44, e3x, e3y]);
+              }
+              paths.forEach(function (p) {
+                svg.appendChild(trace(p[0], p[1]));
+                svg.appendChild(node(p[2], p[3]));
+              });
+              svg.classList.toggle("ready", paths.length > 0);
+            }
+
+            var rt;
+            function schedule() { clearTimeout(rt); rt = setTimeout(draw, 120); }
+            window.addEventListener("resize", schedule);
+            // The cards animate in, so anything measured while that is running
+            // is measuring a frame of the animation rather than where the card
+            // comes to rest -- which is how the first version put a node 20px
+            // inside the surface. Redrawn once each entrance finishes, and once
+            // more after the longest of them, so the final geometry is the one
+            // that sticks.
+            scene.addEventListener("animationend", schedule);
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule).catch(function () {});
+            setTimeout(draw, 60);
+            setTimeout(draw, 900);
+            setTimeout(draw, 2200);
+          })();
 
           // Crossfade the backdrop. Only ever runs when more than one image
           // has been uploaded -- a single image is a still, not a slideshow.
@@ -4548,7 +4774,10 @@ function googleAuthEnabled() {
   return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 }
 function googleRedirectUri() {
-  return `${BASE_URL}/auth/google/callback`;
+  // Google matches this string exactly against what is registered in the
+  // console, so a stray trailing slash on RENDER_EXTERNAL_URL would turn
+  // every sign-in into redirect_uri_mismatch.
+  return `${String(BASE_URL).replace(/\/+$/, "")}/auth/google/callback`;
 }
 
 // The state parameter is what stops a third party from feeding us a code of
@@ -4602,6 +4831,9 @@ app.get("/auth/google/callback", async (req, res) => {
       media: await listLoginMedia(),
     }));
 
+  // The state is still verified on every callback -- that is what stops a
+  // third party feeding us a code of their own. Which page it came from no
+  // longer changes the outcome, only that it is genuinely ours.
   const mode = verifyOAuthState(req.query.state);
   if (!mode) return authFail("That sign-in link has expired. Please try again.");
   if (req.query.error || !req.query.code) return authFail("Google sign-in was cancelled.");
@@ -4646,10 +4878,13 @@ app.get("/auth/google/callback", async (req, res) => {
   const email = String(profile.email).trim().toLowerCase();
   try {
     let seller = await getSellerByEmail(email);
+    const isNew = !seller;
     if (!seller) {
-      if (mode === "login") {
-        return authFail("No Stafly account uses that Google address yet. Create one first.");
-      }
+      // The same button, whichever page it was pressed on. Refusing to create
+      // an account from the login page left someone who had only ever used
+      // Google staring at an error telling them to go and do the identical
+      // thing one page over, which is a dead end, not a safeguard.
+      //
       // A Google signup has no password, and must never get a guessable one.
       // A long random value is hashed and stored so the shape of the record
       // stays identical to a password account, while being impossible to
@@ -4674,7 +4909,11 @@ app.get("/auth/google/callback", async (req, res) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     invalidateSellerContextCache(seller.sellerId);
-    return res.redirect("/dashboard");
+    // A brand-new account has picked no accent, written no tagline and seen
+    // nothing yet, exactly like one made with a password -- so it starts in
+    // the same place. Dropping a Google signup straight on the dashboard was
+    // the only way into the product that skipped onboarding entirely.
+    return res.redirect(isNew ? "/welcome" : "/dashboard");
   } catch (err) {
     console.error("google sign-in failed:", err.message);
     return authFail("Something went wrong signing you in. Please try again.");
@@ -4896,18 +5135,27 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .hint { font-size: 12px; color: #8b94a3; margin-top: 7px; line-height: 1.5; }
 
         .swatches { display: flex; gap: 9px; flex-wrap: wrap; }
-        .sw { width: 32px; height: 32px; border-radius: 10px; border: none; cursor: pointer; padding: 0;
+        /* The selection ring is drawn INSIDE the swatch, not around it. An
+           outset ring grew the control by 4px on every side, so whichever
+           swatch was selected pushed the row's visual left edge 4px off the
+           column the heading, the labels and the cards all sit on -- and the
+           break moved as the selection moved. Same footprint selected or not. */
+        .sw { width: 34px; height: 34px; border-radius: 11px; border: none; cursor: pointer; padding: 0;
           position: relative; transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s; }
         .sw:hover { transform: translateY(-2px) scale(1.05); }
-        .sw::after { content: ""; position: absolute; inset: -4px; border-radius: 14px; border: 2px solid transparent;
+        .sw::after { content: ""; position: absolute; inset: 0; border-radius: 11px; border: 2px solid transparent;
           transition: border-color .18s; }
+        .sw.on { box-shadow: inset 0 0 0 4px #fff; }
         .sw.on::after { border-color: currentColor; }
 
         .themes { display: flex; gap: 12px; }
         .th { flex: 1; cursor: pointer; border: 1.5px solid #e2e5ec; border-radius: 13px; padding: 7px;
           background: #fff; transition: border-color .18s, box-shadow .18s, transform .18s cubic-bezier(.22,1,.36,1); }
         .th:hover { transform: translateY(-2px); }
-        .th.on { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
+        /* Inset, for the same reason as the swatches: an outset ring made the
+           selected card 2px wider than the unselected one beside it and put
+           its left edge off the column. */
+        .th.on { border-color: var(--focus-edge); box-shadow: inset 0 0 0 2px var(--focus-ring); }
         .th-chip { height: 44px; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px; gap: 4px; }
         .th-light .th-chip { background: #f1f3f8; }
         .th-dark .th-chip { background: #161d2c; }
@@ -4956,7 +5204,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           transition: border-color .18s, color .18s, background .18s, box-shadow .18s; }
         .seg button:hover { border-color: #b9c0cd; }
         .seg button.on { border-color: var(--focus-edge); color: #0f1729; background: #fff;
-          box-shadow: 0 0 0 2px var(--focus-ring); }
+          box-shadow: inset 0 0 0 2px var(--focus-ring); }
         .seg small { display: block; font-size: 11px; font-weight: 450; color: #99a1b0; margin-top: 3px; }
         /* Both tiles share one footprint and one internal rhythm: a preview
            band of the same height, then the label. The first pass gave the
@@ -5089,7 +5337,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .prev-cap i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
         /* Compact stand-in for the side preview, phone only. */
-        .mprev { display: none; margin-top: 18px; border: 1px solid #e9ebf1; border-radius: 16px;
+        .mprev { display: none; margin-bottom: 20px; border: 1px solid #e9ebf1; border-radius: 16px;
           overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(12,18,38,.05); }
         .mprev-cover { height: 74px; background: linear-gradient(128deg, var(--accent), var(--accent-dark));
           background-size: cover; background-position: center; }
@@ -5115,12 +5363,14 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             grid-template-columns: 1fr; grid-template-rows: 100%; box-shadow: none; }
           .prev { display: none; }
           .pane { padding: calc(22px + env(safe-area-inset-top, 0px)) 22px 0; }
-          /* Top-aligned, not centred. Centring a short screen inside a full
-             phone viewport left roughly 250px of nothing above the heading and
-             350px below the controls, which reads as an unfinished page. */
-          .body { align-content: start; padding: 22px 0 20px; }
-          .step { align-self: start; }
-          .step[data-step="0"] { align-self: center; }
+          /* "safe center", not plain start and not plain centre. Plain centring
+             pushed a short screen into the middle and left a band of nothing
+             above the heading; plain start left 600px of nothing below the
+             controls on a tall phone. Safe centring does the right thing at
+             both ends: centred when the step fits, top-aligned the moment it
+             does not, so a long step is never clipped at the top. */
+          .body { align-content: safe center; padding: 22px 0 20px; }
+          .step { align-self: safe center; }
           h1 { font-size: 24px; letter-spacing: -.032em; }
           .lede { font-size: 14.5px; margin-bottom: 22px; }
           .foot { padding: 16px 0 calc(18px + env(safe-area-inset-bottom, 0px));
@@ -5195,6 +5445,21 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
               <h1>Put a face to the shop</h1>
               <p class="lede">Both are optional. These show on your own dashboard, never to a customer.</p>
               <div class="stagger">
+                <!-- Above the tiles, not below them: this is the thing the two
+                     uploads are for, so it should be what you are looking at
+                     while you pick them. The side preview is hidden on a phone,
+                     which made this the only way to see them there at all. -->
+                <div class="mprev" aria-hidden="true">
+                  <div class="mprev-cover" id="mpCover"></div>
+                  <div class="mprev-body">
+                    <div class="mprev-av" id="mpAv">${initial}</div>
+                    <div class="mprev-txt">
+                      <b>${escapeHtmlServer(seller.businessName)}</b>
+                      <span>How your profile looks</span>
+                    </div>
+                  </div>
+                  <div class="mprev-rows"><i></i><i></i><i></i></div>
+                </div>
                 <div class="fld">
                   <div class="shots">
                     <div class="shot-tile" id="avTile">
@@ -5209,20 +5474,6 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                   <input type="file" id="picFile" accept="image/*" style="display:none;">
                   <input type="file" id="cvFile" accept="image/*" style="display:none;">
                   <div class="hint" id="picHint">Click either one to upload. You can change them any time.</div>
-                </div>
-                <!-- The side preview is hidden on a phone, so on a phone this
-                     card is the only way to see how the two pictures sit
-                     together. Same elements, same accent, just compact. -->
-                <div class="mprev" aria-hidden="true">
-                  <div class="mprev-cover" id="mpCover"></div>
-                  <div class="mprev-body">
-                    <div class="mprev-av" id="mpAv">${initial}</div>
-                    <div class="mprev-txt">
-                      <b>${escapeHtmlServer(seller.businessName)}</b>
-                      <span>How your profile looks</span>
-                    </div>
-                  </div>
-                  <div class="mprev-rows"><i></i><i></i><i></i></div>
                 </div>
               </div>
             </div>
@@ -13404,7 +13655,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 34";
+const BUILD_ROUND = "Round 35";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
