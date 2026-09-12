@@ -3820,7 +3820,9 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
   // same scene the marketing site's hero uses, so the two surfaces read as
   // one product rather than two different companies.
   const scene =
-    '<div class="scene-thread" style="--d:.10s">' +
+    '<div class="scene-3d">' +
+    '<div class="tilt tilt-thread"><div class="scene-thread" style="--d:.10s">' +
+      '<span class="glass-edge"></span><span class="glass-sheen"></span>' +
       '<div class="st-head">' +
         '<span class="st-dot"></span>' +
         '<span class="st-name">Ada Nwosu</span>' +
@@ -3833,8 +3835,9 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         '<div class="st-row out"><div class="st-bub">Sent. Delivery to Lekki is N2,000, so N20,500 altogether.</div></div>' +
         '<div class="st-row typing"><div class="st-bub st-typing"><i></i><i></i><i></i></div></div>' +
       '</div>' +
-    '</div>' +
-    '<div class="scene-chip chip-pay" style="--d:.34s">' +
+    '</div></div>' +
+    '<div class="tilt tilt-pay"><div class="scene-chip chip-pay" style="--d:.34s">' +
+      '<span class="glass-edge"></span><span class="glass-sheen"></span>' +
       '<span class="chip-mark ok">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="tick-path" d="M20 6 9 17l-5-5"/></svg>' +
       '</span>' +
@@ -3843,16 +3846,19 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         '<small>Blue Ankara Gown &middot; paid in full</small>' +
       '</span>' +
       '<span class="chip-spark"><i style="--h:34%"></i><i style="--h:58%"></i><i style="--h:44%"></i><i style="--h:76%"></i><i style="--h:100%"></i></span>' +
-    '</div>' +
-    '<div class="scene-chip chip-clock" style="--d:.48s">' +
+    '</div></div>' +
+    '<div class="tilt tilt-clock"><div class="scene-chip chip-clock" style="--d:.48s">' +
+      '<span class="glass-edge"></span><span class="glass-sheen"></span>' +
       '<span class="chip-mark alt"><span class="pulse-ring"></span>' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>' +
       '</span>' +
       '<span class="chip-text"><b>2:14 AM</b><small>You are asleep. She is not.</small></span>' +
-    '</div>' +
-    '<div class="scene-chip chip-cat" style="--d:.60s">' +
+    '</div></div>' +
+    '<div class="tilt tilt-cat"><div class="scene-chip chip-cat" style="--d:.60s">' +
+      '<span class="glass-edge"></span><span class="glass-sheen"></span>' +
       '<span class="chip-swatch"></span>' +
       '<span class="chip-text"><b>Priced from your catalogue</b><small>Never invented</small></span>' +
+    '</div></div>' +
     '</div>';
 
   return `
@@ -3963,26 +3969,72 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .stage-scene { flex: 1; display: flex; align-items: center; justify-content: center;
           position: relative; padding: 30px 12px; min-height: 0; }
 
-        .scene-thread { width: min(400px, 100%); border-radius: 22px; padding: 6px 6px 10px;
-          background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.26);
-          box-shadow: 0 34px 80px rgba(4,6,24,.55), inset 0 1px 0 rgba(255,255,255,.34);
-          backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-          animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobA 9s ease-in-out 1.2s infinite; }
+        /* --- the glass -------------------------------------------------
+           What made the first pass read as generated was that every card had
+           the same flat 1px border at the same opacity the whole way round,
+           one soft drop shadow, and no relationship to where the light in the
+           panel actually is. Real glass does four things this now does:
+           the edge is bright where it faces the light and dark where it turns
+           away, the shadow is three shadows (contact, mid, ambient) plus a
+           coloured bounce, a specular band crosses the surface, and the cards
+           sit on slightly different planes instead of all being flat-on. */
+        .scene-3d { position: relative; width: 100%; height: 100%;
+          display: flex; align-items: center; justify-content: center;
+          perspective: 1500px; perspective-origin: 62% 44%; }
+        .tilt { transform-style: preserve-3d; }
+        .tilt-thread { transform: rotateY(-7deg) rotateX(2.2deg); }
+        .tilt-pay    { position: absolute; left: -14px; bottom: 20%; transform: rotateY(-5deg) rotateX(1.4deg) translateZ(60px); }
+        .tilt-clock  { position: absolute; right: -16px; top: 6%;   transform: rotateY(-9deg) rotateX(1.6deg) translateZ(34px); }
+        .tilt-cat    { position: absolute; right: -6px; bottom: 6%; transform: rotateY(-8deg) rotateX(1.2deg) translateZ(52px); }
+
+        .scene-thread { position: relative; width: min(400px, 100%); border-radius: 22px; padding: 6px 6px 10px;
+          background: linear-gradient(152deg, rgba(255,255,255,.22), rgba(255,255,255,.09) 46%, rgba(255,255,255,.13));
+          box-shadow:
+            0 1px 2px rgba(3,5,20,.34),
+            0 10px 24px rgba(3,5,20,.30),
+            0 40px 84px rgba(3,5,20,.50),
+            0 0 70px -12px rgba(129,140,248,.34);
+          backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+          animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobA 11s ease-in-out 1.2s infinite; }
+        /* A lit edge, not a border. The mask leaves only the 1px ring, and the
+           gradient runs bright at the top-left corner the light comes from to
+           nearly nothing at the bottom-right, with a faint bounce underneath. */
+        .glass-edge { position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+          background: linear-gradient(148deg,
+            rgba(255,255,255,.72) 0%, rgba(255,255,255,.28) 22%,
+            rgba(255,255,255,.05) 48%, rgba(255,255,255,0) 66%,
+            rgba(190,200,255,.20) 100%);
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude; }
+        /* One pass of specular light across the top third of the surface. */
+        .glass-sheen { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; overflow: hidden; }
+        .scene-thread > *:not(.glass-edge):not(.glass-sheen),
+        .scene-chip > *:not(.glass-edge):not(.glass-sheen) { position: relative; z-index: 1; }
+        .glass-sheen::after { content: ""; position: absolute; left: -30%; right: -30%; top: -60%; height: 90%;
+          background: linear-gradient(103deg, transparent 34%, rgba(255,255,255,.13) 47%, rgba(255,255,255,.02) 58%, transparent 66%);
+          transform: rotate(-6deg); }
         .st-head { display: flex; align-items: center; gap: 9px; padding: 11px 14px 12px; }
         .st-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; flex-shrink: 0;
           box-shadow: 0 0 0 3px rgba(52,211,153,.22); }
         .st-name { font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
         .st-live { margin-left: auto; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.62); }
-        .st-body { background: rgba(6,9,26,.30); border-radius: 16px; padding: 13px 13px 14px;
-          display: flex; flex-direction: column; gap: 7px; }
+        .st-body { position: relative; border-radius: 16px; padding: 13px 13px 14px;
+          display: flex; flex-direction: column; gap: 7px;
+          background: linear-gradient(170deg, rgba(5,8,24,.42), rgba(5,8,24,.24));
+          box-shadow: inset 0 1px 1px rgba(3,5,20,.45), inset 0 -1px 0 rgba(255,255,255,.07); }
         .st-row { display: flex; }
         .st-row.out, .st-row.typing { justify-content: flex-end; }
         .st-bub { max-width: 82%; padding: 8px 12px 9px; font-size: 12.8px; line-height: 1.45;
           border-radius: 13px; }
-        .st-row.in .st-bub { background: rgba(255,255,255,.94); color: #131a2e; border-bottom-left-radius: 5px; }
+        .st-row.in .st-bub { color: #131a2e; border-bottom-left-radius: 5px;
+          background: linear-gradient(168deg, #ffffff, #eef1f8);
+          box-shadow: 0 1px 1px rgba(3,5,20,.22), 0 5px 12px rgba(3,5,20,.18), inset 0 1px 0 rgba(255,255,255,.9); }
         .st-row.out .st-bub, .st-row.typing .st-bub {
-          background: linear-gradient(135deg, #6366f1, #4338ca); color: #fff; border-bottom-right-radius: 5px;
-          box-shadow: 0 6px 18px rgba(67,56,202,.42); }
+          background: linear-gradient(152deg, #7c7cf7 0%, #5b53e8 42%, #4130bd 100%); color: #fff;
+          border-bottom-right-radius: 5px;
+          box-shadow: 0 1px 1px rgba(3,5,20,.28), 0 6px 16px rgba(49,38,148,.44),
+            inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.12); }
         .st-typing { display: flex; align-items: center; gap: 4px; padding: 11px 14px; }
         .st-typing i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.9);
           animation: blip 1.25s ease-in-out infinite; }
@@ -3990,15 +4042,17 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .st-typing i:nth-child(3) { animation-delay: .32s; }
         @keyframes blip { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 
-        .scene-chip { position: absolute; display: flex; align-items: center; gap: 10px;
-          padding: 10px 15px 10px 11px; border-radius: 14px;
-          background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.30);
-          box-shadow: 0 18px 44px rgba(4,6,24,.45), inset 0 1px 0 rgba(255,255,255,.34);
-          backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); white-space: nowrap;
-          animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 7.5s ease-in-out 1.4s infinite; }
-        .chip-pay { left: -14px; bottom: 20%; }
-        .chip-clock { right: -16px; top: 6%; animation-name: dealIn, bobA; }
-        .chip-cat { right: -6px; bottom: 6%; animation-name: dealIn, bobB; animation-delay: var(--d), 2.1s; }
+        .scene-chip { position: relative; display: flex; align-items: center; gap: 10px;
+          padding: 10px 15px 10px 11px; border-radius: 15px; white-space: nowrap;
+          background: linear-gradient(150deg, rgba(255,255,255,.26), rgba(255,255,255,.11) 52%, rgba(255,255,255,.16));
+          box-shadow:
+            0 1px 2px rgba(3,5,20,.30),
+            0 8px 18px rgba(3,5,20,.26),
+            0 26px 54px rgba(3,5,20,.42);
+          backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
+          animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 8.5s ease-in-out 1.4s infinite; }
+        .chip-clock { animation-name: dealIn, bobA; animation-duration: .8s, 9.5s; }
+        .chip-cat { animation-name: dealIn, bobB; animation-duration: .8s, 12s; animation-delay: var(--d), 2.6s; }
         .chip-mark { position: relative; width: 30px; height: 30px; border-radius: 10px; display: flex;
           align-items: center; justify-content: center; flex-shrink: 0;
           background: rgba(52,211,153,.20); color: #6ee7b7; }
@@ -4035,6 +4089,15 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         @keyframes dealIn { from { opacity: 0; transform: translateY(20px) scale(.965); } to { opacity: 1; transform: none; } }
         @keyframes bobA { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
         @keyframes bobB { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
+        /* Each card casts its own soft contact shadow onto the panel, offset
+           down and away from the light, so it reads as hovering above the
+           surface rather than pasted onto it. */
+        .tilt::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -16px; height: 26px;
+          border-radius: 50%; background: rgba(3,5,20,.42); filter: blur(15px); z-index: -1;
+          animation: castA 11s ease-in-out 1.2s infinite; }
+        .tilt-pay::after, .tilt-cat::after { animation-name: castB; }
+        @keyframes castA { 0%, 100% { opacity: .5; transform: scaleX(1); } 50% { opacity: .32; transform: scaleX(.9); } }
+        @keyframes castB { 0%, 100% { opacity: .42; transform: scaleX(1); } 50% { opacity: .55; transform: scaleX(1.05); } }
 
         .stage-foot { max-width: 470px; padding-top: 8px; }
         .stage-eyebrow { font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase;
@@ -4181,7 +4244,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           .stage-glow, .scene-thread, .scene-chip, .st-typing i, .pre-mark, .pre-bar i { animation: none !important; }
           .shot { transition: opacity .3s ease; transform: none; }
           .shot.on { transform: none; }
-          .tick-path, .pulse-ring, .chip-spark i { animation: none !important; }
+          .tick-path, .pulse-ring, .chip-spark i, .tilt::after { animation: none !important; }
           .tick-path { stroke-dashoffset: 0; }
           .pulse-ring { opacity: 0; }
           .chip-spark i { height: var(--h); opacity: 1; }
@@ -4559,7 +4622,7 @@ app.post("/signup", async (req, res) => {
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-    res.redirect("/seller/dashboard");
+    res.redirect("/welcome");
   } catch (err) {
     console.error("signup failed:", err.message);
     await fail("Something went wrong, please try again.");
@@ -4616,6 +4679,499 @@ app.post("/login", async (req, res) => {
 app.post("/logout", (req, res) => {
   res.clearCookie("session");
   res.redirect("/login");
+});
+
+// ---------- FIRST-RUN ONBOARDING ----------
+// Three steps, and every one of them writes to an endpoint that already
+// existed: accent and theme are the same localStorage keys the dashboard's
+// Settings page uses, the picture goes through /api/profile/photo, and the
+// tagline and location go through /api/profile. Nothing here collects
+// something the product cannot yet do anything with.
+app.post("/api/profile/onboarded", async (req, res) => {
+  const seller = await resolveActingSeller(req);
+  if (!seller) return res.status(403).json({ error: "unauthorized" });
+  try {
+    await updateSellerRecord(seller.sellerId, { onboardedAt: new Date().toISOString() });
+    invalidateSellerContextCache(seller.sellerId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("onboarding flag save failed:", err.message);
+    res.status(500).json({ error: "Could not save." });
+  }
+});
+
+app.get("/welcome", requireSellerAuth, async (req, res) => {
+  const seller = req.seller;
+  // Seen once. Going back to it later is what Settings is for.
+  let record = null;
+  try { record = await getSellerById(seller.sellerId); } catch (err) {
+    console.error("welcome record read failed:", err.message);
+  }
+  if (record && record.onboardedAt) return res.redirect("/seller/dashboard");
+
+  const initial = escapeHtmlServer((seller.businessName || "S").trim().charAt(0).toUpperCase());
+  const goods = seller.businessType !== "bookable";
+
+  res.send(`
+    <!doctype html>
+    <html lang="en">
+    <head>
+      <title>Welcome — Stafly.AI</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+      ${BRAND_FONT_LINKS}
+      <style>
+        ${BRAND_TOKENS_CSS}
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); color: #0f1729; min-height: 100dvh;
+          display: flex; align-items: center; justify-content: center; padding: 34px 24px;
+          background: #eceef3; -webkit-font-smoothing: antialiased; }
+        /* A single soft light behind the card, so the grey ground is not flat. */
+        body::before { content: ""; position: fixed; inset: 0; pointer-events: none;
+          background:
+            radial-gradient(46% 42% at 22% 14%, rgba(129,140,248,.20), transparent 70%),
+            radial-gradient(44% 40% at 84% 88%, rgba(217,70,239,.13), transparent 72%); }
+
+        .shell { position: relative; width: 100%; max-width: 1060px; height: min(640px, calc(100dvh - 68px));
+          display: grid; grid-template-columns: 1.02fr .98fr; border-radius: 26px; overflow: hidden;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(15,23,41,.08), 0 12px 30px rgba(15,23,41,.10), 0 44px 90px rgba(15,23,41,.14);
+          animation: cardIn .8s cubic-bezier(.22,1,.36,1) both; }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+
+        /* ---- left: the form ---- */
+        .pane { position: relative; display: flex; flex-direction: column; padding: 30px 38px 30px; min-width: 0; }
+        .pane-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+        .ring { width: 30px; height: 30px; flex-shrink: 0; }
+        .ring circle { fill: none; stroke-width: 2.6; stroke-linecap: round; }
+        .ring .ring-bg { stroke: #e4e7ee; }
+        .ring .ring-fg { stroke: var(--accent); stroke-dasharray: 82; transition: stroke-dashoffset .55s cubic-bezier(.22,1,.36,1); }
+
+        .body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; overflow-y: auto; padding: 8px 0; }
+        .step { display: none; animation: stepIn .5s cubic-bezier(.22,1,.36,1) both; }
+        .step.on { display: block; }
+        @keyframes stepIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+        h1 { font-family: var(--font-heading); font-size: 27px; font-weight: 650; letter-spacing: -.038em;
+          line-height: 1.16; margin: 0 0 7px; color: #0b1220; }
+        .lede { font-size: 14px; line-height: 1.58; color: #5b6577; margin: 0 0 24px; max-width: 42ch; }
+
+        .lbl { display: block; font-size: 12.5px; font-weight: 600; color: #0f1729; margin: 0 0 9px; }
+        .fld { margin-bottom: 20px; }
+        input, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #0f1729;
+          background: #f5f6fa; border: 1px solid #e2e5ec; border-radius: 11px; resize: none;
+          transition: border-color .18s, box-shadow .18s, background .18s; }
+        input::placeholder, textarea::placeholder { color: #99a1b0; }
+        input:focus, textarea:focus { outline: none; background: #fff; border-color: var(--accent);
+          box-shadow: 0 0 0 4px var(--accent-light); }
+        .hint { font-size: 12px; color: #8b94a3; margin-top: 7px; line-height: 1.5; }
+
+        .swatches { display: flex; gap: 9px; flex-wrap: wrap; }
+        .sw { width: 32px; height: 32px; border-radius: 10px; border: none; cursor: pointer; padding: 0;
+          position: relative; transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s; }
+        .sw:hover { transform: translateY(-2px) scale(1.05); }
+        .sw::after { content: ""; position: absolute; inset: -4px; border-radius: 13px; border: 2px solid transparent;
+          transition: border-color .18s; }
+        .sw.on::after { border-color: currentColor; }
+
+        .themes { display: flex; gap: 12px; }
+        .th { flex: 1; cursor: pointer; border: 1.5px solid #e2e5ec; border-radius: 13px; padding: 7px;
+          background: #fff; transition: border-color .18s, box-shadow .18s, transform .18s cubic-bezier(.22,1,.36,1); }
+        .th:hover { transform: translateY(-2px); }
+        .th.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .th-chip { height: 44px; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px; gap: 4px; }
+        .th-light .th-chip { background: #f1f3f8; }
+        .th-dark .th-chip { background: #161d2c; }
+        .th-chip i { display: block; height: 6px; border-radius: 3px; }
+        .th-light .th-chip i { background: #ccd2de; }
+        .th-dark .th-chip i { background: #33405a; }
+        .th-chip i:nth-child(1) { width: 34%; background: var(--accent); }
+        .th-chip i:nth-child(2) { width: 26%; }
+        .th-chip i:nth-child(3) { width: 18%; }
+        .th-name { display: block; text-align: center; font-size: 12px; font-weight: 550; color: #5b6577; margin-top: 7px; }
+
+        .pic-row { display: flex; align-items: center; gap: 13px; }
+        .pic { width: 52px; height: 52px; border-radius: 15px; flex-shrink: 0; overflow: hidden; color: #fff;
+          display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
+          font-size: 21px; font-weight: 700; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          box-shadow: 0 6px 16px var(--accent-shadow); }
+        .pic img { width: 100%; height: 100%; object-fit: cover; }
+        .pic-btn { padding: 9px 15px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+          color: #0f1729; background: #fff; border: 1px solid #d9dde5; border-radius: 10px;
+          transition: background .18s, border-color .18s, transform .16s; }
+        .pic-btn:hover { background: #f5f6fa; border-color: #b9c0cd; transform: translateY(-1px); }
+
+        .done-list { list-style: none; margin: 4px 0 0; padding: 0; }
+        .done-list li { display: flex; gap: 11px; padding: 11px 0; border-top: 1px solid #eef0f4; font-size: 13.5px;
+          line-height: 1.55; color: #5b6577; }
+        .done-list li:first-child { border-top: none; }
+        .done-list b { display: block; color: #0f1729; font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
+        .done-mark { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; margin-top: 1px;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--accent-light); color: var(--accent); }
+        .done-mark svg { width: 12px; height: 12px; }
+
+        .foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 18px; }
+        .skip { background: none; border: none; font-family: inherit; font-size: 13px; color: #8b94a3;
+          cursor: pointer; padding: 8px 0; transition: color .18s; }
+        .skip:hover { color: #0f1729; }
+        .next { display: inline-flex; align-items: center; gap: 9px; padding: 11px 22px; border: none; cursor: pointer;
+          border-radius: 11px; font-family: inherit; font-size: 14px; font-weight: 620; color: #fff;
+          background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+          box-shadow: 0 6px 16px var(--accent-shadow);
+          transition: transform .17s cubic-bezier(.22,1,.36,1), box-shadow .2s, opacity .2s; }
+        .next:hover { transform: translateY(-2px); box-shadow: 0 12px 24px var(--accent-shadow-strong); }
+        .next:active { transform: translateY(0) scale(.99); }
+        .next svg { width: 15px; height: 15px; }
+        .msg { font-size: 12.5px; min-height: 16px; margin-top: 10px; color: var(--danger); }
+
+        /* ---- right: a live preview of their actual dashboard ---- */
+        .prev { position: relative; overflow: hidden; background: #f4f5f9; border-left: 1px solid #eceef3; }
+        .prev-in { position: absolute; left: 44px; top: 50%; transform: translateY(-50%);
+          width: 640px; border-radius: 16px 0 0 16px; overflow: hidden; display: grid;
+          grid-template-columns: 132px 1fr; background: #fff;
+          box-shadow: 0 2px 6px rgba(15,23,41,.08), 0 24px 54px rgba(15,23,41,.14);
+          transition: background .3s ease; }
+        .prev-side { background: #131a29; padding: 13px 11px; display: flex; flex-direction: column; gap: 5px; }
+        .prev-brand { display: flex; align-items: center; gap: 7px; margin-bottom: 13px; }
+        .prev-mark { width: 19px; height: 19px; border-radius: 6px; background: var(--accent); flex-shrink: 0; }
+        .prev-brand > span:not(.prev-mark) { height: 6px; width: 46px; border-radius: 3px; background: rgba(255,255,255,.34); }
+        .prev-me { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 9px;
+          background: rgba(255,255,255,.07); margin-bottom: 13px; }
+        .prev-av { width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; overflow: hidden; color: #fff;
+          display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+          font-family: var(--font-heading); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); }
+        .prev-av img { width: 100%; height: 100%; object-fit: cover; }
+        .prev-me-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+        .prev-me-lines i { display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.30); }
+        .prev-me-lines i:last-child { width: 58%; background: rgba(255,255,255,.16); }
+        .prev-nav { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; }
+        .prev-nav i { width: 13px; height: 13px; border-radius: 4px; background: rgba(255,255,255,.20); flex-shrink: 0; }
+        .prev-nav span { height: 5px; border-radius: 3px; background: rgba(255,255,255,.20); }
+        .prev-nav.on { background: rgba(255,255,255,.10); }
+        .prev-nav.on i { background: var(--accent); }
+        .prev-nav.on span { background: rgba(255,255,255,.52); }
+        .prev-main { padding: 15px 16px; min-width: 0; transition: background .3s ease; }
+        .prev-h { height: 9px; width: 118px; border-radius: 4px; background: #d4d9e3; margin-bottom: 14px; }
+        .prev-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 13px; }
+        .prev-tile { border: 1px solid #e7eaf1; border-radius: 10px; padding: 10px; background: #fff; }
+        .prev-tile i { display: block; width: 18px; height: 18px; border-radius: 6px; background: var(--accent-light); margin-bottom: 9px; }
+        .prev-tile b { display: block; height: 9px; width: 62%; border-radius: 4px; background: #cfd5e0; margin-bottom: 6px; }
+        .prev-tile s { display: block; height: 5px; width: 84%; border-radius: 3px; background: #e7eaf1; }
+        .prev-card { border: 1px solid #e7eaf1; border-radius: 10px; padding: 12px; background: #fff; }
+        .prev-card u { display: block; height: 7px; width: 44%; border-radius: 3px; background: #cfd5e0; margin-bottom: 11px; }
+        .prev-bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
+        .prev-bars i { flex: 1; border-radius: 4px 4px 2px 2px; background: var(--accent-light); }
+        .prev-bars i:nth-child(3) { background: var(--accent); }
+        /* Dark preview: the same structure, the tokens the real dashboard uses. */
+        .prev-in.dark { background: #10151f; }
+        .prev-in.dark .prev-main { background: #10151f; }
+        .prev-in.dark .prev-h { background: #2c3647; }
+        .prev-in.dark .prev-tile, .prev-in.dark .prev-card { background: #171e2b; border-color: #252e3e; }
+        .prev-in.dark .prev-tile b, .prev-in.dark .prev-card u { background: #37425a; }
+        .prev-in.dark .prev-tile s, .prev-in.dark .prev-bars i { background: #232c3c; }
+        .prev-in.dark .prev-bars i:nth-child(3) { background: var(--accent); }
+        .prev-cap { position: absolute; left: 44px; bottom: 26px; font-size: 11.5px; color: #8b94a3;
+          display: flex; align-items: center; gap: 7px; }
+        .prev-cap i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+        @media (max-width: 900px) {
+          body { padding: 0; align-items: stretch; }
+          .shell { max-width: none; height: 100dvh; border-radius: 0; grid-template-columns: 1fr; }
+          .prev { display: none; }
+          .pane { padding: 26px 22px 24px; }
+          h1 { font-size: 23px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .shell, .step { animation: none !important; }
+          .sw:hover, .th:hover, .next:hover, .pic-btn:hover { transform: none; }
+        }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="shell">
+        <section class="pane">
+          <div class="pane-top">
+            ${brandMark()}
+            <svg class="ring" viewBox="0 0 30 30" aria-hidden="true">
+              <circle class="ring-bg" cx="15" cy="15" r="13"></circle>
+              <circle class="ring-fg" id="ringFg" cx="15" cy="15" r="13"
+                transform="rotate(-90 15 15)" stroke-dashoffset="55"></circle>
+            </svg>
+          </div>
+
+          <div class="body">
+            <div class="step on" data-step="1">
+              <h1>Make yourself at home</h1>
+              <p class="lede">Pick a colour and a look for your dashboard. You can change any of this later in Settings.</p>
+              <div class="fld">
+                <span class="lbl">Accent colour</span>
+                <div class="swatches" id="swatches"></div>
+              </div>
+              <div class="fld">
+                <span class="lbl">Appearance</span>
+                <div class="themes">
+                  <div class="th th-light on" data-pick="light" role="button" tabindex="0">
+                    <div class="th-chip"><i></i><i></i><i></i></div><span class="th-name">Light</span>
+                  </div>
+                  <div class="th th-dark" data-pick="dark" role="button" tabindex="0">
+                    <div class="th-chip"><i></i><i></i><i></i></div><span class="th-name">Dark</span>
+                  </div>
+                </div>
+              </div>
+              <div class="fld">
+                <span class="lbl">Profile picture</span>
+                <div class="pic-row">
+                  <div class="pic" id="picBox">${initial}</div>
+                  <button type="button" class="pic-btn" id="picBtn">Upload a picture</button>
+                  <input type="file" id="picFile" accept="image/*" style="display:none;">
+                </div>
+                <div class="hint" id="picHint">Optional. It shows on your dashboard, never to customers.</div>
+              </div>
+            </div>
+
+            <div class="step" data-step="2">
+              <h1>Tell customers who you are</h1>
+              <p class="lede">Amara never writes this for you. She reads it, so what you put here is what she knows about your shop.</p>
+              <div class="fld">
+                <label class="lbl" for="obTagline">One line about your shop</label>
+                <input id="obTagline" maxlength="90" placeholder="${goods ? "e.g. Ready-to-wear Ankara, made in Lagos" : "e.g. One-on-one physiotherapy in Ikeja"}">
+              </div>
+              <div class="fld">
+                <label class="lbl" for="obLocation">Where you are</label>
+                <input id="obLocation" maxlength="60" placeholder="e.g. Lekki, Lagos">
+                <div class="hint">Used on your profile. It helps Amara answer questions about delivery and visits.</div>
+              </div>
+            </div>
+
+            <div class="step" data-step="3">
+              <h1>That is you set up</h1>
+              <p class="lede">Here is what happens from here, in order.</p>
+              <ul class="done-list">
+                <li>
+                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span><b>Add your ${goods ? "products" : "services"}</b>Amara answers from these and nothing else, so this is the one that matters most.</span>
+                </li>
+                <li>
+                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span><b>We connect your WhatsApp number</b>This part is ours to do by hand for now, and we will reach out to get it done.</span>
+                </li>
+                <li>
+                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span><b>She starts answering</b>You watch it happen live, and step into any conversation whenever you want to.</span>
+                </li>
+              </ul>
+            </div>
+            <div class="msg" id="obMsg"></div>
+          </div>
+
+          <div class="foot">
+            <button type="button" class="skip" id="obSkip">Skip for now</button>
+            <button type="button" class="next" id="obNext">
+              <span id="obNextLabel">Continue</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="prev" aria-hidden="true">
+          <div class="prev-in" id="prevIn">
+            <div class="prev-side">
+              <div class="prev-brand"><span class="prev-mark"></span><span></span></div>
+              <div class="prev-me">
+                <div class="prev-av" id="prevAv">${initial}</div>
+                <div class="prev-me-lines"><i></i><i></i></div>
+              </div>
+              <div class="prev-nav on"><i></i><span style="width:52px"></span></div>
+              <div class="prev-nav"><i></i><span style="width:66px"></span></div>
+              <div class="prev-nav"><i></i><span style="width:44px"></span></div>
+              <div class="prev-nav"><i></i><span style="width:58px"></span></div>
+            </div>
+            <div class="prev-main">
+              <div class="prev-h"></div>
+              <div class="prev-tiles">
+                <div class="prev-tile"><i></i><b></b><s></s></div>
+                <div class="prev-tile"><i></i><b></b><s></s></div>
+                <div class="prev-tile"><i></i><b></b><s></s></div>
+              </div>
+              <div class="prev-card"><u></u>
+                <div class="prev-bars"><i style="height:38%"></i><i style="height:62%"></i><i style="height:100%"></i><i style="height:48%"></i><i style="height:72%"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="prev-cap"><i></i>Your dashboard, live</div>
+        </section>
+      </div>
+
+      <script>
+        (function () {
+          // Same palette and the same two storage keys the dashboard's Settings
+          // page uses, so a choice made here is the choice it reads later.
+          var ACCENTS = [
+            { id: "indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", shadow: "rgba(79,70,229,.28)", strong: "rgba(79,70,229,.42)" },
+            { id: "teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", shadow: "rgba(13,148,136,.28)", strong: "rgba(13,148,136,.42)" },
+            { id: "blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", shadow: "rgba(37,99,235,.28)", strong: "rgba(37,99,235,.42)" },
+            { id: "violet", base: "#7c3aed", dark: "#6d28d9", light: "#f5f3ff", soft: "#ede9fe", shadow: "rgba(124,58,237,.28)", strong: "rgba(124,58,237,.42)" },
+            { id: "rose",   base: "#e11d48", dark: "#be123c", light: "#fff1f3", soft: "#ffe4e8", shadow: "rgba(225,29,72,.28)", strong: "rgba(225,29,72,.42)" },
+            { id: "amber",  base: "#d97706", dark: "#b45309", light: "#fffbeb", soft: "#fde68a", shadow: "rgba(217,119,6,.28)", strong: "rgba(217,119,6,.42)" }
+          ];
+          var accent = "indigo", theme = "light", step = 1, busy = false;
+          var root = document.documentElement;
+          var msg = document.getElementById("obMsg");
+          var nextBtn = document.getElementById("obNext");
+          var nextLabel = document.getElementById("obNextLabel");
+
+          function setMsg(t) { msg.textContent = t || ""; }
+
+          function applyAccent(id) {
+            var a = ACCENTS.filter(function (x) { return x.id === id; })[0] || ACCENTS[0];
+            accent = a.id;
+            root.style.setProperty("--accent", a.base);
+            root.style.setProperty("--accent-dark", a.dark);
+            root.style.setProperty("--accent-light", a.light);
+            root.style.setProperty("--accent-soft", a.soft);
+            root.style.setProperty("--accent-shadow", a.shadow);
+            root.style.setProperty("--accent-shadow-strong", a.strong);
+            var els = document.querySelectorAll(".sw");
+            for (var i = 0; i < els.length; i++) {
+              var on = els[i].getAttribute("data-id") === id;
+              els[i].className = "sw" + (on ? " on" : "");
+              els[i].style.color = els[i].getAttribute("data-base");
+            }
+            try { localStorage.setItem("stafly-accent", id); } catch (e) {}
+          }
+          function applyTheme(t) {
+            theme = t;
+            document.getElementById("prevIn").className = "prev-in" + (t === "dark" ? " dark" : "");
+            var ths = document.querySelectorAll(".th");
+            for (var i = 0; i < ths.length; i++) {
+              ths[i].className = "th th-" + ths[i].getAttribute("data-pick") +
+                (ths[i].getAttribute("data-pick") === t ? " on" : "");
+            }
+            try { localStorage.setItem("stafly-theme", t); } catch (e) {}
+          }
+
+          var sw = document.getElementById("swatches");
+          sw.innerHTML = ACCENTS.map(function (a) {
+            return '<button type="button" class="sw" data-id="' + a.id + '" data-base="' + a.base +
+              '" aria-label="' + a.id + '" style="background:linear-gradient(140deg,' + a.base + ',' + a.dark + ')"></button>';
+          }).join("");
+          sw.addEventListener("click", function (e) {
+            var b = e.target.closest(".sw"); if (b) applyAccent(b.getAttribute("data-id"));
+          });
+          var themeEls = document.querySelectorAll(".th");
+          for (var i = 0; i < themeEls.length; i++) {
+            (function (el) {
+              function pick() { applyTheme(el.getAttribute("data-pick")); }
+              el.addEventListener("click", pick);
+              el.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); }
+              });
+            })(themeEls[i]);
+          }
+
+          // Picture: same endpoint the dashboard uses, resized in the browser
+          // first so a phone photo does not go up at full size.
+          document.getElementById("picBtn").addEventListener("click", function () {
+            document.getElementById("picFile").click();
+          });
+          document.getElementById("picFile").addEventListener("change", function (e) {
+            var file = e.target.files && e.target.files[0];
+            e.target.value = "";
+            if (!file) return;
+            if (file.type.indexOf("image/") !== 0) return setMsg("That is not an image file.");
+            var hint = document.getElementById("picHint");
+            hint.textContent = "Uploading...";
+            var img = new Image();
+            var url = URL.createObjectURL(file);
+            img.onload = function () {
+              URL.revokeObjectURL(url);
+              var max = 512, w = img.naturalWidth, h = img.naturalHeight;
+              var side = Math.min(w, h);
+              var cv = document.createElement("canvas");
+              cv.width = max; cv.height = max;
+              cv.getContext("2d").drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, max, max);
+              cv.toBlob(function (blob) {
+                if (!blob) { hint.textContent = "Could not read that image."; return; }
+                var fd = new FormData();
+                fd.append("photo", blob, "avatar.jpg");
+                fd.append("kind", "avatar");
+                fetch("/api/profile/photo", { method: "POST", body: fd })
+                  .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                  .then(function (res) {
+                    if (!res.ok) { hint.textContent = res.j.error || "Upload failed."; return; }
+                    var src = res.j.url || "";
+                    document.getElementById("picBox").innerHTML = '<img src="' + src + '" alt="">';
+                    document.getElementById("prevAv").innerHTML = '<img src="' + src + '" alt="">';
+                    hint.textContent = "Looking good. You can change it any time.";
+                  })
+                  .catch(function () { hint.textContent = "Could not upload just now."; });
+              }, "image/jpeg", 0.86);
+            };
+            img.onerror = function () { URL.revokeObjectURL(url); hint.textContent = "Could not read that image."; };
+            img.src = url;
+          });
+
+          function show(n) {
+            step = n;
+            var steps = document.querySelectorAll(".step");
+            for (var i = 0; i < steps.length; i++) {
+              steps[i].className = "step" + (Number(steps[i].getAttribute("data-step")) === n ? " on" : "");
+            }
+            document.getElementById("ringFg").setAttribute("stroke-dashoffset", String(82 - (82 * n) / 3));
+            nextLabel.textContent = n === 3 ? "Open my dashboard" : "Continue";
+            document.getElementById("obSkip").style.visibility = n === 3 ? "hidden" : "visible";
+            setMsg("");
+          }
+
+          function finish() {
+            if (busy) return;
+            busy = true;
+            nextLabel.textContent = "One moment";
+            fetch("/api/profile/onboarded", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+              .catch(function () {})
+              .then(function () { window.location.href = "/seller/dashboard"; });
+          }
+
+          nextBtn.addEventListener("click", function () {
+            if (busy) return;
+            if (step === 1) return show(2);
+            if (step === 2) {
+              var tagline = document.getElementById("obTagline").value.trim();
+              var location = document.getElementById("obLocation").value.trim();
+              if (!tagline && !location) return show(3);
+              busy = true;
+              nextLabel.textContent = "Saving";
+              fetch("/api/profile", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tagline: tagline, location: location })
+              }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                  busy = false; nextLabel.textContent = "Continue";
+                  if (!res.ok) return setMsg(res.j.error || "Could not save that. You can add it later in Settings.");
+                  show(3);
+                })
+                .catch(function () { busy = false; nextLabel.textContent = "Continue"; setMsg("Could not save just now. You can add it later in Settings."); });
+              return;
+            }
+            finish();
+          });
+          document.getElementById("obSkip").addEventListener("click", finish);
+
+          // Carry forward whatever they already chose, if they have been here.
+          try {
+            var sa = localStorage.getItem("stafly-accent");
+            var stheme = localStorage.getItem("stafly-theme");
+            applyAccent(sa || "indigo");
+            applyTheme(stheme === "dark" ? "dark" : "light");
+          } catch (e) { applyAccent("indigo"); applyTheme("light"); }
+          show(1);
+        })();
+      </script>
+    </body>
+    </html>
+  `);
 });
 
 app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
@@ -12359,7 +12915,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 29";
+const BUILD_ROUND = "Round 30";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
