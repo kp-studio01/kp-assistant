@@ -541,6 +541,130 @@ app.get("/brand-photo/:sellerId/:kind", async (req, res) => {
   res.send(entry.buffer);
 });
 
+// ---------- LOGIN BACKDROP MEDIA (platform-level) ----------
+// The sign-in page belongs to Stafly, not to any one seller, so these live on
+// plain un-namespaced keys and are managed from /admin with the master key --
+// never from a seller's own settings.
+//
+// Images are downscaled and re-encoded in the browser before they are ever
+// uploaded (see the admin panel's own script). That is deliberate: a straight
+// 4K photo is 4-8MB, base64 inflates it by a third, and putting several of
+// those in Redis to serve over a Nigerian mobile connection would make the
+// most important page in the product the slowest. The browser caps them at
+// 2560px and re-encodes to JPEG, which lands around 300-600KB -- indis-
+// tinguishable behind a scrim, and roughly a tenth of the bytes. The server
+// cap below is a backstop against anything that bypasses that path.
+// Same gate the rest of the admin API uses: the master key, in the query
+// string, and nothing else. A seller's own session must never reach these.
+function isAdminRequest(req) {
+  return !!ADMIN_KEY && req.query.key === ADMIN_KEY;
+}
+
+const LOGIN_MEDIA_LIMIT = 3 * 1024 * 1024;
+const LOGIN_MEDIA_MAX = 6;
+const uploadLoginMedia = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: LOGIN_MEDIA_LIMIT },
+  fileFilter: (req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+});
+const loginMediaCache = {};
+
+async function listLoginMedia() {
+  try {
+    const raw = await redisCommand(["GET", "platform:login_media"]);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    console.error("login media list failed:", err.message);
+    return [];
+  }
+}
+
+async function saveLoginMediaList(list) {
+  await redisCommand(["SET", "platform:login_media", JSON.stringify(list)]);
+}
+
+app.get("/login-media/:id", async (req, res) => {
+  const id = String(req.params.id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!id) return res.status(404).send("Not found");
+  let entry = loginMediaCache[id];
+  if (!entry) {
+    try {
+      const raw = await redisCommand(["GET", `platform:login_media:${id}`]);
+      if (!raw) return res.status(404).send("Not found");
+      const parsed = JSON.parse(raw);
+      entry = { mime: parsed.mime, buffer: Buffer.from(parsed.data, "base64") };
+      loginMediaCache[id] = entry;
+    } catch (err) {
+      console.error("login-media fetch failed:", err.message);
+      return res.status(500).send("Failed to load image");
+    }
+  }
+  res.set("Content-Type", entry.mime || "image/jpeg");
+  // The id is regenerated on every upload, so the URL itself is the cache key
+  // and this can be cached hard.
+  res.set("Cache-Control", "public, max-age=604800, immutable");
+  res.send(entry.buffer);
+});
+
+// ---------- LOGIN BACKDROP ADMIN API ----------
+app.get("/api/admin/login-media", async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: "unauthorized" });
+  res.json({ media: await listLoginMedia(), max: LOGIN_MEDIA_MAX });
+});
+
+app.post("/api/admin/login-media", (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: "unauthorized" });
+  uploadLoginMedia.single("image")(req, res, async (err) => {
+    if (err) {
+      const tooBig = err.code === "LIMIT_FILE_SIZE";
+      return res.status(400).json({
+        error: tooBig
+          ? "That image is over 3MB even after resizing. Try a smaller one."
+          : "Could not read that file.",
+      });
+    }
+    if (!req.file || !req.file.buffer || !req.file.buffer.length) {
+      return res.status(400).json({ error: "Choose an image first." });
+    }
+    try {
+      const list = await listLoginMedia();
+      if (list.length >= LOGIN_MEDIA_MAX) {
+        return res.status(400).json({ error: `You can keep up to ${LOGIN_MEDIA_MAX} images. Remove one first.` });
+      }
+      const id = crypto.randomBytes(8).toString("hex");
+      const mime = /^image\//.test(req.file.mimetype) ? req.file.mimetype : "image/jpeg";
+      await redisCommand([
+        "SET",
+        `platform:login_media:${id}`,
+        JSON.stringify({ mime, data: req.file.buffer.toString("base64") }),
+      ]);
+      list.push({ id, mime, bytes: req.file.buffer.length, addedAt: new Date().toISOString() });
+      await saveLoginMediaList(list);
+      res.json({ ok: true, media: list });
+    } catch (e) {
+      console.error("login media save failed:", e.message);
+      res.status(500).json({ error: "Could not save that image." });
+    }
+  });
+});
+
+app.post("/api/admin/login-media/delete", async (req, res) => {
+  if (!isAdminRequest(req)) return res.status(403).json({ error: "unauthorized" });
+  const id = String(req.body?.id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!id) return res.status(400).json({ error: "missing id" });
+  try {
+    const list = await listLoginMedia();
+    await saveLoginMediaList(list.filter((m) => m.id !== id));
+    await redisCommand(["DEL", `platform:login_media:${id}`]);
+    delete loginMediaCache[id];
+    res.json({ ok: true, media: await listLoginMedia() });
+  } catch (e) {
+    console.error("login media delete failed:", e.message);
+    res.status(500).json({ error: "Could not remove that image." });
+  }
+});
+
 // The links Amara actually sends for the original demo catalog. Same
 // "DEFAULT_ = seed data for seller1 only" pattern as the other DEFAULT_*
 // constants above -- a new seller's catalog never uses these.
@@ -3687,8 +3811,10 @@ function brandMark({ dark = false, size = "normal" } = {}) {
 }
 
 // ---------- SELLER SIGNUP / LOGIN PAGES ----------
-function authPageHtml({ title, heading, sub, formHtml, error }) {
+function authPageHtml({ title, heading, sub, formHtml, error, media }) {
   const isSignup = title === "Sign up";
+  const shots = Array.isArray(media) ? media.slice(0, LOGIN_MEDIA_MAX) : [];
+  const hasShots = shots.length > 0;
   // The scene is a depiction of what the product actually does -- a real
   // Amara exchange -- not stock art and not invented social proof. It is the
   // same scene the marketing site's hero uses, so the two surfaces read as
@@ -3708,17 +3834,25 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
         '<div class="st-row typing"><div class="st-bub st-typing"><i></i><i></i><i></i></div></div>' +
       '</div>' +
     '</div>' +
-    '<div class="scene-chip chip-pay" style="--d:.30s">' +
-      '<span class="chip-mark">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+    '<div class="scene-chip chip-pay" style="--d:.34s">' +
+      '<span class="chip-mark ok">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="tick-path" d="M20 6 9 17l-5-5"/></svg>' +
       '</span>' +
-      '<span class="chip-text"><b>Payment confirmed</b><small>Order closed without you</small></span>' +
+      '<span class="chip-text">' +
+        '<b>N20,500 received</b>' +
+        '<small>Blue Ankara Gown &middot; paid in full</small>' +
+      '</span>' +
+      '<span class="chip-spark"><i style="--h:34%"></i><i style="--h:58%"></i><i style="--h:44%"></i><i style="--h:76%"></i><i style="--h:100%"></i></span>' +
     '</div>' +
-    '<div class="scene-chip chip-clock" style="--d:.44s">' +
-      '<span class="chip-mark alt">' +
+    '<div class="scene-chip chip-clock" style="--d:.48s">' +
+      '<span class="chip-mark alt"><span class="pulse-ring"></span>' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>' +
       '</span>' +
-      '<span class="chip-text"><b>2:14 AM</b><small>Still answering</small></span>' +
+      '<span class="chip-text"><b>2:14 AM</b><small>You are asleep. She is not.</small></span>' +
+    '</div>' +
+    '<div class="scene-chip chip-cat" style="--d:.60s">' +
+      '<span class="chip-swatch"></span>' +
+      '<span class="chip-text"><b>Priced from your catalogue</b><small>Never invented</small></span>' +
     '</div>';
 
   return `
@@ -3789,6 +3923,24 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
             radial-gradient(48% 40% at 74% 6%, rgba(56,205,248,.30), transparent 70%),
             radial-gradient(46% 52% at 2% 76%, rgba(99,102,241,.40), transparent 72%);
           animation: drift 26s ease-in-out infinite alternate; }
+        /* Photography, when the platform owner has uploaded any. The gradient
+           below stays and becomes the bed the scrim sits on, so a slow
+           connection or a failed image never leaves white text on white. */
+        .stage-shots { position: absolute; inset: 0; pointer-events: none; }
+        .shot { position: absolute; inset: 0; background-size: cover; background-position: center;
+          opacity: 0; transform: scale(1.06);
+          transition: opacity 1.6s ease, transform 9s linear; }
+        .shot.on { opacity: 1; transform: scale(1.12); }
+        /* Readability is not optional: the headline and the brand mark sit on
+           top of whatever photo gets uploaded, so the scrim is sized to keep
+           contrast at the two corners that carry text. */
+        .stage-scrim { position: absolute; inset: 0; pointer-events: none;
+          background:
+            linear-gradient(180deg, rgba(6,9,26,.62) 0%, rgba(6,9,26,.18) 34%, rgba(6,9,26,.50) 72%, rgba(6,9,26,.86) 100%),
+            linear-gradient(96deg, rgba(10,8,38,.62) 0%, rgba(10,8,38,.10) 58%, transparent 100%); }
+        .stage.has-shots .stage-glow { opacity: .42; mix-blend-mode: screen; }
+        .stage.has-shots .stage-weave { opacity: .22; }
+        .stage.has-shots .stage-grain { opacity: .08; }
         /* Grain, so the panel has a material rather than a colour. */
         .stage-grain { position: absolute; inset: 0; pointer-events: none; opacity: .13;
           mix-blend-mode: soft-light;
@@ -3844,31 +3996,66 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
           box-shadow: 0 18px 44px rgba(4,6,24,.45), inset 0 1px 0 rgba(255,255,255,.34);
           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); white-space: nowrap;
           animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 7.5s ease-in-out 1.4s infinite; }
-        .chip-pay { left: 4px; bottom: 13%; }
-        .chip-clock { right: 6px; top: 10%; animation-name: dealIn, bobA; }
-        .chip-mark { width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center;
-          justify-content: center; flex-shrink: 0; background: rgba(52,211,153,.20); color: #6ee7b7; }
+        .chip-pay { left: -14px; bottom: 20%; }
+        .chip-clock { right: -16px; top: 6%; animation-name: dealIn, bobA; }
+        .chip-cat { right: -6px; bottom: 6%; animation-name: dealIn, bobB; animation-delay: var(--d), 2.1s; }
+        .chip-mark { position: relative; width: 30px; height: 30px; border-radius: 10px; display: flex;
+          align-items: center; justify-content: center; flex-shrink: 0;
+          background: rgba(52,211,153,.20); color: #6ee7b7; }
         .chip-mark.alt { background: rgba(147,197,253,.18); color: #93c5fd; }
-        .chip-mark svg { width: 15px; height: 15px; }
-        .chip-text { display: flex; flex-direction: column; line-height: 1.25; }
+        .chip-mark svg { width: 16px; height: 16px; }
+        /* The tick draws itself once on arrival rather than appearing whole. */
+        .tick-path { stroke-dasharray: 26; stroke-dashoffset: 26;
+          animation: drawTick .5s cubic-bezier(.65,0,.35,1) 1s forwards; }
+        @keyframes drawTick { to { stroke-dashoffset: 0; } }
+        .pulse-ring { position: absolute; inset: 0; border-radius: 10px; border: 1.5px solid #93c5fd;
+          animation: ringOut 2.8s ease-out infinite; }
+        @keyframes ringOut {
+          0% { opacity: .7; transform: scale(1); }
+          70%, 100% { opacity: 0; transform: scale(1.55); }
+        }
+        .chip-swatch { width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+          background: linear-gradient(135deg, #f0abfc, #818cf8 55%, #38bdf8);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); }
+        .chip-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
         .chip-text b { font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; }
-        .chip-text small { font-size: 10.5px; color: rgba(255,255,255,.60); margin-top: 2px; }
+        .chip-text small { font-size: 10.5px; color: rgba(255,255,255,.62); margin-top: 3px; }
+        /* Five bars, fixed heights, illustrative of the card it sits on --
+           not a chart and not presented as data. */
+        .chip-spark { display: flex; align-items: flex-end; gap: 3px; height: 20px; margin-left: 4px; flex-shrink: 0; }
+        .chip-spark i { width: 3px; border-radius: 2px; background: rgba(110,231,183,.85); height: var(--h);
+          animation: sparkUp .6s cubic-bezier(.22,1,.36,1) both; }
+        .chip-spark i:nth-child(1) { animation-delay: 1.05s; }
+        .chip-spark i:nth-child(2) { animation-delay: 1.13s; }
+        .chip-spark i:nth-child(3) { animation-delay: 1.21s; }
+        .chip-spark i:nth-child(4) { animation-delay: 1.29s; }
+        .chip-spark i:nth-child(5) { animation-delay: 1.37s; }
+        @keyframes sparkUp { from { height: 2px; opacity: 0; } to { height: var(--h); opacity: 1; } }
 
         @keyframes dealIn { from { opacity: 0; transform: translateY(20px) scale(.965); } to { opacity: 1; transform: none; } }
         @keyframes bobA { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
         @keyframes bobB { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
 
-        .stage-foot { max-width: 440px; padding-top: 8px; }
-        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(22px, 1.95vw, 29px);
-          font-weight: 650; letter-spacing: -.035em; line-height: 1.22; margin: 0 0 14px;
-          text-wrap: balance; animation: riseIn .75s cubic-bezier(.22,1,.36,1) .50s both; }
-        .stage-lines { position: relative; height: 24px; animation: riseIn .75s cubic-bezier(.22,1,.36,1) .58s both; }
-        .stage-line { position: absolute; inset: 0; display: flex; align-items: center; gap: 10px;
-          font-size: 13.5px; color: rgba(255,255,255,.78); opacity: 0;
-          transition: opacity .55s ease, transform .55s cubic-bezier(.22,1,.36,1); transform: translateY(6px); }
-        .stage-line.on { opacity: 1; transform: none; }
-        .stage-line::before { content: ""; width: 6px; height: 6px; border-radius: 50%;
-          background: #c7d2fe; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(199,210,254,.18); }
+        .stage-foot { max-width: 470px; padding-top: 8px; }
+        .stage-eyebrow { font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase;
+          color: rgba(199,210,254,.80); margin: 0 0 12px;
+          animation: riseIn .7s cubic-bezier(.22,1,.36,1) .44s both; }
+        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(26px, 2.5vw, 38px);
+          font-weight: 620; letter-spacing: -.042em; line-height: 1.12; margin: 0 0 20px;
+          animation: riseIn .75s cubic-bezier(.22,1,.36,1) .50s both; }
+        /* Two lines per item now, so the rotator carries a real claim and its
+           substantiation instead of one orphaned phrase. Fixed height, because
+           a block that resizes every four seconds makes the whole panel twitch. */
+        .stage-lines { position: relative; height: 46px; animation: riseIn .75s cubic-bezier(.22,1,.36,1) .58s both; }
+        .stage-line { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+          gap: 4px; padding-left: 17px; opacity: 0;
+          transition: opacity .32s ease, transform .32s ease; transform: translateY(8px); }
+        .stage-line.on { opacity: 1; transform: none;
+          transition: opacity .5s ease .34s, transform .55s cubic-bezier(.22,1,.36,1) .34s; }
+        .stage-line em { font-style: normal; font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -.012em; }
+        .stage-line span { font-size: 12.5px; color: rgba(255,255,255,.62); line-height: 1.4; }
+        .stage-line::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px;
+          border-radius: 2px; background: linear-gradient(180deg, #c7d2fe, rgba(199,210,254,.15)); }
         .stage-top { animation: riseIn .7s cubic-bezier(.22,1,.36,1) .06s both; }
         @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
@@ -3972,7 +4159,10 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
           .shell { grid-template-columns: 1fr; }
           .stage { min-height: 210px; padding: 22px 24px 24px; justify-content: space-between; }
           .stage-scene { display: none; }
-          .stage-foot h2 { font-size: 21px; }
+          .stage-foot h2 { font-size: 21px; margin-bottom: 14px; }
+          .stage-foot h2 br { display: none; }
+          .stage-eyebrow { margin-bottom: 8px; }
+          .stage-lines { height: 42px; }
           .panel { padding: 34px 24px 44px; }
         }
         @media (max-width: 620px) {
@@ -3989,6 +4179,12 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
 
         @media (prefers-reduced-motion: reduce) {
           .stage-glow, .scene-thread, .scene-chip, .st-typing i, .pre-mark, .pre-bar i { animation: none !important; }
+          .shot { transition: opacity .3s ease; transform: none; }
+          .shot.on { transform: none; }
+          .tick-path, .pulse-ring, .chip-spark i { animation: none !important; }
+          .tick-path { stroke-dashoffset: 0; }
+          .pulse-ring { opacity: 0; }
+          .chip-spark i { height: var(--h); opacity: 1; }
           .scene-thread, .scene-chip { opacity: 1; transform: none; }
           .card > *, .stage-top, .stage-foot h2, .stage-lines { animation: none !important; opacity: 1; transform: none; }
           .submit-btn::after { display: none; }
@@ -4002,18 +4198,31 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
         <div class="pre-bar"><i></i></div>
       </div>
       <main class="shell">
-        <section class="stage">
+        <section class="stage${hasShots ? " has-shots" : ""}">
+          ${hasShots ? '<div class="stage-shots">' + shots.map((m, i) =>
+            '<div class="shot' + (i === 0 ? " on" : "") + '" style="background-image:url(/login-media/' + encodeURIComponent(m.id) + ')"></div>'
+          ).join("") + '</div><div class="stage-scrim"></div>' : ""}
           <div class="stage-glow"></div>
           <div class="stage-weave"></div>
           <div class="stage-grain"></div>
           <div class="stage-top">${brandMark({ dark: true })}</div>
           <div class="stage-scene">${scene}</div>
           <div class="stage-foot">
-            <h2>Your shop keeps selling while you sleep.</h2>
+            <p class="stage-eyebrow">WhatsApp sales, answered for you</p>
+            <h2>Your shop keeps selling<br>while you sleep.</h2>
             <div class="stage-lines" id="lines">
-              <div class="stage-line on">Answers from your own catalogue, never a guess</div>
-              <div class="stage-line">Takes the order and confirms the payment</div>
-              <div class="stage-line">Hands the chat to you the moment it matters</div>
+              <div class="stage-line on">
+                <em>Answers from your own catalogue.</em>
+                <span>Your prices, your stock, your words. Never a guess.</span>
+              </div>
+              <div class="stage-line">
+                <em>Takes the order, confirms the payment.</em>
+                <span>The link, the amount and the receipt, without you.</span>
+              </div>
+              <div class="stage-line">
+                <em>Hands the chat over the moment it matters.</em>
+                <span>You get a nudge only when it is genuinely yours.</span>
+              </div>
             </div>
           </div>
         </section>
@@ -4067,6 +4276,18 @@ function authPageHtml({ title, heading, sub, formHtml, error }) {
           if (document.readyState === "complete") dropPre();
           else window.addEventListener("load", dropPre);
           setTimeout(dropPre, 1100);
+
+          // Crossfade the backdrop. Only ever runs when more than one image
+          // has been uploaded -- a single image is a still, not a slideshow.
+          var shots = document.querySelectorAll(".shot");
+          if (shots.length > 1 && !reduce) {
+            var si = 0;
+            setInterval(function () {
+              shots[si].classList.remove("on");
+              si = (si + 1) % shots.length;
+              shots[si].classList.add("on");
+            }, 7000);
+          }
 
           // The three lines are real capabilities, not testimonials.
           var lines = document.getElementById("lines");
@@ -4205,12 +4426,13 @@ app.get("/auth/google", (req, res) => {
 app.get("/auth/google/callback", async (req, res) => {
   if (!googleAuthEnabled()) return res.redirect("/login");
 
-  const authFail = (message) =>
+  const authFail = async (message) =>
     res.status(400).send(authPageHtml({
       title: "Log in",
       heading: "Log in to Stafly.AI",
       error: message,
       formHtml: loginFieldsHtml(),
+      media: await listLoginMedia(),
     }));
 
   const mode = verifyOAuthState(req.query.state);
@@ -4292,12 +4514,13 @@ app.get("/auth/google/callback", async (req, res) => {
   }
 });
 
-app.get("/signup", (req, res) => {
+app.get("/signup", async (req, res) => {
   res.send(
     authPageHtml({
       title: "Sign up",
       heading: "Create your seller account",
       formHtml: signupFieldsHtml(),
+      media: await listLoginMedia(),
     })
   );
 });
@@ -4308,13 +4531,14 @@ app.post("/signup", async (req, res) => {
   const password = req.body?.password || "";
   const businessType = req.body?.businessType === "bookable" ? "bookable" : "goods";
 
-  const fail = (msg) =>
+  const fail = async (msg) =>
     res.status(400).send(
       authPageHtml({
         title: "Sign up",
         heading: "Create your seller account",
         error: msg,
         formHtml: signupFieldsHtml({ businessName, email, businessType }),
+        media: await listLoginMedia(),
       })
     );
 
@@ -4338,16 +4562,17 @@ app.post("/signup", async (req, res) => {
     res.redirect("/seller/dashboard");
   } catch (err) {
     console.error("signup failed:", err.message);
-    fail("Something went wrong, please try again.");
+    await fail("Something went wrong, please try again.");
   }
 });
 
-app.get("/login", (req, res) => {
+app.get("/login", async (req, res) => {
   res.send(
     authPageHtml({
       title: "Log in",
       heading: "Log in to Stafly.AI",
       formHtml: loginFieldsHtml(),
+      media: await listLoginMedia(),
     })
   );
 });
@@ -4356,13 +4581,14 @@ app.post("/login", async (req, res) => {
   const email = (req.body?.email || "").trim().toLowerCase();
   const password = req.body?.password || "";
 
-  const fail = (msg) =>
+  const fail = async (msg) =>
     res.status(401).send(
       authPageHtml({
         title: "Log in",
         heading: "Log in to Stafly.AI",
         error: msg,
         formHtml: loginFieldsHtml(email),
+        media: await listLoginMedia(),
       })
     );
 
@@ -4383,7 +4609,7 @@ app.post("/login", async (req, res) => {
     res.redirect("/seller/dashboard");
   } catch (err) {
     console.error("login failed:", err.message);
-    fail("Something went wrong, please try again.");
+    await fail("Something went wrong, please try again.");
   }
 });
 
@@ -4392,47 +4618,225 @@ app.post("/logout", (req, res) => {
   res.redirect("/login");
 });
 
-app.get("/seller/dashboard", requireSellerAuth, (req, res) => {
+app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
   const seller = req.seller;
-  const statusLine =
-    seller.status === "active"
-      ? "Your WhatsApp number is connected and Amara is live."
-      : "WhatsApp connection: pending — this part isn't self-serve yet, we'll reach out personally to get your number connected.";
-  const dashboardLink =
-    seller.status === "active"
-      ? '<div style="margin-top:18px;"><a class="btn-primary-link" href="/dashboard">Open your live conversation dashboard →</a></div>'
-      : "";
+  const live = seller.status === "active";
+  const goods = seller.businessType !== "bookable";
+
+  // Only ever three things stand between a new account and a working
+  // assistant, and every one of them is checked against stored state rather
+  // than assumed. A step is done or it is not; nothing here is aspirational.
+  let productCount = 0;
+  try {
+    const ctx = await getSellerContext(seller.sellerId);
+    const cat = ctx && ctx.catalog ? ctx.catalog : null;
+    if (cat) {
+      productCount = goods
+        ? Object.keys(cat.PRODUCT_PRICES || {}).length
+        : Object.keys(cat.OFFERINGS || {}).length;
+    }
+  } catch (err) {
+    console.error("seller landing catalog read failed:", err.message);
+  }
+
+  const steps = [
+    {
+      done: true,
+      title: "Account created",
+      body: `You are signed in as ${escapeHtmlServer(seller.email)}.`,
+      action: "",
+    },
+    {
+      done: live,
+      title: "Connect your WhatsApp number",
+      body: live
+        ? "Your number is connected. Amara is answering on it now."
+        : "This one is on us. We connect your number to Amara by hand while the self-serve version is being built, so nothing is needed from you here yet.",
+      action: live ? "" : `<a class="step-link" href="mailto:stalyaii@gmail.com?subject=${encodeURIComponent("Connect my WhatsApp number — " + seller.businessName)}">Email us to get started</a>`,
+    },
+    {
+      done: productCount > 0,
+      title: goods ? "Add your products" : "Add your services",
+      body: productCount > 0
+        ? `${productCount} ${goods ? "product" : "service"}${productCount === 1 ? "" : "s"} saved. Amara answers from these, and only these.`
+        : goods
+          ? "Amara quotes from your catalogue and nothing else, so she cannot answer a price question until there is something in it."
+          : "Amara books against your own availability, so she needs your services and hours before she can offer a time.",
+      action: live ? `<a class="step-link" href="/dashboard">${productCount > 0 ? "Review your catalogue" : "Add your first one"}</a>` : "",
+    },
+  ];
+  const doneCount = steps.filter((x) => x.done).length;
+  const pct = Math.round((doneCount / steps.length) * 100);
+
+  const stepsHtml = steps
+    .map(
+      (st, i) => `
+      <li class="step${st.done ? " is-done" : ""}">
+        <span class="step-mark">${
+          st.done
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+            : String(i + 1)
+        }</span>
+        <div class="step-body">
+          <h3>${escapeHtmlServer(st.title)}</h3>
+          <p>${st.body}</p>
+          ${st.action}
+        </div>
+      </li>`
+    )
+    .join("");
+
   res.send(`
-    <html>
+    <!doctype html>
+    <html lang="en">
     <head>
-      <title>Seller dashboard — Stafly.AI</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${escapeHtmlServer(seller.businessName)} — Stafly.AI</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
       ${BRAND_FONT_LINKS}
+      <script>
+        (function () {
+          try {
+            var saved = localStorage.getItem("stafly-theme");
+            var dark = saved ? saved === "dark"
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            if (dark) document.documentElement.setAttribute("data-theme", "dark");
+          } catch (e) {}
+        })();
+      </script>
       <style>
         ${BRAND_TOKENS_CSS}
-        body { font-family: var(--font-sans); margin:0; background:var(--bg); color:var(--text); }
-        header { background:var(--navy); color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
-        header form { margin:0; }
-        header button { background:transparent; border:1px solid rgba(255,255,255,0.3); color:white; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
-        .wrap { max-width:640px; margin:32px auto; padding:0 24px; }
-        .card { background:white; border-radius:8px; padding:24px; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
-        .card h2 { font-size:16px; margin:0 0 6px; }
-        .status { font-size:14px; color:#475569; margin-top:8px; padding:12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); }
-        .btn-primary-link { display:inline-block; padding:9px 16px; background:var(--accent); color:white !important; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; }
-        .btn-primary-link:hover { background:var(--accent-dark); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
+          min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+          padding: 15px 26px; background: var(--surface); border-bottom: 1px solid var(--border); }
+        .top form { margin: 0; }
+        .top button { background: transparent; border: 1px solid var(--border-strong); color: var(--muted);
+          padding: 7px 13px; border-radius: 9px; font-size: 12.5px; font-family: inherit; font-weight: 550;
+          cursor: pointer; transition: background .18s, color .18s, border-color .18s; }
+        .top button:hover { background: var(--surface-2); color: var(--text); border-color: var(--muted-2); }
+
+        .wrap { max-width: 760px; margin: 0 auto; padding: 34px 24px 60px; }
+
+        /* The masthead states what is true right now, in the seller's own
+           name, rather than opening with a generic greeting. */
+        .hero { position: relative; overflow: hidden; border-radius: 22px; padding: 30px 30px 28px;
+          color: #fff; background: linear-gradient(158deg, #0b1028 0%, #211d63 44%, #4a2a9c 100%);
+          box-shadow: 0 20px 50px rgba(10,14,38,.28); }
+        .hero-glow { position: absolute; inset: 0; pointer-events: none;
+          background:
+            radial-gradient(58% 62% at 14% 12%, rgba(129,140,248,.55), transparent 70%),
+            radial-gradient(58% 58% at 90% 88%, rgba(232,74,232,.36), transparent 72%);
+          animation: heroDrift 24s ease-in-out infinite alternate; }
+        @keyframes heroDrift { from { transform: scale(1.02) translate3d(-1%, -1%, 0); } to { transform: scale(1.12) translate3d(2%, 2%, 0); } }
+        .hero > *:not(.hero-glow) { position: relative; z-index: 1; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 9px;
+          border-radius: 999px; font-size: 11.5px; font-weight: 600;
+          background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
+        .hero-badge i { width: 7px; height: 7px; border-radius: 50%; background: #34d399; display: block; }
+        .hero-badge.off i { background: #fbbf24; }
+        .hero h1 { font-family: var(--font-heading); font-size: clamp(25px, 4.2vw, 34px); font-weight: 650;
+          letter-spacing: -.04em; line-height: 1.14; margin: 16px 0 8px; }
+        .hero p { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,.74); margin: 0; max-width: 46ch; }
+        .hero-cta { display: inline-flex; align-items: center; gap: 9px; margin-top: 22px; padding: 12px 20px;
+          border-radius: 12px; background: #fff; color: #1b1856; font-size: 14px; font-weight: 650;
+          text-decoration: none; box-shadow: 0 10px 26px rgba(6,10,30,.34);
+          transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .2s; }
+        .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(6,10,30,.42); }
+        .hero-cta svg { width: 15px; height: 15px; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+          padding: 24px 26px; margin-top: 22px; box-shadow: var(--shadow-sm); }
+        .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .card h2 { font-family: var(--font-heading); font-size: 16.5px; font-weight: 640; letter-spacing: -.022em; margin: 0; }
+        .card-count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .meter { height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin: 14px 0 4px; }
+        .meter i { display: block; height: 100%; border-radius: 999px;
+          background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+          width: 0; animation: fill 1s cubic-bezier(.22,1,.36,1) .25s forwards; }
+        @keyframes fill { to { width: var(--w); } }
+
+        .steps { list-style: none; margin: 18px 0 0; padding: 0; }
+        .step { display: flex; gap: 14px; padding: 16px 0; border-top: 1px solid var(--border-light); }
+        .step:first-child { border-top: none; padding-top: 6px; }
+        .step-mark { width: 26px; height: 26px; border-radius: 9px; flex-shrink: 0; display: flex;
+          align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+          background: var(--surface-3); color: var(--muted-2); }
+        .step.is-done .step-mark { background: var(--ok-bg); color: var(--ok-fg); }
+        .step-mark svg { width: 14px; height: 14px; }
+        .step-body { min-width: 0; }
+        .step h3 { font-size: 14px; font-weight: 600; margin: 3px 0 5px; letter-spacing: -.012em; }
+        .step.is-done h3 { color: var(--muted); }
+        .step p { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 0; }
+        .step-link { display: inline-block; margin-top: 9px; font-size: 13px; font-weight: 600;
+          color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .18s; }
+        .step-link:hover { border-bottom-color: var(--accent); }
+
+        .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px;
+          background: var(--border-light); border-radius: 14px; overflow: hidden; margin-top: 18px; }
+        .fact { background: var(--surface); padding: 15px 16px; }
+        .fact dt { font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase;
+          color: var(--muted-2); margin: 0 0 6px; }
+        .fact dd { margin: 0; font-size: 14px; font-weight: 550; color: var(--text); word-break: break-word; }
+
+        .anim { animation: rise .7s cubic-bezier(.22,1,.36,1) var(--d, 0s) both; }
+        @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+        @media (max-width: 620px) {
+          .wrap { padding: 22px 16px 48px; }
+          .hero { padding: 24px 20px 22px; border-radius: 18px; }
+          .card { padding: 20px 18px; border-radius: 16px; }
+          .facts { grid-template-columns: minmax(0, 1fr); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .anim, .meter i, .hero-glow { animation: none !important; }
+          .meter i { width: var(--w); }
+          .hero-cta:hover { transform: none; }
+        }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
       </style>
     </head>
     <body>
-      <header>
-        ${brandMark({ dark: true })}
+      <div class="top">
+        ${brandMark()}
         <form method="POST" action="/logout"><button type="submit">Log out</button></form>
-      </header>
+      </div>
       <div class="wrap">
-        <div class="card">
-          <h2>Welcome, ${escapeHtmlServer(seller.businessName)}</h2>
-          <div>${escapeHtmlServer(seller.email)}</div>
-          <div class="status">${escapeHtmlServer(statusLine)}</div>
-          ${dashboardLink}
+        <div class="hero anim" style="--d:.02s">
+          <div class="hero-glow"></div>
+          <span class="hero-badge${live ? "" : " off"}"><i></i>${live ? "Amara is live" : "Not connected yet"}</span>
+          <h1>${escapeHtmlServer(seller.businessName)}</h1>
+          <p>${
+            live
+              ? "Your assistant is answering customers on WhatsApp right now. Everything she says comes from what you have saved here."
+              : "Your account is ready. The last step is getting your WhatsApp number connected, and that part is ours to do."
+          }</p>
+          ${
+            live
+              ? '<a class="hero-cta" href="/dashboard">Open your dashboard<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></a>'
+              : ""
+          }
+        </div>
+
+        <div class="card anim" style="--d:.12s">
+          <div class="card-head">
+            <h2>Getting set up</h2>
+            <span class="card-count">${doneCount} of ${steps.length} done</span>
+          </div>
+          <div class="meter"><i style="--w:${pct}%"></i></div>
+          <ul class="steps">${stepsHtml}</ul>
+        </div>
+
+        <div class="card anim" style="--d:.2s">
+          <div class="card-head"><h2>Your account</h2></div>
+          <dl class="facts">
+            <div class="fact"><dt>Business</dt><dd>${escapeHtmlServer(seller.businessName)}</dd></div>
+            <div class="fact"><dt>Selling</dt><dd>${goods ? "Physical products" : "Bookable services"}</dd></div>
+            <div class="fact"><dt>Email</dt><dd>${escapeHtmlServer(seller.email)}</dd></div>
+          </dl>
         </div>
       </div>
     </body>
@@ -4712,6 +5116,20 @@ function adminPanelHtml(key, sellers) {
         .connect-msg.error { color:var(--danger); }
         .connect-msg.ok { color:var(--success); }
         .empty-note { padding:24px; text-align:center; color:var(--muted-2); font-size:13px; }
+        .panel-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:20px 22px; margin-bottom:26px; box-shadow:var(--shadow-sm); }
+        .panel-card h2 { font-family:var(--font-heading); font-size:16px; font-weight:650; letter-spacing:-.02em; margin:0 0 4px; }
+        .panel-card .sub { font-size:13px; color:var(--muted); line-height:1.55; margin:0 0 16px; }
+        .media-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; margin-bottom:16px; }
+        .media-tile { position:relative; aspect-ratio:16/10; border-radius:11px; overflow:hidden; border:1px solid var(--border); background:var(--surface-2) center/cover no-repeat; }
+        .media-tile button { position:absolute; top:7px; right:7px; width:26px; height:26px; border-radius:8px; border:none; cursor:pointer;
+          background:rgba(8,11,26,.72); color:#fff; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; }
+        .media-tile button:hover { background:var(--danger); }
+        .media-tile .ord { position:absolute; left:7px; bottom:7px; font-size:10.5px; font-weight:650; color:#fff; background:rgba(8,11,26,.6); padding:2px 7px; border-radius:999px; }
+        .media-drop { border:1.5px dashed var(--border-strong); border-radius:12px; padding:22px; text-align:center; cursor:pointer; transition:border-color .18s, background .18s; }
+        .media-drop:hover, .media-drop.over { border-color:var(--accent); background:var(--accent-light); }
+        .media-drop strong { display:block; font-size:13.5px; font-weight:600; margin-bottom:3px; }
+        .media-drop span { font-size:12px; color:var(--muted); }
+        .media-empty { font-size:13px; color:var(--muted-2); padding:18px; text-align:center; border:1px dashed var(--border); border-radius:11px; margin-bottom:16px; }
       </style>
     </head>
     <body>
@@ -4720,6 +5138,23 @@ function adminPanelHtml(key, sellers) {
         <div class="sub">Admin &middot; all sellers</div>
       </header>
       <div class="wrap">
+        <div class="panel-card">
+          <h2>Sign-in page backdrop</h2>
+          <p class="sub">
+            Photos shown behind the sign-in and sign-up pages. Add more than one and they
+            crossfade. Leave it empty and the gradient is used instead.
+            Pictures are resized in your browser before they upload, so a 4K photo off
+            Unsplash is fine to drop in as-is.
+          </p>
+          <div id="mediaGrid" class="media-grid"></div>
+          <div id="mediaEmpty" class="media-empty" style="display:none;">No photos yet. The gradient backdrop is being used.</div>
+          <div class="media-drop" id="mediaDrop">
+            <strong>Drop a photo here, or click to choose</strong>
+            <span>JPG or PNG. Landscape works best.</span>
+          </div>
+          <input type="file" id="mediaFile" accept="image/*" style="display:none;">
+          <div class="connect-msg" id="mediaMsg"></div>
+        </div>
         <table>
           <thead><tr><th>Business</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -4727,6 +5162,107 @@ function adminPanelHtml(key, sellers) {
         ${sellers.length === 0 ? '<div class="empty-note">No sellers yet.</div>' : ""}
       </div>
       <script>
+        // ---- sign-in backdrop ----------------------------------------
+        var MEDIA_KEY = ${JSON.stringify(key)};
+        var mediaMsg = document.getElementById("mediaMsg");
+        function setMediaMsg(text, bad) {
+          mediaMsg.textContent = text || "";
+          mediaMsg.className = "connect-msg" + (text ? (bad ? " error" : " ok") : "");
+        }
+        function renderMedia(list) {
+          var grid = document.getElementById("mediaGrid");
+          var empty = document.getElementById("mediaEmpty");
+          grid.innerHTML = list.map(function (m, i) {
+            return '<div class="media-tile" style="background-image:url(/login-media/' + encodeURIComponent(m.id) + ')">' +
+              '<button data-del="' + m.id + '" title="Remove">&times;</button>' +
+              '<span class="ord">' + (i + 1) + '</span></div>';
+          }).join("");
+          empty.style.display = list.length ? "none" : "block";
+        }
+        async function loadMedia() {
+          try {
+            var r = await fetch("/api/admin/login-media?key=" + encodeURIComponent(MEDIA_KEY));
+            var j = await r.json();
+            if (j.media) renderMedia(j.media);
+          } catch (e) { setMediaMsg("Could not load the backdrop photos.", true); }
+        }
+        // Resize and re-encode before upload. A straight 4K photo is several
+        // megabytes; behind a scrim, 2560px at quality 0.82 is indistinguishable
+        // and roughly a tenth of the bytes. Done here rather than server-side so
+        // there is no native image dependency to build on deploy.
+        function shrink(file) {
+          return new Promise(function (resolve, reject) {
+            var img = new Image();
+            var url = URL.createObjectURL(file);
+            img.onload = function () {
+              URL.revokeObjectURL(url);
+              var max = 2560;
+              var w = img.naturalWidth, h = img.naturalHeight;
+              if (w > max) { h = Math.round(h * (max / w)); w = max; }
+              var c = document.createElement("canvas");
+              c.width = w; c.height = h;
+              c.getContext("2d").drawImage(img, 0, 0, w, h);
+              c.toBlob(function (blob) {
+                if (blob) resolve(blob); else reject(new Error("encode failed"));
+              }, "image/jpeg", 0.82);
+            };
+            img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("not an image")); };
+            img.src = url;
+          });
+        }
+        async function uploadMedia(file) {
+          if (!file) return;
+          // Not a regex: inside this file the whole page is a template
+          // literal, and a backslash-escaped slash collapses before the
+          // browser ever sees it, which turns a regex literal into a syntax
+          // error that takes the entire admin script down with it.
+          if (file.type.indexOf("image/") !== 0) return setMediaMsg("That is not an image file.", true);
+          setMediaMsg("Resizing and uploading...");
+          try {
+            var blob = await shrink(file);
+            var fd = new FormData();
+            fd.append("image", blob, "backdrop.jpg");
+            var r = await fetch("/api/admin/login-media?key=" + encodeURIComponent(MEDIA_KEY), { method: "POST", body: fd });
+            var j = await r.json();
+            if (!r.ok) return setMediaMsg(j.error || "Upload failed.", true);
+            renderMedia(j.media);
+            setMediaMsg("Added. It is live on the sign-in page now.");
+          } catch (e) {
+            setMediaMsg("Could not read that image.", true);
+          }
+        }
+        (function () {
+          var drop = document.getElementById("mediaDrop");
+          var input = document.getElementById("mediaFile");
+          drop.addEventListener("click", function () { input.click(); });
+          input.addEventListener("change", function () { uploadMedia(input.files[0]); input.value = ""; });
+          ["dragenter", "dragover"].forEach(function (ev) {
+            drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); });
+          });
+          ["dragleave", "drop"].forEach(function (ev) {
+            drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+          });
+          drop.addEventListener("drop", function (e) {
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) uploadMedia(e.dataTransfer.files[0]);
+          });
+          document.getElementById("mediaGrid").addEventListener("click", async function (e) {
+            var btn = e.target.closest("button[data-del]");
+            if (!btn) return;
+            if (!confirm("Remove this photo from the sign-in page?")) return;
+            try {
+              var r = await fetch("/api/admin/login-media/delete?key=" + encodeURIComponent(MEDIA_KEY), {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: btn.getAttribute("data-del") }),
+              });
+              var j = await r.json();
+              if (!r.ok) return setMediaMsg(j.error || "Could not remove it.", true);
+              renderMedia(j.media);
+              setMediaMsg("Removed.");
+            } catch (err) { setMediaMsg("Could not remove it.", true); }
+          });
+          loadMedia();
+        })();
+
         function toggleConnect(id) {
           document.getElementById("connect-" + id).classList.toggle("open");
         }
@@ -5304,6 +5840,45 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .empty .empty-icon svg { width: 24px; height: 24px; }
         .empty .empty-title { font-size: 14px; font-weight: 600; color: var(--text); }
         .empty .empty-sub { font-size: 12px; color: var(--muted); max-width: 240px; line-height: 1.5; }
+        /* The boot screen. It covers the gap between the page arriving and the
+           first real data landing, which on a cold Render instance is the
+           longest wait in the product. It is dismissed by the first successful
+           load, and unconditionally at 4s so a failed request can never leave
+           someone staring at it. */
+        .boot { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
+          background: radial-gradient(130% 100% at 50% 38%, #1c2450 0%, #0a0e22 64%);
+          transition: opacity .55s ease, visibility .55s ease; }
+        .boot.done { opacity: 0; visibility: hidden; }
+        .boot-inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .boot-mark { position: relative; width: 78px; height: 78px; display: flex; align-items: center; justify-content: center; }
+        .boot-mark svg { position: absolute; inset: 0; width: 78px; height: 78px; transform: rotate(-90deg); }
+        .boot-mark circle { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+        .boot-track { stroke: rgba(255,255,255,.10); }
+        /* One continuous sweep rather than a spinner: the arc grows and
+           shrinks as it turns, so it reads as progress even though the real
+           duration is unknowable. */
+        .boot-arc { stroke: #818cf8; stroke-dasharray: 26 96;
+          animation: bootSweep 1.5s cubic-bezier(.5,0,.5,1) infinite; transform-origin: 50% 50%; }
+        @keyframes bootSweep {
+          0%   { stroke-dasharray: 12 110; stroke-dashoffset: 0; }
+          50%  { stroke-dasharray: 68 54;  stroke-dashoffset: -28; }
+          100% { stroke-dasharray: 12 110; stroke-dashoffset: -122; }
+        }
+        .boot-mark span { position: relative; width: 46px; height: 46px; border-radius: 14px; display: flex;
+          align-items: center; justify-content: center; font-family: var(--font-heading); font-weight: 700;
+          font-size: 21px; color: #fff; background: linear-gradient(140deg, #6366f1, #4338ca);
+          box-shadow: 0 12px 34px rgba(79,70,229,.5);
+          animation: bootPop .8s cubic-bezier(.22,1,.36,1) both; }
+        @keyframes bootPop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+        .boot-name { margin-top: 20px; font-family: var(--font-heading); font-size: 17px; font-weight: 620;
+          letter-spacing: -.02em; color: #fff; animation: riseUp .7s cubic-bezier(.22,1,.36,1) .18s both; }
+        .boot-step { margin-top: 7px; font-size: 12.5px; color: rgba(255,255,255,.52);
+          animation: riseUp .7s cubic-bezier(.22,1,.36,1) .3s both; transition: opacity .3s ease; }
+        @keyframes riseUp { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) {
+          .boot-arc { animation: none; stroke-dasharray: 40 82; }
+          .boot-mark span, .boot-name, .boot-step { animation: none; }
+        }
         .spinner { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--accent-light); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         /* Stat tiles fade + rise into place once on the very first load
@@ -5485,6 +6060,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .an-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--text); }
         .an-range { flex-shrink: 0; }
         .an-range button { min-width: 46px; font-variant-numeric: tabular-nums; }
+        #analyticsEmpty { margin-bottom: 22px; }
+        .an-empty-in { display: flex; align-items: flex-start; gap: 15px; padding: 20px 22px;
+          background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); }
+        .an-empty-mark { width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0; display: flex;
+          align-items: center; justify-content: center; background: var(--accent-light); color: var(--accent); }
+        .an-empty-mark svg { width: 19px; height: 19px; }
+        .an-empty-in h3 { font-family: var(--font-heading); font-size: 15px; font-weight: 640;
+          letter-spacing: -.018em; margin: 2px 0 6px; color: var(--text); }
+        .an-empty-in p { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 62ch; }
         .an-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
         .an-two > * { min-width: 0; }
 
@@ -6334,6 +6918,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       </style>
     </head>
     <body>
+    <div class="boot" id="boot">
+      <div class="boot-inner">
+        <div class="boot-mark">
+          <svg viewBox="0 0 44 44" aria-hidden="true">
+            <circle class="boot-track" cx="22" cy="22" r="19.5"></circle>
+            <circle class="boot-arc" cx="22" cy="22" r="19.5"></circle>
+          </svg>
+          <span>S</span>
+        </div>
+        <div class="boot-name">${escapeHtmlServer(businessName || "Stafly.AI")}</div>
+        <div class="boot-step" id="bootStep">Waking your assistant</div>
+      </div>
+    </div>
     <div class="app-shell">
       <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
       <aside class="sidebar" id="sidebar">
@@ -6848,8 +7445,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <button data-days="30" onclick="setAnalyticsRange(30)">30d</button>
           </div>
         </div>
+        <div id="analyticsEmpty" style="display:none;"></div>
         <div class="kpi-row" id="analyticsKpis"></div>
-        <div class="catalog-card">
+        <div class="catalog-card an-hide-empty">
           <div class="card-head">
             <div>
               <h2>Revenue</h2>
@@ -6858,7 +7456,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           </div>
           <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
         </div>
-        <div class="an-two">
+        <div class="an-two an-hide-empty">
           <div class="catalog-card">
             <div class="card-head">
               <div>
@@ -6878,7 +7476,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <div id="newReturning"></div>
           </div>
         </div>
-        <div class="catalog-card">
+        <div class="catalog-card an-hide-empty">
           <div class="card-head">
             <div>
               <h2>Best sellers</h2>
@@ -8636,6 +9234,25 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div class="kpi-foot">' + (footHtml || "") + '</div>' +
               '</div>' +
             '</div>';
+          // Nothing sold in this window, ever: four dashes and a flat line at
+          // zero reads as a broken page, not an empty one. Say so instead.
+          const anEmpty = document.getElementById("analyticsEmpty");
+          const neverSold = totalOrders === 0 && totalRevenue === 0 && !prev.hasData;
+          if (anEmpty) {
+            anEmpty.style.display = neverSold ? "block" : "none";
+            anEmpty.innerHTML = neverSold
+              ? '<div class="an-empty-in">' +
+                  '<span class="an-empty-mark">' + ICON_TREND + '</span>' +
+                  '<div><h3>No sales recorded yet</h3>' +
+                  '<p>These numbers fill in on their own the first time a customer pays. ' +
+                  'Nothing here is estimated, so until then there is genuinely nothing to show.</p></div>' +
+                '</div>'
+              : "";
+          }
+          document.querySelectorAll(".an-hide-empty").forEach((el) => {
+            el.style.display = neverSold ? "none" : "";
+          });
+
           document.getElementById("analyticsKpis").innerHTML =
             kpi("k-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
             kpi("k-orders", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", delta(totalOrders, prev.orders).html) +
@@ -10320,8 +10937,30 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         applyAccent(currentAccent());
         applyDensity(currentDensity());
         syncSettingsControls();
-        loadDashboard();
-        loadHome();
+
+        // The boot screen comes down when the first real data has landed, not
+        // on a timer, so what follows it is a filled dashboard rather than an
+        // empty one. The 4s cap is the safety net, not the plan.
+        (function () {
+          var boot = document.getElementById("boot");
+          var step = document.getElementById("bootStep");
+          var t0 = Date.now();
+          var down = false;
+          function drop() {
+            if (down || !boot) return;
+            down = true;
+            // A floor of 900ms: dismissing a boot screen after 150ms reads as
+            // a flicker, which is what makes one feel broken rather than fast.
+            setTimeout(function () { boot.classList.add("done"); }, Math.max(0, 900 - (Date.now() - t0)));
+          }
+          if (step) {
+            setTimeout(function () { if (!down) step.textContent = "Loading your conversations"; }, 900);
+            setTimeout(function () { if (!down) step.textContent = "Almost there"; }, 2200);
+          }
+          Promise.allSettled([loadDashboard(), loadHome()]).then(drop);
+          setTimeout(drop, 4000);
+        })();
+
         applyRefreshRate(currentRefreshRate()); // owner-controlled poll, default 5s
       </script>
     </body>
@@ -11720,7 +12359,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 28";
+const BUILD_ROUND = "Round 29";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
