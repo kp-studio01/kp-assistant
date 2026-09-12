@@ -3747,6 +3747,11 @@ const BRAND_TOKENS_CSS = `
        an indigo halo. */
     --accent-shadow: rgba(79,70,229,0.30);
     --accent-shadow-strong: rgba(79,70,229,0.45);
+    /* Focus was a full-strength accent border, which on a white field reads as
+       a hard bright line the moment you click anything. A softened edge plus a
+       faint halo says the same thing at a normal speaking volume. */
+    --focus-edge: rgba(79,70,229,0.40);
+    --focus-ring: rgba(79,70,229,0.12);
     --chat-doodle: %23b9c6dc;
   }
   /* Dark theme. Applied by setting data-theme="dark" on <html>; every colour
@@ -3795,6 +3800,8 @@ const BRAND_TOKENS_CSS = `
     --shadow-lg: 0 12px 30px rgba(0,0,0,0.42);
     --accent-shadow: rgba(99,102,241,0.22);
     --accent-shadow-strong: rgba(99,102,241,0.34);
+    --focus-edge: rgba(99,102,241,0.48);
+    --focus-ring: rgba(99,102,241,0.17);
     --chat-doodle: %232b3446;
   }
 `;
@@ -3990,12 +3997,15 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           perspective: 1500px; perspective-origin: 62% 44%; }
         .tilt { transform-style: preserve-3d; }
         .tilt-thread { transform: rotateY(-7deg) rotateX(2.2deg); }
-        .tilt-pay    { position: absolute; left: -18px; bottom: 16%; transform: rotateY(-5deg) rotateX(1.4deg) translateZ(64px); }
-        .tilt-clock  { position: absolute; right: -20px; top: 10%;  transform: rotateY(-9deg) rotateX(1.6deg) translateZ(38px); }
-        /* A triangle around the window, not a pile on one corner: one card
-           high right, one low left, one high left. Anything that lands on the
-           conversation itself covers the thing the scene is meant to show. */
-        .tilt-cat    { position: absolute; left: -4%; top: 2%; transform: rotateY(-6deg) rotateX(1.2deg) translateZ(56px); }
+        /* Sits on the same left edge as the brand mark and the headline. The
+           7px is compensation, not a guess: the card is rotated, so its
+           rendered edge lands outside its own box by a few pixels, and how
+           many depends on how far it is from the perspective origin. Measured
+           across widths it now lands within about 5px of the text column
+           instead of hanging 22px outside it. */
+        .tilt-pay    { position: absolute; left: 7px; bottom: 20%; transform: rotateY(-5deg) rotateX(1.4deg) translateZ(60px); }
+        .tilt-clock  { position: absolute; right: -16px; top: 6%;   transform: rotateY(-9deg) rotateX(1.6deg) translateZ(34px); }
+        .tilt-cat    { position: absolute; right: -6px; bottom: 6%; transform: rotateY(-8deg) rotateX(1.2deg) translateZ(52px); }
 
         /* This one is the product, so it reads as a real application window:
            a deep, mostly opaque surface with a slight tint of whatever is
@@ -4124,17 +4134,14 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           color: rgba(210,218,255,.72); margin: 0 0 16px;
           animation: riseIn .7s cubic-bezier(.22,1,.36,1) .40s both; }
         .stage-eyebrow::before { content: ""; width: 22px; height: 1px; background: rgba(210,218,255,.45); }
-        /* Two lines with different weight and value, so the sentence has a
-           shape rather than being one even slab of bold. The first line is the
-           claim and carries the weight; the second is the turn, and stepping it
-           back is what makes the pair read as written rather than set. */
-        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(28px, 2.95vw, 46px);
-          letter-spacing: -.045em; line-height: 1.06; margin: 0 0 22px; }
+        /* One weight, both lines. A light second line read as washed out
+           rather than as hierarchy -- at this size the contrast has to come
+           from scale and tracking, not from thinning half the sentence. */
+        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(27px, 2.7vw, 42px);
+          font-weight: 660; letter-spacing: -.044em; line-height: 1.1; margin: 0 0 20px; color: #fff; }
         .stage-foot h2 span { display: block; }
-        .hl-a { font-weight: 680; color: #fff;
-          animation: riseIn .8s cubic-bezier(.22,1,.36,1) .48s both; }
-        .hl-b { font-weight: 340; color: rgba(255,255,255,.76);
-          animation: riseIn .8s cubic-bezier(.22,1,.36,1) .58s both; }
+        .hl-a { animation: riseIn .8s cubic-bezier(.22,1,.36,1) .48s both; }
+        .hl-b { animation: riseIn .8s cubic-bezier(.22,1,.36,1) .56s both; }
         /* Two lines per item now, so the rotator carries a real claim and its
            substantiation instead of one orphaned phrase. Fixed height, because
            a block that resizes every four seconds makes the whole panel twitch. */
@@ -4192,7 +4199,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         form input::placeholder { color: var(--muted-2); }
         form input:hover { border-color: var(--border-strong, var(--muted-2)); }
         form input:focus { outline: none; background: var(--surface);
-          border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
+          border-color: var(--focus-edge); box-shadow: 0 0 0 4px var(--focus-ring); }
 
         .business-type-choice { display: grid; gap: 9px; margin-top: 2px; }
         .business-type-option { display: flex; align-items: center; gap: 10px; margin: 0;
@@ -4763,15 +4770,17 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             radial-gradient(46% 42% at 22% 14%, rgba(129,140,248,.20), transparent 70%),
             radial-gradient(44% 40% at 84% 88%, rgba(217,70,239,.13), transparent 72%); }
 
-        .shell { position: relative; width: 100%; max-width: 1060px; height: min(640px, calc(100dvh - 68px));
-          display: grid; grid-template-columns: 1.02fr .98fr; border-radius: 26px; overflow: hidden;
+        .shell { position: relative; width: 100%; max-width: 1060px; height: min(684px, calc(100dvh - 56px));
+          display: grid; grid-template-columns: 1.02fr .98fr; grid-template-rows: 100%;
+          border-radius: 26px; overflow: hidden;
           background: #fff;
           box-shadow: 0 1px 2px rgba(15,23,41,.08), 0 12px 30px rgba(15,23,41,.10), 0 44px 90px rgba(15,23,41,.14);
           animation: cardIn .8s cubic-bezier(.22,1,.36,1) both; }
         @keyframes cardIn { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
 
         /* ---- left: the form ---- */
-        .pane { position: relative; display: flex; flex-direction: column; padding: 30px 38px 30px; min-width: 0; }
+        .pane { position: relative; display: flex; flex-direction: column; padding: 30px 38px 30px;
+          min-width: 0; min-height: 0; }
         .pane-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
         .ring { width: 30px; height: 30px; flex-shrink: 0; }
         .ring circle { fill: none; stroke-width: 2.6; stroke-linecap: round; }
@@ -4783,14 +4792,19 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
            simply vanished and the new one appeared, which is exactly what made
            the flow feel dry. The container sizes to the tallest step, so
            nothing jumps as they cross. */
-        .body { flex: 1; display: grid; align-content: center; min-height: 0; padding: 8px 0; }
+        .body { flex: 1; display: grid; align-content: center; min-height: 0; padding: 8px 0;
+          overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
         /* The movement itself is driven from JS with the Web Animations API,
            not by a CSS transition. Measured twice: leaving the .on state did
            not carry an opacity transition here -- the outgoing step hit 0 at
            30ms -- so the exit never actually played. WAAPI runs both halves
            explicitly and is the same approach the dashboard's view transition
            already uses. */
-        .step { grid-area: 1 / 1; opacity: 0; pointer-events: none; }
+        /* align-self: center, so a short screen sits in the middle of the
+           cell instead of being pinned to the top of a box sized by the
+           tallest screen -- which is what left a hole under the two-field
+           step and made it read as unfinished. */
+        .step { grid-area: 1 / 1; align-self: center; opacity: 0; pointer-events: none; }
         .step.on { opacity: 1; pointer-events: auto; }
         .step.settled { visibility: hidden; }
         .step.on .stagger > * { animation: fieldIn .55s cubic-bezier(.22,1,.36,1) both; }
@@ -4810,8 +4824,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           background: #f5f6fa; border: 1px solid #e2e5ec; border-radius: 11px; resize: none;
           transition: border-color .18s, box-shadow .18s, background .18s; }
         input::placeholder, textarea::placeholder { color: #99a1b0; }
-        input:focus, textarea:focus { outline: none; background: #fff; border-color: var(--accent);
-          box-shadow: 0 0 0 4px var(--accent-light); }
+        input:focus, textarea:focus { outline: none; background: #fff; border-color: var(--focus-edge);
+          box-shadow: 0 0 0 4px var(--focus-ring); }
         .hint { font-size: 12px; color: #8b94a3; margin-top: 7px; line-height: 1.5; }
 
         .swatches { display: flex; gap: 9px; flex-wrap: wrap; }
@@ -4826,7 +4840,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .th { flex: 1; cursor: pointer; border: 1.5px solid #e2e5ec; border-radius: 13px; padding: 7px;
           background: #fff; transition: border-color .18s, box-shadow .18s, transform .18s cubic-bezier(.22,1,.36,1); }
         .th:hover { transform: translateY(-2px); }
-        .th.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .th.on { border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .th-chip { height: 44px; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px; gap: 4px; }
         .th-light .th-chip { background: #f1f3f8; }
         .th-dark .th-chip { background: #161d2c; }
@@ -4869,6 +4883,27 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .back[hidden] { display: none; }
         .step[data-step="0"] { display: flex; align-items: center; justify-content: center; }
         .hello { text-align: center; padding: 8px 0; max-width: 34ch; }
+        .seg { display: flex; gap: 8px; }
+        .seg button { flex: 1; padding: 10px 8px; border-radius: 11px; cursor: pointer; font-family: inherit;
+          font-size: 13px; font-weight: 550; color: #5b6577; background: #f5f6fa; border: 1px solid #e2e5ec;
+          transition: border-color .18s, color .18s, background .18s, box-shadow .18s; }
+        .seg button:hover { border-color: #b9c0cd; }
+        .seg button.on { border-color: var(--focus-edge); color: #0f1729; background: #fff;
+          box-shadow: 0 0 0 3px var(--focus-ring); }
+        .seg small { display: block; font-size: 11px; font-weight: 450; color: #99a1b0; margin-top: 3px; }
+        .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .shot-tile { border: 1.5px dashed #dfe3ea; border-radius: 13px; padding: 13px; text-align: center;
+          cursor: pointer; transition: border-color .18s, background .18s; }
+        .shot-tile:hover { border-color: var(--focus-edge); background: #fafbff; }
+        .shot-tile.filled { border-style: solid; border-color: #e2e5ec; }
+        .shot-prev { height: 62px; border-radius: 9px; margin-bottom: 10px; overflow: hidden;
+          background: #f1f3f8 center/cover no-repeat; display: flex; align-items: center; justify-content: center; }
+        .shot-prev.avatar { width: 62px; margin: 0 auto 10px; border-radius: 17px;
+          background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff;
+          font-family: var(--font-heading); font-weight: 700; font-size: 24px; }
+        .shot-prev.cover-empty { background: linear-gradient(128deg, var(--accent), var(--accent-dark)); }
+        .shot-tile b { display: block; font-size: 12.5px; font-weight: 600; color: #0f1729; }
+        .shot-tile span { display: block; font-size: 11px; color: #99a1b0; margin-top: 3px; }
         .hello-mark { width: 62px; height: 62px; border-radius: 19px; margin: 0 auto 22px; color: #fff;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
           font-weight: 700; font-size: 27px; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
@@ -4941,7 +4976,9 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .prev-in.swap { opacity: 0; transform: translateY(-50%) scale(.98); }
         .prev-in { transition: opacity .24s ease, transform .38s cubic-bezier(.22,1,.36,1); }
         .prev-profile { background: #fff; }
-        .pp-cover { height: 92px; background: linear-gradient(128deg, var(--accent), var(--accent-dark)); position: relative; }
+        .pp-cover { height: 92px; background: linear-gradient(128deg, var(--accent), var(--accent-dark));
+          background-size: cover; background-position: center; position: relative; }
+        .pp-cover.has-photo::after { background: linear-gradient(180deg, rgba(8,11,26,.10), rgba(8,11,26,.32)); }
         .pp-cover::after { content: ""; position: absolute; inset: 0;
           background: radial-gradient(60% 90% at 78% 8%, rgba(255,255,255,.30), transparent 68%); }
         .pp-body { padding: 0 22px 24px; }
@@ -4957,6 +4994,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .pp-tag.ghost, .pp-loc.ghost { color: #b6bdc9; }
         .pp-meta { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-size: 12px; color: #7b8494; }
         .pp-dot { width: 3px; height: 3px; border-radius: 50%; background: #c3cad5; }
+        .pp-about { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eef0f4;
+          font-size: 12.5px; line-height: 1.6; color: #5b6577; }
         .pp-rows { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
         .pp-rows i { display: block; height: 9px; border-radius: 4px; background: #eef0f4; }
         .pp-rows i:nth-child(2) { width: 72%; }
@@ -5024,18 +5063,38 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                 </div>
               </div>
               <div class="fld">
-                <span class="lbl">Profile picture</span>
-                <div class="pic-row">
-                  <div class="pic" id="picBox">${initial}</div>
-                  <button type="button" class="pic-btn" id="picBtn">Upload a picture</button>
-                  <input type="file" id="picFile" accept="image/*" style="display:none;">
+                <span class="lbl">Spacing</span>
+                <div class="seg" id="densitySeg">
+                  <button type="button" data-density="comfortable" class="on">Comfortable<small>More air</small></button>
+                  <button type="button" data-density="compact">Compact<small>More on screen</small></button>
                 </div>
-                <div class="hint" id="picHint">Optional. It shows on your dashboard, never to customers.</div>
               </div>
               </div>
             </div>
 
             <div class="step" data-step="2">
+              <h1>Put a face to the shop</h1>
+              <p class="lede">Both are optional. These show on your own dashboard, never to a customer.</p>
+              <div class="stagger">
+                <div class="fld">
+                  <div class="shots">
+                    <div class="shot-tile" id="avTile">
+                      <div class="shot-prev avatar" id="picBox">${initial}</div>
+                      <b>Profile picture</b><span id="avHint">Square works best</span>
+                    </div>
+                    <div class="shot-tile" id="cvTile">
+                      <div class="shot-prev cover-empty" id="cvBox"></div>
+                      <b>Cover photo</b><span id="cvHint">Wide works best</span>
+                    </div>
+                  </div>
+                  <input type="file" id="picFile" accept="image/*" style="display:none;">
+                  <input type="file" id="cvFile" accept="image/*" style="display:none;">
+                  <div class="hint" id="picHint">Click either one to upload. You can change them any time.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step" data-step="3">
               <h1>Tell customers who you are</h1>
               <p class="lede">Amara never writes this for you. She reads it, so what you put here is what she knows about your shop.</p>
               <div class="stagger">
@@ -5048,10 +5107,15 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                 <input id="obLocation" maxlength="60" placeholder="e.g. Lekki, Lagos">
                 <div class="hint">Used on your profile. It helps Amara answer questions about delivery and visits.</div>
               </div>
+              <div class="fld">
+                <label class="lbl" for="obAbout">Anything else worth knowing</label>
+                <textarea id="obAbout" rows="3" maxlength="400" placeholder="${goods ? "Sizes you carry, how long delivery takes, anything a customer always asks." : "How a session runs, what to bring, anything a client always asks."}"></textarea>
+                <div class="hint">Amara reads this before she answers. The more that is here, the less she has to come back to you.</div>
+              </div>
               </div>
             </div>
 
-            <div class="step" data-step="3">
+            <div class="step" data-step="4">
               <h1>That is you set up</h1>
               <p class="lede">Here is what happens from here, in order.</p>
               <ul class="done-list stagger">
@@ -5090,7 +5154,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         <section class="prev" aria-hidden="true">
           <div class="prev-in" id="prevIn" data-mode="dash" data-show="dash">
             <div class="prev-profile" id="prevProfile">
-              <div class="pp-cover"></div>
+              <div class="pp-cover" id="ppCover"></div>
               <div class="pp-body">
                 <div class="pp-av" id="ppAv">${initial}</div>
                 <div class="pp-name">${escapeHtmlServer(seller.businessName)}</div>
@@ -5100,6 +5164,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                   <span class="pp-dot"></span>
                   <span>Member since today</span>
                 </div>
+                <div class="pp-about" id="ppAbout" style="display:none;"></div>
                 <div class="pp-rows"><i></i><i></i><i></i></div>
               </div>
             </div>
@@ -5135,13 +5200,19 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           // Same palette and the same two storage keys the dashboard's Settings
           // page uses, so a choice made here is the choice it reads later.
           var ACCENTS = [
-            { id: "indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", shadow: "rgba(79,70,229,.28)", strong: "rgba(79,70,229,.42)" },
-            { id: "teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", shadow: "rgba(13,148,136,.28)", strong: "rgba(13,148,136,.42)" },
-            { id: "blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", shadow: "rgba(37,99,235,.28)", strong: "rgba(37,99,235,.42)" },
-            { id: "violet", base: "#7c3aed", dark: "#6d28d9", light: "#f5f3ff", soft: "#ede9fe", shadow: "rgba(124,58,237,.28)", strong: "rgba(124,58,237,.42)" },
-            { id: "rose",   base: "#e11d48", dark: "#be123c", light: "#fff1f3", soft: "#ffe4e8", shadow: "rgba(225,29,72,.28)", strong: "rgba(225,29,72,.42)" },
-            { id: "amber",  base: "#d97706", dark: "#b45309", light: "#fffbeb", soft: "#fde68a", shadow: "rgba(217,119,6,.28)", strong: "rgba(217,119,6,.42)" }
+            { id: "indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", rgb: "79,70,229" },
+            { id: "teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", rgb: "13,148,136" },
+            { id: "blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", rgb: "37,99,235" },
+            { id: "violet", base: "#7c3aed", dark: "#6d28d9", light: "#f5f3ff", soft: "#ede9fe", rgb: "124,58,237" },
+            { id: "rose",   base: "#e11d48", dark: "#be123c", light: "#fff1f3", soft: "#ffe4e8", rgb: "225,29,72" },
+            { id: "amber",  base: "#d97706", dark: "#b45309", light: "#fffbeb", soft: "#fde68a", rgb: "217,119,6" }
           ];
+          ACCENTS.forEach(function (a) {
+            a.shadow = "rgba(" + a.rgb + ",.28)";
+            a.strong = "rgba(" + a.rgb + ",.42)";
+            a.edge   = "rgba(" + a.rgb + ",.42)";
+            a.ring   = "rgba(" + a.rgb + ",.13)";
+          });
           var accent = "indigo", theme = "light", step = 1, busy = false;
           var root = document.documentElement;
           var msg = document.getElementById("obMsg");
@@ -5159,6 +5230,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             root.style.setProperty("--accent-soft", a.soft);
             root.style.setProperty("--accent-shadow", a.shadow);
             root.style.setProperty("--accent-shadow-strong", a.strong);
+            root.style.setProperty("--focus-edge", a.edge);
+            root.style.setProperty("--focus-ring", a.ring);
             var els = document.querySelectorAll(".sw");
             for (var i = 0; i < els.length; i++) {
               var on = els[i].getAttribute("data-id") === id;
@@ -5177,6 +5250,18 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             }
             try { localStorage.setItem("stafly-theme", t); } catch (e) {}
           }
+
+          function applyDensity(d) {
+            var els = document.querySelectorAll("#densitySeg button");
+            for (var i = 0; i < els.length; i++) {
+              els[i].className = els[i].getAttribute("data-density") === d ? "on" : "";
+            }
+            try { localStorage.setItem("stafly-density", d); } catch (e) {}
+          }
+          document.getElementById("densitySeg").addEventListener("click", function (e) {
+            var b = e.target.closest("button[data-density]");
+            if (b) applyDensity(b.getAttribute("data-density"));
+          });
 
           var sw = document.getElementById("swatches");
           sw.innerHTML = ACCENTS.map(function (a) {
@@ -5199,45 +5284,72 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
 
           // Picture: same endpoint the dashboard uses, resized in the browser
           // first so a phone photo does not go up at full size.
-          document.getElementById("picBtn").addEventListener("click", function () {
-            document.getElementById("picFile").click();
-          });
-          document.getElementById("picFile").addEventListener("change", function (e) {
-            var file = e.target.files && e.target.files[0];
-            e.target.value = "";
+          // Both pictures go through the same path: squared or cropped wide in
+          // the browser, then posted to the endpoint the dashboard already uses.
+          function uploadPhoto(file, kind) {
+            var hint = document.getElementById("picHint");
             if (!file) return;
             if (file.type.indexOf("image/") !== 0) return setMsg("That is not an image file.");
-            var hint = document.getElementById("picHint");
             hint.textContent = "Uploading...";
             var img = new Image();
             var url = URL.createObjectURL(file);
             img.onload = function () {
               URL.revokeObjectURL(url);
-              var max = 512, w = img.naturalWidth, h = img.naturalHeight;
-              var side = Math.min(w, h);
+              var w = img.naturalWidth, h = img.naturalHeight;
               var cv = document.createElement("canvas");
-              cv.width = max; cv.height = max;
-              cv.getContext("2d").drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, max, max);
+              var ctx;
+              if (kind === "avatar") {
+                var side = Math.min(w, h);
+                cv.width = 512; cv.height = 512;
+                ctx = cv.getContext("2d");
+                ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, 512, 512);
+              } else {
+                var tw = 1600, th = 500;
+                var scale = Math.max(tw / w, th / h);
+                var dw = w * scale, dh = h * scale;
+                cv.width = tw; cv.height = th;
+                ctx = cv.getContext("2d");
+                ctx.drawImage(img, (tw - dw) / 2, (th - dh) / 2, dw, dh);
+              }
               cv.toBlob(function (blob) {
                 if (!blob) { hint.textContent = "Could not read that image."; return; }
                 var fd = new FormData();
-                fd.append("photo", blob, "avatar.jpg");
-                fd.append("kind", "avatar");
+                fd.append("photo", blob, kind + ".jpg");
+                fd.append("kind", kind);
                 fetch("/api/profile/photo", { method: "POST", body: fd })
                   .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
                   .then(function (res) {
                     if (!res.ok) { hint.textContent = res.j.error || "Upload failed."; return; }
                     var src = res.j.url || "";
-                    document.getElementById("picBox").innerHTML = '<img src="' + src + '" alt="">';
-                    document.getElementById("prevAv").innerHTML = '<img src="' + src + '" alt="">';
-                    document.getElementById("ppAv").innerHTML = '<img src="' + src + '" alt="">';
-                    hint.textContent = "Looking good. You can change it any time.";
+                    if (kind === "avatar") {
+                      document.getElementById("picBox").innerHTML = '<img src="' + src + '" alt="">';
+                      document.getElementById("prevAv").innerHTML = '<img src="' + src + '" alt="">';
+                      document.getElementById("ppAv").innerHTML = '<img src="' + src + '" alt="">';
+                      document.getElementById("avTile").className = "shot-tile filled";
+                      document.getElementById("avHint").textContent = "Uploaded";
+                    } else {
+                      document.getElementById("cvBox").className = "shot-prev";
+                      document.getElementById("cvBox").style.backgroundImage = "url(" + src + ")";
+                      document.getElementById("ppCover").style.backgroundImage = "url(" + src + ")";
+                      document.getElementById("ppCover").classList.add("has-photo");
+                      document.getElementById("cvTile").className = "shot-tile filled";
+                      document.getElementById("cvHint").textContent = "Uploaded";
+                    }
+                    hint.textContent = "Looking good. You can change either any time.";
                   })
                   .catch(function () { hint.textContent = "Could not upload just now."; });
               }, "image/jpeg", 0.86);
             };
             img.onerror = function () { URL.revokeObjectURL(url); hint.textContent = "Could not read that image."; };
             img.src = url;
+          }
+          document.getElementById("avTile").addEventListener("click", function () { document.getElementById("picFile").click(); });
+          document.getElementById("cvTile").addEventListener("click", function () { document.getElementById("cvFile").click(); });
+          document.getElementById("picFile").addEventListener("change", function (e) {
+            var f = e.target.files && e.target.files[0]; e.target.value = ""; uploadPhoto(f, "avatar");
+          });
+          document.getElementById("cvFile").addEventListener("change", function (e) {
+            var f = e.target.files && e.target.files[0]; e.target.value = ""; uploadPhoto(f, "cover");
           });
 
           // Direction matters: going forward the outgoing step leaves to the
@@ -5285,12 +5397,12 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                 if (!all[j].classList.contains("on")) all[j].classList.add("settled");
               }
             }, 760);
-            document.getElementById("ringFg").setAttribute("stroke-dashoffset", String(82 - (82 * n) / 3));
-            nextLabel.textContent = n === 3 ? "Open my dashboard" : (n === 0 ? "Let us begin" : "Continue");
+            document.getElementById("ringFg").setAttribute("stroke-dashoffset", String(82 - (82 * n) / 4));
+            nextLabel.textContent = n === 4 ? "Open my dashboard" : (n === 0 ? "Let us begin" : "Continue");
             // Hidden only on the last screen, where the primary button is
             // already "open my dashboard". Hiding it on the opening screen
             // left someone who does not want to do this now with no way out.
-            document.getElementById("obSkip").style.visibility = n === 3 ? "hidden" : "visible";
+            document.getElementById("obSkip").style.visibility = n === 4 ? "hidden" : "visible";
             document.getElementById("obBack").hidden = n <= 1;
             setPreview(n);
             setMsg("");
@@ -5302,7 +5414,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           function setPreview(n) {
             var wrap = document.getElementById("prevIn");
             var card = document.getElementById("prevProfile");
-            var mode = n === 2 ? "profile" : "dash";
+            var mode = (n === 2 || n === 3) ? "profile" : "dash";
             if (wrap.getAttribute("data-mode") === mode) return;
             wrap.setAttribute("data-mode", mode);
             wrap.classList.add("swap");
@@ -5321,6 +5433,10 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             document.getElementById("ppTagline").className = "pp-tag" + (t ? "" : " ghost");
             document.getElementById("ppLoc").textContent = l || "Where you are";
             document.getElementById("ppLoc").className = "pp-loc" + (l ? "" : " ghost");
+            var ab = document.getElementById("obAbout").value.trim();
+            var abEl = document.getElementById("ppAbout");
+            abEl.textContent = ab;
+            abEl.style.display = ab ? "block" : "none";
           }
 
           function finish() {
@@ -5338,25 +5454,28 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           });
           document.getElementById("obTagline").addEventListener("input", syncProfilePreview);
           document.getElementById("obLocation").addEventListener("input", syncProfilePreview);
+          document.getElementById("obAbout").addEventListener("input", syncProfilePreview);
 
           nextBtn.addEventListener("click", function () {
             if (busy) return;
             if (step === 0) return show(1);
             if (step === 1) return show(2);
-            if (step === 2) {
+            if (step === 2) return show(3);
+            if (step === 3) {
               var tagline = document.getElementById("obTagline").value.trim();
               var location = document.getElementById("obLocation").value.trim();
-              if (!tagline && !location) return show(3);
+              var about = document.getElementById("obAbout").value.trim();
+              if (!tagline && !location && !about) return show(4);
               busy = true;
               nextLabel.textContent = "Saving";
               fetch("/api/profile", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tagline: tagline, location: location })
+                body: JSON.stringify({ tagline: tagline, location: location, about: about })
               }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
                 .then(function (res) {
                   busy = false; nextLabel.textContent = "Continue";
                   if (!res.ok) return setMsg(res.j.error || "Could not save that. You can add it later in Settings.");
-                  show(3);
+                  show(4);
                 })
                 .catch(function () { busy = false; nextLabel.textContent = "Continue"; setMsg("Could not save just now. You can add it later in Settings."); });
               return;
@@ -5371,7 +5490,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             var stheme = localStorage.getItem("stafly-theme");
             applyAccent(sa || "indigo");
             applyTheme(stheme === "dark" ? "dark" : "light");
-          } catch (e) { applyAccent("indigo"); applyTheme("light"); }
+            applyDensity(localStorage.getItem("stafly-density") === "compact" ? "compact" : "comfortable");
+          } catch (e) { applyAccent("indigo"); applyTheme("light"); applyDensity("comfortable"); }
           syncProfilePreview();
           step = 0; show(0);
         })();
@@ -6356,7 +6476,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .search-box-inner svg { position: absolute; left: 11px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
         .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--text); transition: background .15s, border-color .15s, box-shadow .15s; }
         .search-box input::placeholder { color: var(--muted-2); }
-        .search-box input:focus { outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .search-box input:focus { outline: none; background: var(--surface); border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         /* Real filters, not decoration -- All/Active/Paused/Starred each map
            to an actual stored field on the customer record (see setTab /
            getFilteredCustomers), the same idea as Fillow's inbox tabs but
@@ -6470,7 +6590,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .detail-card.warn-card { background: var(--warn-bg); border-color: var(--warn-border); }
         .detail-card.warn-card .detail-card-title { color: var(--warn-fg); }
         .detail-pane textarea { width: 100%; min-height: 74px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 12.5px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
-        .detail-pane textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .detail-pane textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .icon-btn.active-toggle { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
         .compose-hint { font-size: 11px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
         .thread-header { padding: 11px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -6731,7 +6851,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
         .catalog-form label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; background: var(--surface); color: var(--text); font-family: inherit; }
-        .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); }
         .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
         /* Native widgets (date pickers, scrollbars, select arrows) follow this. */
@@ -6903,11 +7023,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .cat-search { position: relative; flex: 1; min-width: 190px; display: flex; align-items: center; }
         .cat-search svg { position: absolute; left: 12px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
         .cat-search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13.5px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
-        .cat-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .cat-search input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .cat-sort { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .cat-sort label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
         .cat-sort select { padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); cursor: pointer; }
-        .cat-sort select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .cat-sort select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         /* ---- Bookings & services ----
            Both were six-column tables, which is unusable on a phone and not
            much better on a laptop for rows that carry five different kinds of
@@ -7012,7 +7132,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
         .field-hint { font-size: 11.5px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
         .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
-        .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .inline-panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
         /* Grouped form steps. Six fields and a save button all visible at once
@@ -7027,7 +7147,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         /* A unit that belongs to a field belongs inside it, not in the label. */
         .input-prefix, .input-suffix { display: flex; align-items: stretch; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-        .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .input-prefix span, .input-suffix span { display: flex; align-items: center; padding: 0 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); flex-shrink: 0; }
         .input-prefix span { border-right: 1px solid var(--border); }
         .input-suffix span { border-left: 1px solid var(--border); }
@@ -7086,12 +7206,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            on the page that still looked like a raw HTML form. */
         .fees-row label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
         .fees-row input, .fees-row select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
-        .fees-row input:focus, .fees-row select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .fees-row input:focus, .fees-row select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         /* Real search over the messages already on the page -- no server
            round trip, no separate index, just a substring match. */
         .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
         .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; }
-        .thread-search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .thread-search-bar input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
         .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
         .bubble mark { background: var(--warn-border); color: #1e293b; border-radius: 3px; padding: 0 1px; }
         .msg-row.search-hidden { display: none; }
@@ -7112,7 +7232,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .emoji-picker-grid button:hover { background: var(--accent-light); }
         .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 24px 14px; border-top: 1px solid var(--border); background: var(--surface); }
         .msg-compose-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; border: 1.5px solid var(--border); border-radius: 18px; padding: 6px 10px 6px 14px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s, background .15s; }
-        .msg-compose-inner:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--surface); }
+        .msg-compose-inner:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); background: var(--surface); }
         .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
         .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
@@ -7384,7 +7504,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .profile-field label { font-size: 12.5px; font-weight: 650; color: var(--text); display: block; margin-bottom: 6px; }
         .profile-field input, .profile-field textarea { width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong); border-radius: 11px; font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .profile-field textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
-        .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
 
         /* The awkward middle. A tablet, or a laptop window narrowed to half the
            screen, still has the 232px sidebar taking a chunk out of it, so the
@@ -7793,7 +7913,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <button class="icon-btn small-icon-btn" onclick="closeProductForm()" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:10px;">
-              Editing "<b id="productEditingName"></b>" -- <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
+              Editing "<b id="productEditingName"></b>" &middot; <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
             </div>
             <input type="hidden" id="pKey">
             <div class="field-grid">
@@ -9506,6 +9626,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const bl = parseInt(base.slice(5, 7), 16);
           root.setProperty("--accent-shadow", "rgba(" + r + "," + g + "," + bl + ",0.30)");
           root.setProperty("--accent-shadow-strong", "rgba(" + r + "," + g + "," + bl + ",0.45)");
+          root.setProperty("--focus-edge", "rgba(" + r + "," + g + "," + bl + ",0.42)");
+          root.setProperty("--focus-ring", "rgba(" + r + "," + g + "," + bl + ",0.13)");
           if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
         }
         function setAccent(id) {
@@ -11132,7 +11254,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                     '<td><button class="catalog-btn danger" onclick="removeDeliveryState(\\'' + slug + '\\')">Remove</button></td>' +
                   '</tr>'
                 ).join("")
-            : '<tr><td colspan="3" style="color:var(--muted-2);">No states added yet -- Amara won\\'t quote delivery to any state until you add at least one, or set a fallback fee below.</td></tr>';
+            : '<tr><td colspan="3" style="color:var(--muted-2);">No states added yet. Amara won\\'t quote delivery to any state until you add at least one, or set a fallback fee below.</td></tr>';
         }
 
         async function addDeliveryState() {
@@ -13122,7 +13244,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 31";
+const BUILD_ROUND = "Round 32";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
