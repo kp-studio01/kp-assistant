@@ -3750,8 +3750,8 @@ const BRAND_TOKENS_CSS = `
     /* Focus was a full-strength accent border, which on a white field reads as
        a hard bright line the moment you click anything. A softened edge plus a
        faint halo says the same thing at a normal speaking volume. */
-    --focus-edge: rgba(79,70,229,0.40);
-    --focus-ring: rgba(79,70,229,0.12);
+    --focus-edge: rgba(79,70,229,0.38);
+    --focus-ring: rgba(79,70,229,0.10);
     --chat-doodle: %23b9c6dc;
   }
   /* Dark theme. Applied by setting data-theme="dark" on <html>; every colour
@@ -3800,8 +3800,8 @@ const BRAND_TOKENS_CSS = `
     --shadow-lg: 0 12px 30px rgba(0,0,0,0.42);
     --accent-shadow: rgba(99,102,241,0.22);
     --accent-shadow-strong: rgba(99,102,241,0.34);
-    --focus-edge: rgba(99,102,241,0.48);
-    --focus-ring: rgba(99,102,241,0.17);
+    --focus-edge: rgba(99,102,241,0.44);
+    --focus-ring: rgba(99,102,241,0.14);
     --chat-doodle: %232b3446;
   }
 `;
@@ -3994,18 +3994,18 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            sit on slightly different planes instead of all being flat-on. */
         .scene-3d { position: relative; width: 100%; height: 100%;
           display: flex; align-items: center; justify-content: center;
-          perspective: 1500px; perspective-origin: 62% 44%; }
+          perspective: 1700px; perspective-origin: 50% 46%; }
         .tilt { transform-style: preserve-3d; }
-        .tilt-thread { transform: rotateY(-7deg) rotateX(2.2deg); }
+        .tilt-thread { transform: rotateY(-5deg) rotateX(1.8deg); }
         /* Sits on the same left edge as the brand mark and the headline. The
            7px is compensation, not a guess: the card is rotated, so its
            rendered edge lands outside its own box by a few pixels, and how
            many depends on how far it is from the perspective origin. Measured
            across widths it now lands within about 5px of the text column
            instead of hanging 22px outside it. */
-        .tilt-pay    { position: absolute; left: 7px; bottom: 20%; transform: rotateY(-5deg) rotateX(1.4deg) translateZ(60px); }
-        .tilt-clock  { position: absolute; right: -16px; top: 6%;   transform: rotateY(-9deg) rotateX(1.6deg) translateZ(34px); }
-        .tilt-cat    { position: absolute; right: -6px; bottom: 6%; transform: rotateY(-8deg) rotateX(1.2deg) translateZ(52px); }
+        .tilt-pay    { position: absolute; left: 2px; bottom: 20%; transform: rotateY(-4deg) rotateX(1.2deg) translateZ(60px); }
+        .tilt-clock  { position: absolute; right: -6px; top: 6%;   transform: rotateY(-4deg) rotateX(1.2deg) translateZ(34px); }
+        .tilt-cat    { position: absolute; right: -6px; bottom: 6%; transform: rotateY(-4deg) rotateX(1.2deg) translateZ(52px); }
 
         /* This one is the product, so it reads as a real application window:
            a deep, mostly opaque surface with a slight tint of whatever is
@@ -4014,7 +4014,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            below stay true glass, and the contrast between the two is the
            hierarchy: one is the app, the others are highlights on top of it. */
         .scene-thread { position: relative; width: min(376px, 100%); border-radius: 22px; padding: 6px 6px 10px;
-          background: linear-gradient(158deg, rgba(17,23,40,.84), rgba(10,14,28,.90) 55%, rgba(13,18,34,.86));
+          background: linear-gradient(158deg, rgba(30,34,64,.80), rgba(18,21,44,.86) 55%, rgba(26,30,58,.82));
           box-shadow:
             0 1px 2px rgba(2,4,16,.40),
             0 12px 28px rgba(2,4,16,.36),
@@ -4049,7 +4049,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .st-live { margin-left: auto; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.62); }
         .st-body { position: relative; border-radius: 16px; padding: 13px 13px 14px;
           display: flex; flex-direction: column; gap: 7px;
-          background: linear-gradient(172deg, rgba(3,5,18,.58), rgba(4,7,22,.38));
+          background: linear-gradient(172deg, rgba(9,11,30,.52), rgba(12,15,36,.34));
           box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.06); }
         .st-row { display: flex; }
         .st-row.out, .st-row.typing { justify-content: flex-end; }
@@ -4072,13 +4072,13 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
 
         .scene-chip { position: relative; display: flex; align-items: center; gap: 10px;
           padding: 11px 16px 11px 12px; border-radius: 16px; white-space: nowrap;
-          background: linear-gradient(150deg, rgba(255,255,255,.10), rgba(255,255,255,.03) 55%, rgba(255,255,255,.07));
+          background: linear-gradient(152deg, rgba(34,38,70,.60), rgba(20,23,46,.68) 55%, rgba(28,32,60,.62));
           box-shadow:
             0 1px 2px rgba(2,4,16,.34),
             0 10px 22px rgba(2,4,16,.30),
             0 30px 60px rgba(2,4,16,.44);
-          backdrop-filter: blur(22px) saturate(2.1) brightness(1.28);
-          -webkit-backdrop-filter: blur(22px) saturate(2.1) brightness(1.28);
+          backdrop-filter: blur(26px) saturate(1.45);
+          -webkit-backdrop-filter: blur(26px) saturate(1.45);
           animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 8.5s ease-in-out 1.4s infinite; }
         .chip-clock { animation-name: dealIn, bobA; animation-duration: .8s, 9.5s; }
         .chip-cat { animation-name: dealIn, bobB; animation-duration: .8s, 12s; animation-delay: var(--d), 2.6s; }
@@ -4137,8 +4137,8 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         /* One weight, both lines. A light second line read as washed out
            rather than as hierarchy -- at this size the contrast has to come
            from scale and tracking, not from thinning half the sentence. */
-        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(27px, 2.7vw, 42px);
-          font-weight: 660; letter-spacing: -.044em; line-height: 1.1; margin: 0 0 20px; color: #fff; }
+        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(28px, 2.85vw, 45px);
+          font-weight: 580; letter-spacing: -.052em; line-height: 1.05; margin: 0 0 22px; color: #fff; }
         .stage-foot h2 span { display: block; }
         .hl-a { animation: riseIn .8s cubic-bezier(.22,1,.36,1) .48s both; }
         .hl-b { animation: riseIn .8s cubic-bezier(.22,1,.36,1) .56s both; }
@@ -4199,7 +4199,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         form input::placeholder { color: var(--muted-2); }
         form input:hover { border-color: var(--border-strong, var(--muted-2)); }
         form input:focus { outline: none; background: var(--surface);
-          border-color: var(--focus-edge); box-shadow: 0 0 0 4px var(--focus-ring); }
+          border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
 
         .business-type-choice { display: grid; gap: 9px; margin-top: 2px; }
         .business-type-option { display: flex; align-items: center; gap: 10px; margin: 0;
@@ -4825,7 +4825,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           transition: border-color .18s, box-shadow .18s, background .18s; }
         input::placeholder, textarea::placeholder { color: #99a1b0; }
         input:focus, textarea:focus { outline: none; background: #fff; border-color: var(--focus-edge);
-          box-shadow: 0 0 0 4px var(--focus-ring); }
+          box-shadow: 0 0 0 2px var(--focus-ring); }
         .hint { font-size: 12px; color: #8b94a3; margin-top: 7px; line-height: 1.5; }
 
         .swatches { display: flex; gap: 9px; flex-wrap: wrap; }
@@ -4840,7 +4840,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .th { flex: 1; cursor: pointer; border: 1.5px solid #e2e5ec; border-radius: 13px; padding: 7px;
           background: #fff; transition: border-color .18s, box-shadow .18s, transform .18s cubic-bezier(.22,1,.36,1); }
         .th:hover { transform: translateY(-2px); }
-        .th.on { border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .th.on { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .th-chip { height: 44px; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px; gap: 4px; }
         .th-light .th-chip { background: #f1f3f8; }
         .th-dark .th-chip { background: #161d2c; }
@@ -4889,18 +4889,30 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           transition: border-color .18s, color .18s, background .18s, box-shadow .18s; }
         .seg button:hover { border-color: #b9c0cd; }
         .seg button.on { border-color: var(--focus-edge); color: #0f1729; background: #fff;
-          box-shadow: 0 0 0 3px var(--focus-ring); }
+          box-shadow: 0 0 0 2px var(--focus-ring); }
         .seg small { display: block; font-size: 11px; font-weight: 450; color: #99a1b0; margin-top: 3px; }
-        .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .shot-tile { border: 1.5px dashed #dfe3ea; border-radius: 13px; padding: 13px; text-align: center;
-          cursor: pointer; transition: border-color .18s, background .18s; }
-        .shot-tile:hover { border-color: var(--focus-edge); background: #fafbff; }
-        .shot-tile.filled { border-style: solid; border-color: #e2e5ec; }
-        .shot-prev { height: 62px; border-radius: 9px; margin-bottom: 10px; overflow: hidden;
-          background: #f1f3f8 center/cover no-repeat; display: flex; align-items: center; justify-content: center; }
-        .shot-prev.avatar { width: 62px; margin: 0 auto 10px; border-radius: 17px;
-          background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff;
-          font-family: var(--font-heading); font-weight: 700; font-size: 24px; }
+        /* Both tiles share one footprint and one internal rhythm: a preview
+           band of the same height, then the label. The first pass gave the
+           avatar a small floating square in a mostly empty box, so the two
+           read as different kinds of control rather than a pair. */
+        .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+        .shot-tile { border: 1.5px dashed #dde2ea; border-radius: 15px; padding: 11px 11px 13px;
+          text-align: center; cursor: pointer; background: #fcfcfe;
+          transition: border-color .18s, background .18s, transform .18s cubic-bezier(.22,1,.36,1); }
+        .shot-tile:hover { border-color: var(--focus-edge); background: #fafbff; transform: translateY(-2px); }
+        .shot-tile.filled { border-style: solid; border-color: #e2e5ec; background: #fff; }
+        .shot-prev { position: relative; height: 86px; border-radius: 11px; margin-bottom: 11px;
+          overflow: hidden; background: #eef0f6 center/cover no-repeat;
+          display: flex; align-items: center; justify-content: center; }
+        .shot-prev.avatar { background: #eef0f6; }
+        .shot-prev.avatar::after { content: attr(data-initial); width: 52px; height: 52px; border-radius: 16px;
+          display: flex; align-items: center; justify-content: center; color: #fff;
+          font-family: var(--font-heading); font-weight: 700; font-size: 21px;
+          background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          box-shadow: 0 5px 14px var(--accent-shadow); }
+        .shot-prev.avatar.has-photo::after { display: none; }
+        .shot-prev.avatar img { width: 52px; height: 52px; border-radius: 16px; object-fit: cover;
+          box-shadow: 0 5px 14px var(--accent-shadow); }
         .shot-prev.cover-empty { background: linear-gradient(128deg, var(--accent), var(--accent-dark)); }
         .shot-tile b { display: block; font-size: 12.5px; font-weight: 600; color: #0f1729; }
         .shot-tile span { display: block; font-size: 11px; color: #99a1b0; margin-top: 3px; }
@@ -4982,7 +4994,12 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .pp-cover::after { content: ""; position: absolute; inset: 0;
           background: radial-gradient(60% 90% at 78% 8%, rgba(255,255,255,.30), transparent 68%); }
         .pp-body { padding: 0 22px 24px; }
-        .pp-av { width: 58px; height: 58px; border-radius: 17px; margin-top: -29px; color: #fff; overflow: hidden;
+        /* The cover's gradient overlay is absolutely positioned, which puts it
+           in a later paint layer than a static sibling -- so the top half of
+           the avatar was being painted over by it. Giving the avatar its own
+           stacking position is the fix. */
+        .pp-av { position: relative; z-index: 2; width: 58px; height: 58px; border-radius: 17px;
+          margin-top: -29px; color: #fff; overflow: hidden;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
           font-size: 23px; font-weight: 700; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
           box-shadow: 0 0 0 4px #fff, 0 6px 16px rgba(15,23,41,.16); }
@@ -5079,7 +5096,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                 <div class="fld">
                   <div class="shots">
                     <div class="shot-tile" id="avTile">
-                      <div class="shot-prev avatar" id="picBox">${initial}</div>
+                      <div class="shot-prev avatar" id="picBox" data-initial="${initial}"></div>
                       <b>Profile picture</b><span id="avHint">Square works best</span>
                     </div>
                     <div class="shot-tile" id="cvTile">
@@ -5210,8 +5227,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           ACCENTS.forEach(function (a) {
             a.shadow = "rgba(" + a.rgb + ",.28)";
             a.strong = "rgba(" + a.rgb + ",.42)";
-            a.edge   = "rgba(" + a.rgb + ",.42)";
-            a.ring   = "rgba(" + a.rgb + ",.13)";
+            a.edge   = "rgba(" + a.rgb + ",.38)";
+            a.ring   = "rgba(" + a.rgb + ",.10)";
           });
           var accent = "indigo", theme = "light", step = 1, busy = false;
           var root = document.documentElement;
@@ -5322,7 +5339,9 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                     if (!res.ok) { hint.textContent = res.j.error || "Upload failed."; return; }
                     var src = res.j.url || "";
                     if (kind === "avatar") {
-                      document.getElementById("picBox").innerHTML = '<img src="' + src + '" alt="">';
+                      var pb = document.getElementById("picBox");
+                      pb.classList.add("has-photo");
+                      pb.innerHTML = '<img src="' + src + '" alt="">';
                       document.getElementById("prevAv").innerHTML = '<img src="' + src + '" alt="">';
                       document.getElementById("ppAv").innerHTML = '<img src="' + src + '" alt="">';
                       document.getElementById("avTile").className = "shot-tile filled";
@@ -6476,7 +6495,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .search-box-inner svg { position: absolute; left: 11px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
         .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--text); transition: background .15s, border-color .15s, box-shadow .15s; }
         .search-box input::placeholder { color: var(--muted-2); }
-        .search-box input:focus { outline: none; background: var(--surface); border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .search-box input:focus { outline: none; background: var(--surface); border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         /* Real filters, not decoration -- All/Active/Paused/Starred each map
            to an actual stored field on the customer record (see setTab /
            getFilteredCustomers), the same idea as Fillow's inbox tabs but
@@ -6590,7 +6609,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .detail-card.warn-card { background: var(--warn-bg); border-color: var(--warn-border); }
         .detail-card.warn-card .detail-card-title { color: var(--warn-fg); }
         .detail-pane textarea { width: 100%; min-height: 74px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 12.5px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
-        .detail-pane textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .detail-pane textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .icon-btn.active-toggle { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
         .compose-hint { font-size: 11px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
         .thread-header { padding: 11px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -6851,7 +6870,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
         .catalog-form label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
         .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; background: var(--surface); color: var(--text); font-family: inherit; }
-        .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); }
         .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
         /* Native widgets (date pickers, scrollbars, select arrows) follow this. */
@@ -7023,11 +7042,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .cat-search { position: relative; flex: 1; min-width: 190px; display: flex; align-items: center; }
         .cat-search svg { position: absolute; left: 12px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
         .cat-search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13.5px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
-        .cat-search input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .cat-search input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .cat-sort { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .cat-sort label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
         .cat-sort select { padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); cursor: pointer; }
-        .cat-sort select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .cat-sort select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         /* ---- Bookings & services ----
            Both were six-column tables, which is unusable on a phone and not
            much better on a laptop for rows that carry five different kinds of
@@ -7132,7 +7151,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
         .field-hint { font-size: 11.5px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
         .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
-        .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .inline-panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
         /* Grouped form steps. Six fields and a save button all visible at once
@@ -7147,7 +7166,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         /* A unit that belongs to a field belongs inside it, not in the label. */
         .input-prefix, .input-suffix { display: flex; align-items: stretch; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-        .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .input-prefix span, .input-suffix span { display: flex; align-items: center; padding: 0 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); flex-shrink: 0; }
         .input-prefix span { border-right: 1px solid var(--border); }
         .input-suffix span { border-left: 1px solid var(--border); }
@@ -7206,12 +7225,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            on the page that still looked like a raw HTML form. */
         .fees-row label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
         .fees-row input, .fees-row select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
-        .fees-row input:focus, .fees-row select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .fees-row input:focus, .fees-row select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         /* Real search over the messages already on the page -- no server
            round trip, no separate index, just a substring match. */
         .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
         .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; }
-        .thread-search-bar input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .thread-search-bar input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
         .bubble mark { background: var(--warn-border); color: #1e293b; border-radius: 3px; padding: 0 1px; }
         .msg-row.search-hidden { display: none; }
@@ -7232,7 +7251,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .emoji-picker-grid button:hover { background: var(--accent-light); }
         .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 24px 14px; border-top: 1px solid var(--border); background: var(--surface); }
         .msg-compose-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; border: 1.5px solid var(--border); border-radius: 18px; padding: 6px 10px 6px 14px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s, background .15s; }
-        .msg-compose-inner:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); background: var(--surface); }
+        .msg-compose-inner:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); background: var(--surface); }
         .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
         .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
@@ -7504,7 +7523,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .profile-field label { font-size: 12.5px; font-weight: 650; color: var(--text); display: block; margin-bottom: 6px; }
         .profile-field input, .profile-field textarea { width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong); border-radius: 11px; font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .profile-field textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
-        .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 3px var(--focus-ring); }
+        .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
 
         /* The awkward middle. A tablet, or a laptop window narrowed to half the
            screen, still has the 232px sidebar taking a chunk out of it, so the
@@ -9626,8 +9645,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const bl = parseInt(base.slice(5, 7), 16);
           root.setProperty("--accent-shadow", "rgba(" + r + "," + g + "," + bl + ",0.30)");
           root.setProperty("--accent-shadow-strong", "rgba(" + r + "," + g + "," + bl + ",0.45)");
-          root.setProperty("--focus-edge", "rgba(" + r + "," + g + "," + bl + ",0.42)");
-          root.setProperty("--focus-ring", "rgba(" + r + "," + g + "," + bl + ",0.13)");
+          root.setProperty("--focus-edge", "rgba(" + r + "," + g + "," + bl + ",0.38)");
+          root.setProperty("--focus-ring", "rgba(" + r + "," + g + "," + bl + ",0.10)");
           if (typeof lastAnalytics !== "undefined" && lastAnalytics) renderAnalytics(lastAnalytics);
         }
         function setAccent(id) {
@@ -13244,7 +13263,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 32";
+const BUILD_ROUND = "Round 33";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
