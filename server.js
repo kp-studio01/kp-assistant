@@ -3901,11 +3901,18 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            Capped hard at 1.1s and dismissed on load, whichever comes first,
            so it can never become the thing standing between a seller and
            their dashboard. */
+        /* The page's own entrance animations used to start at load, so by the
+           time the overlay faded they had already finished and the content was
+           simply revealed -- the overlay and the page were never handed off to
+           each other. Everything under .shell is held at its first frame until
+           the overlay begins leaving, so the two movements overlap on purpose:
+           the content rises as the cover lifts. */
         .pre { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 22px;
           background: radial-gradient(120% 90% at 50% 40%, #1a2140 0%, #0b1020 62%);
-          transition: opacity .5s ease, visibility .5s ease; }
-        .pre.done { opacity: 0; visibility: hidden; }
+          transition: opacity .62s cubic-bezier(.4,0,.2,1), visibility .62s, transform .62s cubic-bezier(.4,0,.2,1); }
+        .pre.done { opacity: 0; visibility: hidden; transform: scale(1.035); }
+        body:not(.ready) .shell, body:not(.ready) .shell * { animation-play-state: paused !important; }
         .pre-mark { width: 52px; height: 52px; border-radius: 15px; display: flex; align-items: center;
           justify-content: center; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
           color: #fff; font-family: var(--font-heading); font-weight: 700; font-size: 24px;
@@ -3992,8 +3999,19 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            away, the shadow is three shadows (contact, mid, ambient) plus a
            coloured bounce, a specular band crosses the surface, and the cards
            sit on slightly different planes instead of all being flat-on. */
-        .scene-3d { position: relative; width: 100%; height: 100%;
+        /* The composition is sized for a wide stage. The card is a fixed
+           376px but the three chips are anchored to the stage edges, so as the
+           stage narrows the chips walk inwards and start sitting on top of the
+           conversation text -- measured at 1280 and 1024, where the clock chip
+           covered "Amara is replying" outright. Moving individual chips would
+           change the arrangement at full width, which is the one that was
+           signed off, so the whole scene scales as a single unit instead:
+           every gap, overlap and gutter keeps its proportion, and nothing can
+           ever land on top of anything that was clear at 1440. */
+        .scene-3d { position: absolute; top: 0; bottom: 0; left: 50%;
+          width: max(647px, calc(100% - 24px));
           display: flex; align-items: center; justify-content: center;
+          transform: translateX(-50%) scale(var(--scene-s, 1)); transform-origin: 50% 50%;
           perspective: 1700px; perspective-origin: 50% 46%; }
         .tilt { transform-style: preserve-3d; }
         .tilt-thread { transform: rotateY(-5deg) rotateX(1.8deg); }
@@ -4146,7 +4164,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            substantiation instead of one orphaned phrase. Fixed height, because
            a block that resizes every four seconds makes the whole panel twitch. */
         .stage-lines { position: relative; height: 46px; animation: riseIn .75s cubic-bezier(.22,1,.36,1) .58s both; }
-        .stage-line { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+        .stage-line { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: center;
           gap: 4px; padding-left: 17px; opacity: 0;
           transition: opacity .32s ease, transform .32s ease; transform: translateY(8px); }
         .stage-line.on { opacity: 1; transform: none;
@@ -4254,8 +4272,22 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            banner: the scene needs real width to read, and half a scene is
            worse than none. Below 620 it goes entirely and the brand mark
            moves into the card, so the form gets the whole screen. */
+        /* 647px is the measured width of this scene at 1440, where the
+           arrangement was settled. Above that the scene grows with the stage
+           exactly as it always did. Below it the scene holds its 647px
+           composition and scales down as one piece, so the chips keep the same
+           distance from the card they have at full width instead of walking
+           inwards over the conversation. Each step is the scale that makes it
+           fit at the BOTTOM of its band, so it can never overflow. */
+        @media (max-width: 1439px) { .stage { --scene-s: .937; } }
+        @media (max-width: 1359px) { .stage { --scene-s: .871; } }
+        @media (max-width: 1279px) { .stage { --scene-s: .806; } }
+        @media (max-width: 1199px) { .stage { --scene-s: .740; } }
+        @media (max-width: 1119px) { .stage { --scene-s: .674; } }
+        @media (max-width: 1039px) { .stage { --scene-s: .626; } }
+
         @media (max-width: 980px) {
-          .shell { grid-template-columns: 1fr; }
+          .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
           .stage { min-height: 210px; padding: 22px 24px 24px; justify-content: space-between; }
           .stage-scene { display: none; }
           .stage-foot h2 { font-size: 22px; margin-bottom: 14px; }
@@ -4265,14 +4297,34 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           .panel { padding: 34px 24px 44px; }
         }
         @media (max-width: 620px) {
-          /* The scene needs width to read, so on a phone it goes and the
-             brand band carries the identity instead -- 96px of the gradient
-             rather than a cropped, unreadable half-scene. */
-          /* 220px of gradient was a quarter of a phone screen given to
-             decoration. A 112px band is enough to carry the brand. */
-          .stage { min-height: 112px; padding: 0 20px; justify-content: center; }
-          .stage-foot, .stage-scene { display: none; }
-          .panel { align-items: center; padding: 34px 20px 40px; }
+          /* Two rows, not two auto rows. The grid's default align-content is
+             stretch, so with both rows auto-sized the leftover height was
+             being split between them -- which is why a band declared at 112px
+             rendered at 182px and ate a fifth of the screen. */
+          /* Two fixed rows, not two auto rows. The grid's default
+             align-content is stretch, so with both rows auto-sized the
+             leftover height was split between them -- a band declared at
+             112px rendered at 182px. The band is now given a real share of
+             the screen on purpose: this is where the photograph lives, and
+             116px of it read as a coloured strip rather than an image. */
+          .shell { grid-template-columns: 1fr; grid-template-rows: clamp(150px, 27vh, 232px) 1fr; }
+          .stage { min-height: 0; padding: calc(20px + env(safe-area-inset-top, 0px)) 22px 20px;
+            justify-content: space-between; align-items: stretch; }
+          .stage-scene { display: none; }
+          /* The band keeps one line of copy, so it is carrying something
+             rather than being a coloured strip with a logo floating in it. */
+          .stage-foot { display: block; max-width: none; padding-top: 14px; }
+          .stage-foot h2 { font-size: 19px; font-weight: 620; line-height: 1.25;
+            letter-spacing: -.03em; margin: 0; }
+          .stage-foot h2 span { display: inline; }
+          .stage-eyebrow, .stage-lines { display: none; }
+          .stage-top { margin-bottom: 2px; }
+          /* Centred in what is left, with the footer pinned. Pinning the form
+             to the top left roughly 700px of empty white under it on a tall
+             phone; "safe" keeps it top-aligned instead of clipping the top
+             when the keyboard is up or the screen is short. */
+          .panel { align-items: safe center; padding: 26px 22px 0; overflow-y: auto; }
+          .panel-foot { padding: 22px 0 calc(20px + env(safe-area-inset-bottom, 0px)); }
           .card h1 { font-size: 25px; }
         }
 
@@ -4309,7 +4361,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           <div class="stage-scene">${scene}</div>
           <div class="stage-foot">
             <p class="stage-eyebrow">WhatsApp sales, answered for you</p>
-            <h2><span class="hl-a">Your shop keeps selling</span><span class="hl-b">while you sleep.</span></h2>
+            <h2><span class="hl-a">Your shop keeps selling</span> <span class="hl-b">while you sleep.</span></h2>
             <div class="stage-lines" id="lines">
               <div class="stage-line on">
                 <em>Answers from your own catalogue.</em>
@@ -4362,20 +4414,35 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
       </main>
       <script>
         (function () {
+          // Last-resort release. The page is held at its first frame while the
+          // cover is up, so if anything below this line ever threw, the content
+          // would stay invisible. This runs first and cannot be skipped.
+          setTimeout(function () { document.body.classList.add("ready"); }, 2600);
+
           var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-          // Preloader: dismissed on load, and unconditionally after 1.1s so a
+          // Preloader: dismissed on load, and unconditionally after 1.6s so a
           // slow font or a blocked request can never leave someone staring at it.
           var pre = document.getElementById("pre");
           var t0 = Date.now();
+          var released = false;
           function dropPre() {
-            if (!pre || pre.classList.contains("done")) return;
-            var wait = reduce ? 0 : Math.max(0, 420 - (Date.now() - t0));
-            setTimeout(function () { pre.classList.add("done"); }, wait);
+            if (released) return;
+            released = true;
+            // A floor of 620ms so the mark has actually been seen, then the
+            // page is released one frame before the cover starts lifting, so
+            // the entrance plays through the fade rather than behind it.
+            var wait = reduce ? 0 : Math.max(0, 620 - (Date.now() - t0));
+            setTimeout(function () {
+              document.body.classList.add("ready");
+              requestAnimationFrame(function () {
+                requestAnimationFrame(function () { if (pre) pre.classList.add("done"); });
+              });
+            }, wait);
           }
           if (document.readyState === "complete") dropPre();
           else window.addEventListener("load", dropPre);
-          setTimeout(dropPre, 1100);
+          setTimeout(dropPre, 1600);
 
           // Crossfade the backdrop. Only ever runs when more than one image
           // has been uploaded -- a single image is a still, not a slideshow.
@@ -4832,7 +4899,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .sw { width: 32px; height: 32px; border-radius: 10px; border: none; cursor: pointer; padding: 0;
           position: relative; transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s; }
         .sw:hover { transform: translateY(-2px) scale(1.05); }
-        .sw::after { content: ""; position: absolute; inset: -4px; border-radius: 13px; border: 2px solid transparent;
+        .sw::after { content: ""; position: absolute; inset: -4px; border-radius: 14px; border: 2px solid transparent;
           transition: border-color .18s; }
         .sw.on::after { border-color: currentColor; }
 
@@ -5021,12 +5088,47 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           display: flex; align-items: center; gap: 7px; }
         .prev-cap i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
+        /* Compact stand-in for the side preview, phone only. */
+        .mprev { display: none; margin-top: 18px; border: 1px solid #e9ebf1; border-radius: 16px;
+          overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(12,18,38,.05); }
+        .mprev-cover { height: 74px; background: linear-gradient(128deg, var(--accent), var(--accent-dark));
+          background-size: cover; background-position: center; }
+        .mprev-body { display: flex; align-items: center; gap: 12px; padding: 0 15px 15px; margin-top: -20px; }
+        .mprev-av { position: relative; z-index: 2; flex: 0 0 auto; width: 46px; height: 46px;
+          border-radius: 14px; border: 3px solid #fff; background: var(--accent); overflow: hidden;
+          display: flex; align-items: center; justify-content: center;
+          color: #fff; font-family: var(--font-heading); font-size: 17px; font-weight: 640; }
+        .mprev-av img { width: 100%; height: 100%; object-fit: cover; }
+        .mprev-txt { min-width: 0; padding-top: 20px; }
+        .mprev-txt b { display: block; font-family: var(--font-heading); font-size: 15px; font-weight: 640;
+          letter-spacing: -.02em; color: #0b1220; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mprev-txt span { display: block; font-size: 11.5px; color: #8b94a3; margin-top: 2px; }
+        .mprev-rows { display: flex; flex-direction: column; gap: 8px; padding: 0 15px 18px; }
+        .mprev-rows i { display: block; height: 8px; border-radius: 4px; background: #eef0f4; }
+        .mprev-rows i:nth-child(2) { width: 72%; }
+        .mprev-rows i:nth-child(3) { width: 48%; }
+
         @media (max-width: 900px) {
           body { padding: 0; align-items: stretch; }
-          .shell { max-width: none; height: 100dvh; border-radius: 0; grid-template-columns: 1fr; }
+          .mprev { display: block; }
+          .shell { max-width: none; height: 100dvh; border-radius: 0;
+            grid-template-columns: 1fr; grid-template-rows: 100%; box-shadow: none; }
           .prev { display: none; }
-          .pane { padding: 26px 22px 24px; }
-          h1 { font-size: 23px; }
+          .pane { padding: calc(22px + env(safe-area-inset-top, 0px)) 22px 0; }
+          /* Top-aligned, not centred. Centring a short screen inside a full
+             phone viewport left roughly 250px of nothing above the heading and
+             350px below the controls, which reads as an unfinished page. */
+          .body { align-content: start; padding: 22px 0 20px; }
+          .step { align-self: start; }
+          .step[data-step="0"] { align-self: center; }
+          h1 { font-size: 24px; letter-spacing: -.032em; }
+          .lede { font-size: 14.5px; margin-bottom: 22px; }
+          .foot { padding: 16px 0 calc(18px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid #f0f2f6; background: #fff; }
+          .next { padding: 13px 22px; }
+          .shots { gap: 11px; }
+          .seg button { padding: 12px 8px; }
+          .th-chip { height: 50px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .shell, .hello-mark { animation: none !important; }
@@ -5107,6 +5209,20 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                   <input type="file" id="picFile" accept="image/*" style="display:none;">
                   <input type="file" id="cvFile" accept="image/*" style="display:none;">
                   <div class="hint" id="picHint">Click either one to upload. You can change them any time.</div>
+                </div>
+                <!-- The side preview is hidden on a phone, so on a phone this
+                     card is the only way to see how the two pictures sit
+                     together. Same elements, same accent, just compact. -->
+                <div class="mprev" aria-hidden="true">
+                  <div class="mprev-cover" id="mpCover"></div>
+                  <div class="mprev-body">
+                    <div class="mprev-av" id="mpAv">${initial}</div>
+                    <div class="mprev-txt">
+                      <b>${escapeHtmlServer(seller.businessName)}</b>
+                      <span>How your profile looks</span>
+                    </div>
+                  </div>
+                  <div class="mprev-rows"><i></i><i></i><i></i></div>
                 </div>
               </div>
             </div>
@@ -5344,6 +5460,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                       pb.innerHTML = '<img src="' + src + '" alt="">';
                       document.getElementById("prevAv").innerHTML = '<img src="' + src + '" alt="">';
                       document.getElementById("ppAv").innerHTML = '<img src="' + src + '" alt="">';
+                      document.getElementById("mpAv").innerHTML = '<img src="' + src + '" alt="">';
                       document.getElementById("avTile").className = "shot-tile filled";
                       document.getElementById("avHint").textContent = "Uploaded";
                     } else {
@@ -5351,6 +5468,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                       document.getElementById("cvBox").style.backgroundImage = "url(" + src + ")";
                       document.getElementById("ppCover").style.backgroundImage = "url(" + src + ")";
                       document.getElementById("ppCover").classList.add("has-photo");
+                      document.getElementById("mpCover").style.backgroundImage = "url(" + src + ")";
                       document.getElementById("cvTile").className = "shot-tile filled";
                       document.getElementById("cvHint").textContent = "Uploaded";
                     }
@@ -6749,8 +6867,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            someone staring at it. */
         .boot { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
           background: radial-gradient(130% 100% at 50% 38%, #1c2450 0%, #0a0e22 64%);
-          transition: opacity .55s ease, visibility .55s ease; }
-        .boot.done { opacity: 0; visibility: hidden; }
+          transition: opacity .6s cubic-bezier(.4,0,.2,1), visibility .6s, transform .6s cubic-bezier(.4,0,.2,1); }
+        .boot.done { opacity: 0; visibility: hidden; transform: scale(1.03); }
+        /* Same handoff as the sign-in cover: the dashboard is held at its
+           first frame until the cover starts lifting. */
+        body:not(.ready) .app-shell, body:not(.ready) .app-shell * { animation-play-state: paused !important; }
         .boot-inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
         .boot-mark { position: relative; width: 78px; height: 78px; display: flex; align-items: center; justify-content: center; }
         .boot-mark svg { position: absolute; inset: 0; width: 78px; height: 78px; transform: rotate(-90deg); }
@@ -6962,15 +7083,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .an-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--text); }
         .an-range { flex-shrink: 0; }
         .an-range button { min-width: 46px; font-variant-numeric: tabular-nums; }
-        #analyticsEmpty { margin-bottom: 22px; }
-        .an-empty-in { display: flex; align-items: flex-start; gap: 15px; padding: 20px 22px;
-          background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); }
-        .an-empty-mark { width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0; display: flex;
-          align-items: center; justify-content: center; background: var(--accent-light); color: var(--accent); }
-        .an-empty-mark svg { width: 19px; height: 19px; }
-        .an-empty-in h3 { font-family: var(--font-heading); font-size: 15px; font-weight: 640;
-          letter-spacing: -.018em; margin: 2px 0 6px; color: var(--text); }
-        .an-empty-in p { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 62ch; }
+        #analyticsEmpty { margin-bottom: 18px; }
+        .an-empty-in { display: flex; align-items: center; gap: 13px; padding: 13px 16px;
+          background: var(--accent-light); border: 1px solid var(--accent-soft); border-radius: 13px; }
+        .an-empty-mark { width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0; display: flex;
+          align-items: center; justify-content: center; background: var(--surface); color: var(--accent);
+          box-shadow: var(--shadow-sm); }
+        .an-empty-mark svg { width: 16px; height: 16px; }
+        .an-empty-in p { font-size: 13px; line-height: 1.55; color: var(--text); margin: 0; }
         .an-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
         .an-two > * { min-width: 0; }
 
@@ -8349,7 +8469,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         </div>
         <div id="analyticsEmpty" style="display:none;"></div>
         <div class="kpi-row" id="analyticsKpis"></div>
-        <div class="catalog-card an-hide-empty">
+        <div class="catalog-card">
           <div class="card-head">
             <div>
               <h2>Revenue</h2>
@@ -8358,7 +8478,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           </div>
           <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
         </div>
-        <div class="an-two an-hide-empty">
+        <div class="an-two">
           <div class="catalog-card">
             <div class="card-head">
               <div>
@@ -8378,7 +8498,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <div id="newReturning"></div>
           </div>
         </div>
-        <div class="catalog-card an-hide-empty">
+        <div class="catalog-card">
           <div class="card-head">
             <div>
               <h2>Best sellers</h2>
@@ -10142,20 +10262,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // zero reads as a broken page, not an empty one. Say so instead.
           const anEmpty = document.getElementById("analyticsEmpty");
           const neverSold = totalOrders === 0 && totalRevenue === 0 && !prev.hasData;
+          // Hiding every card behind a notice made a new seller's analytics
+          // look broken rather than empty, and told them nothing about what
+          // the page will eventually show them. The whole page renders now;
+          // each card already has its own honest empty state, and this is a
+          // slim line above them rather than a block in place of them.
           if (anEmpty) {
             anEmpty.style.display = neverSold ? "block" : "none";
             anEmpty.innerHTML = neverSold
               ? '<div class="an-empty-in">' +
                   '<span class="an-empty-mark">' + ICON_TREND + '</span>' +
-                  '<div><h3>No sales recorded yet</h3>' +
-                  '<p>These numbers fill in on their own the first time a customer pays. ' +
-                  'Nothing here is estimated, so until then there is genuinely nothing to show.</p></div>' +
+                  '<p>Nothing has been sold in this window yet, so these are all at zero. ' +
+                  'Every figure below fills in on its own from the first payment. Nothing here is ever estimated.</p>' +
                 '</div>'
               : "";
           }
-          document.querySelectorAll(".an-hide-empty").forEach((el) => {
-            el.style.display = neverSold ? "none" : "";
-          });
 
           document.getElementById("analyticsKpis").innerHTML =
             kpi("k-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
@@ -10184,12 +10305,26 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               ).join("")
             : '<div class="empty"><div class="empty-icon">' + ICON_BOX + '</div><div class="empty-title">No sales yet</div><div class="empty-sub">Once a customer pays, your best sellers show up here.</div></div>';
 
-          document.getElementById("conversionStat").textContent = data.conversion.conversionPct + "%";
+          // With no conversations on record there is no rate to state, and
+          // "2 of 0 conversations" is not a sentence anyone should be shown.
+          // Whatever is stored is stated plainly instead of being forced into
+          // a percentage that has nothing to divide by.
+          const conv = data.conversion;
           const fill = document.getElementById("conversionFill");
-          if (fill) fill.style.width = Math.min(100, data.conversion.conversionPct) + "%";
-          document.getElementById("conversionSub").textContent =
-            data.conversion.paidCustomers + " of " + data.conversion.totalCustomers + " conversation" +
-            (data.conversion.totalCustomers === 1 ? "" : "s") + " turned into a paid order";
+          if (conv.totalCustomers > 0) {
+            document.getElementById("conversionStat").textContent = conv.conversionPct + "%";
+            if (fill) fill.style.width = Math.min(100, conv.conversionPct) + "%";
+            document.getElementById("conversionSub").textContent =
+              conv.paidCustomers + " of " + conv.totalCustomers + " conversation" +
+              (conv.totalCustomers === 1 ? "" : "s") + " turned into a paid order";
+          } else {
+            document.getElementById("conversionStat").textContent = "\u2014";
+            if (fill) fill.style.width = "0%";
+            document.getElementById("conversionSub").textContent = conv.paidCustomers > 0
+              ? conv.paidCustomers + " customer" + (conv.paidCustomers === 1 ? " has" : "s have") +
+                " paid, but no conversations are on record to measure against"
+              : "No conversations on record yet, so there is no rate to show";
+          }
         }
 
         // ---- Home tab ----------------------------------------------------
@@ -11846,6 +11981,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // on a timer, so what follows it is a filled dashboard rather than an
         // empty one. The 4s cap is the safety net, not the plan.
         (function () {
+          setTimeout(function () { document.body.classList.add("ready"); }, 5000);
           var boot = document.getElementById("boot");
           var step = document.getElementById("bootStep");
           var t0 = Date.now();
@@ -11855,7 +11991,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             down = true;
             // A floor of 900ms: dismissing a boot screen after 150ms reads as
             // a flicker, which is what makes one feel broken rather than fast.
-            setTimeout(function () { boot.classList.add("done"); }, Math.max(0, 900 - (Date.now() - t0)));
+            setTimeout(function () {
+              document.body.classList.add("ready");
+              requestAnimationFrame(function () {
+                requestAnimationFrame(function () { boot.classList.add("done"); });
+              });
+            }, Math.max(0, 900 - (Date.now() - t0)));
           }
           if (step) {
             setTimeout(function () { if (!down) step.textContent = "Loading your conversations"; }, 900);
@@ -13263,7 +13404,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 33";
+const BUILD_ROUND = "Round 34";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
