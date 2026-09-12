@@ -3940,10 +3940,17 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         /* Readability is not optional: the headline and the brand mark sit on
            top of whatever photo gets uploaded, so the scrim is sized to keep
            contrast at the two corners that carry text. */
+        /* Lighter than it was, and shaped. The first pass put a heavy flat
+           wash over the whole panel, which is why an expensive-looking
+           wallpaper came out as mud below the halfway line. Now the photo is
+           left alone through the middle and only darkened where text actually
+           sits, plus a soft pool of light behind the card cluster so it has
+           somewhere to sit rather than floating on a busy image. */
         .stage-scrim { position: absolute; inset: 0; pointer-events: none;
           background:
-            linear-gradient(180deg, rgba(6,9,26,.62) 0%, rgba(6,9,26,.18) 34%, rgba(6,9,26,.50) 72%, rgba(6,9,26,.86) 100%),
-            linear-gradient(96deg, rgba(10,8,38,.62) 0%, rgba(10,8,38,.10) 58%, transparent 100%); }
+            radial-gradient(52% 40% at 46% 40%, rgba(120,160,200,.13), transparent 72%),
+            linear-gradient(180deg, rgba(5,8,22,.50) 0%, rgba(5,8,22,.04) 26%, rgba(5,8,22,.10) 52%, rgba(5,8,22,.72) 88%, rgba(5,8,22,.88) 100%),
+            linear-gradient(96deg, rgba(6,8,28,.46) 0%, rgba(6,8,28,.04) 52%, transparent 100%); }
         .stage.has-shots .stage-glow { opacity: .42; mix-blend-mode: screen; }
         .stage.has-shots .stage-weave { opacity: .22; }
         .stage.has-shots .stage-grain { opacity: .08; }
@@ -3983,18 +3990,27 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           perspective: 1500px; perspective-origin: 62% 44%; }
         .tilt { transform-style: preserve-3d; }
         .tilt-thread { transform: rotateY(-7deg) rotateX(2.2deg); }
-        .tilt-pay    { position: absolute; left: -14px; bottom: 20%; transform: rotateY(-5deg) rotateX(1.4deg) translateZ(60px); }
-        .tilt-clock  { position: absolute; right: -16px; top: 6%;   transform: rotateY(-9deg) rotateX(1.6deg) translateZ(34px); }
-        .tilt-cat    { position: absolute; right: -6px; bottom: 6%; transform: rotateY(-8deg) rotateX(1.2deg) translateZ(52px); }
+        .tilt-pay    { position: absolute; left: -18px; bottom: 16%; transform: rotateY(-5deg) rotateX(1.4deg) translateZ(64px); }
+        .tilt-clock  { position: absolute; right: -20px; top: 10%;  transform: rotateY(-9deg) rotateX(1.6deg) translateZ(38px); }
+        /* A triangle around the window, not a pile on one corner: one card
+           high right, one low left, one high left. Anything that lands on the
+           conversation itself covers the thing the scene is meant to show. */
+        .tilt-cat    { position: absolute; left: -4%; top: 2%; transform: rotateY(-6deg) rotateX(1.2deg) translateZ(56px); }
 
-        .scene-thread { position: relative; width: min(400px, 100%); border-radius: 22px; padding: 6px 6px 10px;
-          background: linear-gradient(152deg, rgba(255,255,255,.22), rgba(255,255,255,.09) 46%, rgba(255,255,255,.13));
+        /* This one is the product, so it reads as a real application window:
+           a deep, mostly opaque surface with a slight tint of whatever is
+           behind it. White-over-dark is what turned it grey -- adding white
+           to a dark photograph can only ever produce haze. The small chips
+           below stay true glass, and the contrast between the two is the
+           hierarchy: one is the app, the others are highlights on top of it. */
+        .scene-thread { position: relative; width: min(376px, 100%); border-radius: 22px; padding: 6px 6px 10px;
+          background: linear-gradient(158deg, rgba(17,23,40,.84), rgba(10,14,28,.90) 55%, rgba(13,18,34,.86));
           box-shadow:
-            0 1px 2px rgba(3,5,20,.34),
-            0 10px 24px rgba(3,5,20,.30),
-            0 40px 84px rgba(3,5,20,.50),
-            0 0 70px -12px rgba(129,140,248,.34);
-          backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+            0 1px 2px rgba(2,4,16,.40),
+            0 12px 28px rgba(2,4,16,.36),
+            0 48px 96px rgba(2,4,16,.56),
+            0 0 90px -14px rgba(129,140,248,.30);
+          backdrop-filter: blur(28px) saturate(1.7); -webkit-backdrop-filter: blur(28px) saturate(1.7);
           animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobA 11s ease-in-out 1.2s infinite; }
         /* A lit edge, not a border. The mask leaves only the 1px ring, and the
            gradient runs bright at the top-left corner the light comes from to
@@ -4014,15 +4030,17 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .glass-sheen::after { content: ""; position: absolute; left: -30%; right: -30%; top: -60%; height: 90%;
           background: linear-gradient(103deg, transparent 34%, rgba(255,255,255,.13) 47%, rgba(255,255,255,.02) 58%, transparent 66%);
           transform: rotate(-6deg); }
-        .st-head { display: flex; align-items: center; gap: 9px; padding: 11px 14px 12px; }
+        .st-head { position: relative; display: flex; align-items: center; gap: 9px; padding: 11px 14px 12px;
+          border-radius: 17px 17px 0 0;
+          background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,0)); }
         .st-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; flex-shrink: 0;
           box-shadow: 0 0 0 3px rgba(52,211,153,.22); }
         .st-name { font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
         .st-live { margin-left: auto; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.62); }
         .st-body { position: relative; border-radius: 16px; padding: 13px 13px 14px;
           display: flex; flex-direction: column; gap: 7px;
-          background: linear-gradient(170deg, rgba(5,8,24,.42), rgba(5,8,24,.24));
-          box-shadow: inset 0 1px 1px rgba(3,5,20,.45), inset 0 -1px 0 rgba(255,255,255,.07); }
+          background: linear-gradient(172deg, rgba(3,5,18,.58), rgba(4,7,22,.38));
+          box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.06); }
         .st-row { display: flex; }
         .st-row.out, .st-row.typing { justify-content: flex-end; }
         .st-bub { max-width: 82%; padding: 8px 12px 9px; font-size: 12.8px; line-height: 1.45;
@@ -4043,13 +4061,14 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         @keyframes blip { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 
         .scene-chip { position: relative; display: flex; align-items: center; gap: 10px;
-          padding: 10px 15px 10px 11px; border-radius: 15px; white-space: nowrap;
-          background: linear-gradient(150deg, rgba(255,255,255,.26), rgba(255,255,255,.11) 52%, rgba(255,255,255,.16));
+          padding: 11px 16px 11px 12px; border-radius: 16px; white-space: nowrap;
+          background: linear-gradient(150deg, rgba(255,255,255,.10), rgba(255,255,255,.03) 55%, rgba(255,255,255,.07));
           box-shadow:
-            0 1px 2px rgba(3,5,20,.30),
-            0 8px 18px rgba(3,5,20,.26),
-            0 26px 54px rgba(3,5,20,.42);
-          backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25);
+            0 1px 2px rgba(2,4,16,.34),
+            0 10px 22px rgba(2,4,16,.30),
+            0 30px 60px rgba(2,4,16,.44);
+          backdrop-filter: blur(22px) saturate(2.1) brightness(1.28);
+          -webkit-backdrop-filter: blur(22px) saturate(2.1) brightness(1.28);
           animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 8.5s ease-in-out 1.4s infinite; }
         .chip-clock { animation-name: dealIn, bobA; animation-duration: .8s, 9.5s; }
         .chip-cat { animation-name: dealIn, bobB; animation-duration: .8s, 12s; animation-delay: var(--d), 2.6s; }
@@ -4100,12 +4119,22 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         @keyframes castB { 0%, 100% { opacity: .42; transform: scaleX(1); } 50% { opacity: .55; transform: scaleX(1.05); } }
 
         .stage-foot { max-width: 470px; padding-top: 8px; }
-        .stage-eyebrow { font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase;
-          color: rgba(199,210,254,.80); margin: 0 0 12px;
-          animation: riseIn .7s cubic-bezier(.22,1,.36,1) .44s both; }
-        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(26px, 2.5vw, 38px);
-          font-weight: 620; letter-spacing: -.042em; line-height: 1.12; margin: 0 0 20px;
-          animation: riseIn .75s cubic-bezier(.22,1,.36,1) .50s both; }
+        .stage-eyebrow { display: inline-flex; align-items: center; gap: 9px;
+          font-size: 10.5px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase;
+          color: rgba(210,218,255,.72); margin: 0 0 16px;
+          animation: riseIn .7s cubic-bezier(.22,1,.36,1) .40s both; }
+        .stage-eyebrow::before { content: ""; width: 22px; height: 1px; background: rgba(210,218,255,.45); }
+        /* Two lines with different weight and value, so the sentence has a
+           shape rather than being one even slab of bold. The first line is the
+           claim and carries the weight; the second is the turn, and stepping it
+           back is what makes the pair read as written rather than set. */
+        .stage-foot h2 { font-family: var(--font-heading); font-size: clamp(28px, 2.95vw, 46px);
+          letter-spacing: -.045em; line-height: 1.06; margin: 0 0 22px; }
+        .stage-foot h2 span { display: block; }
+        .hl-a { font-weight: 680; color: #fff;
+          animation: riseIn .8s cubic-bezier(.22,1,.36,1) .48s both; }
+        .hl-b { font-weight: 340; color: rgba(255,255,255,.76);
+          animation: riseIn .8s cubic-bezier(.22,1,.36,1) .58s both; }
         /* Two lines per item now, so the rotator carries a real claim and its
            substantiation instead of one orphaned phrase. Fixed height, because
            a block that resizes every four seconds makes the whole panel twitch. */
@@ -4222,8 +4251,8 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           .shell { grid-template-columns: 1fr; }
           .stage { min-height: 210px; padding: 22px 24px 24px; justify-content: space-between; }
           .stage-scene { display: none; }
-          .stage-foot h2 { font-size: 21px; margin-bottom: 14px; }
-          .stage-foot h2 br { display: none; }
+          .stage-foot h2 { font-size: 22px; margin-bottom: 14px; }
+          .stage-foot h2 span { display: inline; }
           .stage-eyebrow { margin-bottom: 8px; }
           .stage-lines { height: 42px; }
           .panel { padding: 34px 24px 44px; }
@@ -4244,6 +4273,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           .stage-glow, .scene-thread, .scene-chip, .st-typing i, .pre-mark, .pre-bar i { animation: none !important; }
           .shot { transition: opacity .3s ease; transform: none; }
           .shot.on { transform: none; }
+          .hl-a, .hl-b { animation: none !important; opacity: 1; transform: none; }
           .tick-path, .pulse-ring, .chip-spark i, .tilt::after { animation: none !important; }
           .tick-path { stroke-dashoffset: 0; }
           .pulse-ring { opacity: 0; }
@@ -4272,7 +4302,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           <div class="stage-scene">${scene}</div>
           <div class="stage-foot">
             <p class="stage-eyebrow">WhatsApp sales, answered for you</p>
-            <h2>Your shop keeps selling<br>while you sleep.</h2>
+            <h2><span class="hl-a">Your shop keeps selling</span><span class="hl-b">while you sleep.</span></h2>
             <div class="stage-lines" id="lines">
               <div class="stage-line on">
                 <em>Answers from your own catalogue.</em>
@@ -4748,10 +4778,28 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .ring .ring-bg { stroke: #e4e7ee; }
         .ring .ring-fg { stroke: var(--accent); stroke-dasharray: 82; transition: stroke-dashoffset .55s cubic-bezier(.22,1,.36,1); }
 
-        .body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; overflow-y: auto; padding: 8px 0; }
-        .step { display: none; animation: stepIn .5s cubic-bezier(.22,1,.36,1) both; }
-        .step.on { display: block; }
-        @keyframes stepIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+        /* Every step occupies the same grid cell, so one can genuinely leave
+           while the next arrives. display:none has no exit -- the old step
+           simply vanished and the new one appeared, which is exactly what made
+           the flow feel dry. The container sizes to the tallest step, so
+           nothing jumps as they cross. */
+        .body { flex: 1; display: grid; align-content: center; min-height: 0; padding: 8px 0; }
+        /* The movement itself is driven from JS with the Web Animations API,
+           not by a CSS transition. Measured twice: leaving the .on state did
+           not carry an opacity transition here -- the outgoing step hit 0 at
+           30ms -- so the exit never actually played. WAAPI runs both halves
+           explicitly and is the same approach the dashboard's view transition
+           already uses. */
+        .step { grid-area: 1 / 1; opacity: 0; pointer-events: none; }
+        .step.on { opacity: 1; pointer-events: auto; }
+        .step.settled { visibility: hidden; }
+        .step.on .stagger > * { animation: fieldIn .55s cubic-bezier(.22,1,.36,1) both; }
+        .step.on .stagger > *:nth-child(1) { animation-delay: .22s; }
+        .step.on .stagger > *:nth-child(2) { animation-delay: .29s; }
+        .step.on .stagger > *:nth-child(3) { animation-delay: .36s; }
+        .step.on .stagger > *:nth-child(4) { animation-delay: .43s; }
+        .step.on .stagger > *:nth-child(5) { animation-delay: .50s; }
+        @keyframes fieldIn { from { opacity: 0; transform: translateY(11px); } to { opacity: 1; transform: none; } }
         h1 { font-family: var(--font-heading); font-size: 27px; font-weight: 650; letter-spacing: -.038em;
           line-height: 1.16; margin: 0 0 7px; color: #0b1220; }
         .lede { font-size: 14px; line-height: 1.58; color: #5b6577; margin: 0 0 24px; max-width: 42ch; }
@@ -4812,9 +4860,23 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .done-mark svg { width: 12px; height: 12px; }
 
         .foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 18px; }
-        .skip { background: none; border: none; font-family: inherit; font-size: 13px; color: #8b94a3;
+        .foot-l { display: flex; align-items: center; gap: 16px; }
+        .skip, .back { background: none; border: none; font-family: inherit; font-size: 13px; color: #8b94a3;
           cursor: pointer; padding: 8px 0; transition: color .18s; }
-        .skip:hover { color: #0f1729; }
+        .skip:hover, .back:hover { color: #0f1729; }
+        .back { display: inline-flex; align-items: center; gap: 6px; }
+        .back svg { width: 13px; height: 13px; }
+        .back[hidden] { display: none; }
+        .step[data-step="0"] { display: flex; align-items: center; justify-content: center; }
+        .hello { text-align: center; padding: 8px 0; max-width: 34ch; }
+        .hello-mark { width: 62px; height: 62px; border-radius: 19px; margin: 0 auto 22px; color: #fff;
+          display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
+          font-weight: 700; font-size: 27px; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          box-shadow: 0 14px 34px var(--accent-shadow);
+          animation: helloPop .85s cubic-bezier(.22,1,.36,1) both; }
+        @keyframes helloPop { from { opacity: 0; transform: scale(.72) translateY(10px); } to { opacity: 1; transform: none; } }
+        .hello h1 { margin-bottom: 10px; }
+        .hello .lede { margin: 0 auto 4px; }
         .next { display: inline-flex; align-items: center; gap: 9px; padding: 11px 22px; border: none; cursor: pointer;
           border-radius: 11px; font-family: inherit; font-size: 14px; font-weight: 620; color: #fff;
           background: linear-gradient(135deg, var(--accent), var(--accent-dark));
@@ -4871,6 +4933,34 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .prev-in.dark .prev-tile b, .prev-in.dark .prev-card u { background: #37425a; }
         .prev-in.dark .prev-tile s, .prev-in.dark .prev-bars i { background: #232c3c; }
         .prev-in.dark .prev-bars i:nth-child(3) { background: var(--accent); }
+        /* Two surfaces in the same frame, one shown at a time. */
+        .prev-in[data-show="profile"] .prev-side,
+        .prev-in[data-show="profile"] .prev-main { display: none; }
+        .prev-in[data-show="dash"] .prev-profile { display: none; }
+        .prev-in[data-show="profile"] { grid-template-columns: 1fr; width: 430px; border-radius: 16px; }
+        .prev-in.swap { opacity: 0; transform: translateY(-50%) scale(.98); }
+        .prev-in { transition: opacity .24s ease, transform .38s cubic-bezier(.22,1,.36,1); }
+        .prev-profile { background: #fff; }
+        .pp-cover { height: 92px; background: linear-gradient(128deg, var(--accent), var(--accent-dark)); position: relative; }
+        .pp-cover::after { content: ""; position: absolute; inset: 0;
+          background: radial-gradient(60% 90% at 78% 8%, rgba(255,255,255,.30), transparent 68%); }
+        .pp-body { padding: 0 22px 24px; }
+        .pp-av { width: 58px; height: 58px; border-radius: 17px; margin-top: -29px; color: #fff; overflow: hidden;
+          display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
+          font-size: 23px; font-weight: 700; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          box-shadow: 0 0 0 4px #fff, 0 6px 16px rgba(15,23,41,.16); }
+        .pp-av img { width: 100%; height: 100%; object-fit: cover; }
+        .pp-name { font-family: var(--font-heading); font-size: 18px; font-weight: 660; letter-spacing: -.025em;
+          color: #0b1220; margin: 13px 0 5px; }
+        .pp-tag { font-size: 13.5px; line-height: 1.5; color: #4a5568; min-height: 20px;
+          transition: color .2s ease; }
+        .pp-tag.ghost, .pp-loc.ghost { color: #b6bdc9; }
+        .pp-meta { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-size: 12px; color: #7b8494; }
+        .pp-dot { width: 3px; height: 3px; border-radius: 50%; background: #c3cad5; }
+        .pp-rows { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
+        .pp-rows i { display: block; height: 9px; border-radius: 4px; background: #eef0f4; }
+        .pp-rows i:nth-child(2) { width: 72%; }
+        .pp-rows i:nth-child(3) { width: 48%; }
         .prev-cap { position: absolute; left: 44px; bottom: 26px; font-size: 11.5px; color: #8b94a3;
           display: flex; align-items: center; gap: 7px; }
         .prev-cap i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
@@ -4883,7 +4973,11 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           h1 { font-size: 23px; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .shell, .step { animation: none !important; }
+          .shell, .hello-mark { animation: none !important; }
+          .step { transition: none !important; transform: none !important; }
+          .hello-mark { animation: none !important; }
+          .step.on .stagger > * { animation: none !important; }
+          .prev-in { transition: none; }
           .sw:hover, .th:hover, .next:hover, .pic-btn:hover { transform: none; }
         }
         :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
@@ -4902,9 +4996,18 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           </div>
 
           <div class="body">
-            <div class="step on" data-step="1">
+            <div class="step on" data-step="0">
+              <div class="hello">
+                <div class="hello-mark">S</div>
+                <h1>Welcome to Stafly</h1>
+                <p class="lede">Two minutes to set up, and none of it is permanent. Everything here can be changed later.</p>
+              </div>
+            </div>
+
+            <div class="step" data-step="1">
               <h1>Make yourself at home</h1>
               <p class="lede">Pick a colour and a look for your dashboard. You can change any of this later in Settings.</p>
+              <div class="stagger">
               <div class="fld">
                 <span class="lbl">Accent colour</span>
                 <div class="swatches" id="swatches"></div>
@@ -4929,11 +5032,13 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                 </div>
                 <div class="hint" id="picHint">Optional. It shows on your dashboard, never to customers.</div>
               </div>
+              </div>
             </div>
 
             <div class="step" data-step="2">
               <h1>Tell customers who you are</h1>
               <p class="lede">Amara never writes this for you. She reads it, so what you put here is what she knows about your shop.</p>
+              <div class="stagger">
               <div class="fld">
                 <label class="lbl" for="obTagline">One line about your shop</label>
                 <input id="obTagline" maxlength="90" placeholder="${goods ? "e.g. Ready-to-wear Ankara, made in Lagos" : "e.g. One-on-one physiotherapy in Ikeja"}">
@@ -4943,12 +5048,13 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                 <input id="obLocation" maxlength="60" placeholder="e.g. Lekki, Lagos">
                 <div class="hint">Used on your profile. It helps Amara answer questions about delivery and visits.</div>
               </div>
+              </div>
             </div>
 
             <div class="step" data-step="3">
               <h1>That is you set up</h1>
               <p class="lede">Here is what happens from here, in order.</p>
-              <ul class="done-list">
+              <ul class="done-list stagger">
                 <li>
                   <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
                   <span><b>Add your ${goods ? "products" : "services"}</b>Amara answers from these and nothing else, so this is the one that matters most.</span>
@@ -4967,7 +5073,13 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           </div>
 
           <div class="foot">
-            <button type="button" class="skip" id="obSkip">Skip for now</button>
+            <div class="foot-l">
+              <button type="button" class="back" id="obBack" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"/><path d="m12 19-7-7 7-7"/></svg>
+                Back
+              </button>
+              <button type="button" class="skip" id="obSkip">Skip for now</button>
+            </div>
             <button type="button" class="next" id="obNext">
               <span id="obNextLabel">Continue</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
@@ -4976,7 +5088,21 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         </section>
 
         <section class="prev" aria-hidden="true">
-          <div class="prev-in" id="prevIn">
+          <div class="prev-in" id="prevIn" data-mode="dash" data-show="dash">
+            <div class="prev-profile" id="prevProfile">
+              <div class="pp-cover"></div>
+              <div class="pp-body">
+                <div class="pp-av" id="ppAv">${initial}</div>
+                <div class="pp-name">${escapeHtmlServer(seller.businessName)}</div>
+                <div class="pp-tag ghost" id="ppTagline">Your one line goes here</div>
+                <div class="pp-meta">
+                  <span class="pp-loc ghost" id="ppLoc">Where you are</span>
+                  <span class="pp-dot"></span>
+                  <span>Member since today</span>
+                </div>
+                <div class="pp-rows"><i></i><i></i><i></i></div>
+              </div>
+            </div>
             <div class="prev-side">
               <div class="prev-brand"><span class="prev-mark"></span><span></span></div>
               <div class="prev-me">
@@ -5000,7 +5126,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
               </div>
             </div>
           </div>
-          <div class="prev-cap"><i></i>Your dashboard, live</div>
+          <div class="prev-cap"><i></i><span id="prevCap">Your dashboard, live</span></div>
         </section>
       </div>
 
@@ -5104,6 +5230,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
                     var src = res.j.url || "";
                     document.getElementById("picBox").innerHTML = '<img src="' + src + '" alt="">';
                     document.getElementById("prevAv").innerHTML = '<img src="' + src + '" alt="">';
+                    document.getElementById("ppAv").innerHTML = '<img src="' + src + '" alt="">';
                     hint.textContent = "Looking good. You can change it any time.";
                   })
                   .catch(function () { hint.textContent = "Could not upload just now."; });
@@ -5113,16 +5240,87 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             img.src = url;
           });
 
+          // Direction matters: going forward the outgoing step leaves to the
+          // left and the new one arrives from the right, and back again in
+          // reverse. Without it, both directions look identical and the flow
+          // stops telling you which way you are moving.
+          var settleTimer = null;
+          var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           function show(n) {
+            var forward = n >= step;
+            var dir = forward ? 1 : -1;
             step = n;
             var steps = document.querySelectorAll(".step");
             for (var i = 0; i < steps.length; i++) {
-              steps[i].className = "step" + (Number(steps[i].getAttribute("data-step")) === n ? " on" : "");
+              var el = steps[i];
+              var sn = Number(el.getAttribute("data-step"));
+              var wasOn = el.classList.contains("on");
+              // Clear any fill left behind by the previous move first, or a
+              // step returned to would stay stuck at the values it exited on.
+              if (el.getAnimations) el.getAnimations().forEach(function (a) { a.cancel(); });
+              el.classList.remove("settled");
+              el.setAttribute("aria-hidden", sn === n ? "false" : "true");
+              if (sn === n) {
+                el.classList.add("on");
+                if (!reduce && el.animate) {
+                  el.animate(
+                    [{ opacity: 0, transform: "translateX(" + (dir * 28) + "px) scale(.984)" },
+                     { opacity: 1, transform: "none" }],
+                    { duration: 520, delay: 150, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" });
+                }
+              } else {
+                el.classList.remove("on");
+                if (wasOn && !reduce && el.animate) {
+                  el.animate(
+                    [{ opacity: 1, transform: "none" },
+                     { opacity: 0, transform: "translateX(" + (dir * -28) + "px) scale(.984)" }],
+                    { duration: 300, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" });
+                }
+              }
             }
+            clearTimeout(settleTimer);
+            settleTimer = setTimeout(function () {
+              var all = document.querySelectorAll(".step");
+              for (var j = 0; j < all.length; j++) {
+                if (!all[j].classList.contains("on")) all[j].classList.add("settled");
+              }
+            }, 760);
             document.getElementById("ringFg").setAttribute("stroke-dashoffset", String(82 - (82 * n) / 3));
-            nextLabel.textContent = n === 3 ? "Open my dashboard" : "Continue";
+            nextLabel.textContent = n === 3 ? "Open my dashboard" : (n === 0 ? "Let us begin" : "Continue");
+            // Hidden only on the last screen, where the primary button is
+            // already "open my dashboard". Hiding it on the opening screen
+            // left someone who does not want to do this now with no way out.
             document.getElementById("obSkip").style.visibility = n === 3 ? "hidden" : "visible";
+            document.getElementById("obBack").hidden = n <= 1;
+            setPreview(n);
             setMsg("");
+          }
+
+          // The preview is the point of the right-hand panel, so it should
+          // follow what is actually being asked for: the dashboard while they
+          // pick a look, their own profile card while they write it.
+          function setPreview(n) {
+            var wrap = document.getElementById("prevIn");
+            var card = document.getElementById("prevProfile");
+            var mode = n === 2 ? "profile" : "dash";
+            if (wrap.getAttribute("data-mode") === mode) return;
+            wrap.setAttribute("data-mode", mode);
+            wrap.classList.add("swap");
+            setTimeout(function () {
+              wrap.setAttribute("data-show", mode);
+              document.getElementById("prevCap").textContent =
+                mode === "profile" ? "Your shop profile, live" : "Your dashboard, live";
+              wrap.classList.remove("swap");
+            }, 240);
+          }
+
+          function syncProfilePreview() {
+            var t = document.getElementById("obTagline").value.trim();
+            var l = document.getElementById("obLocation").value.trim();
+            document.getElementById("ppTagline").textContent = t || "Your one line goes here";
+            document.getElementById("ppTagline").className = "pp-tag" + (t ? "" : " ghost");
+            document.getElementById("ppLoc").textContent = l || "Where you are";
+            document.getElementById("ppLoc").className = "pp-loc" + (l ? "" : " ghost");
           }
 
           function finish() {
@@ -5134,8 +5332,16 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
               .then(function () { window.location.href = "/seller/dashboard"; });
           }
 
+          document.getElementById("obBack").addEventListener("click", function () {
+            if (busy || step <= 1) return;
+            show(step - 1);
+          });
+          document.getElementById("obTagline").addEventListener("input", syncProfilePreview);
+          document.getElementById("obLocation").addEventListener("input", syncProfilePreview);
+
           nextBtn.addEventListener("click", function () {
             if (busy) return;
+            if (step === 0) return show(1);
             if (step === 1) return show(2);
             if (step === 2) {
               var tagline = document.getElementById("obTagline").value.trim();
@@ -5166,7 +5372,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             applyAccent(sa || "indigo");
             applyTheme(stheme === "dark" ? "dark" : "light");
           } catch (e) { applyAccent("indigo"); applyTheme("light"); }
-          show(1);
+          syncProfilePreview();
+          step = 0; show(0);
         })();
       </script>
     </body>
@@ -12915,7 +13122,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 30";
+const BUILD_ROUND = "Round 31";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
