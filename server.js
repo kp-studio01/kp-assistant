@@ -3711,6 +3711,17 @@ const BRAND_TOKENS_CSS = `
     --font-heading: 'Schibsted Grotesk Variable', 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
     --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* Motion, tokenised. These are the values already in use, not new ones:
+       cubic-bezier(.22,1,.36,1) appears fifty times hand-typed across this
+       file and is the house entrance curve. Naming them stops the next near
+       miss -- .15s and .18s were being used interchangeably for the same job
+       on sibling controls -- and gives one place to tune the whole product. */
+    --ease-out: cubic-bezier(.22, 1, .36, 1);
+    --ease-io: cubic-bezier(.4, 0, .2, 1);
+    --dur-press: 160ms;
+    --dur-fast: 180ms;
+    --dur-base: 220ms;
+    --dur-slow: 300ms;
     /* --navy is a structural dark surface (the sidebar, page headers), NOT a
        text colour -- it deliberately stays dark in both themes. Text uses
        --text so it can flip. */
@@ -4365,6 +4376,14 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           .panel { align-items: safe center; padding: 26px 22px 0; overflow-y: auto; }
           .panel-foot { padding: 22px 0 calc(20px + env(safe-area-inset-bottom, 0px)); }
           .card h1 { font-size: 25px; }
+        }
+
+        /* A touch screen fires a hover on tap and leaves it stuck until the
+           next tap somewhere else, so a tapped card stays lifted and a tapped
+           icon stays rotated. Colour and shadow on hover are harmless there;
+           movement is not, so movement is for pointers only. */
+        @media (hover: none), (pointer: coarse) {
+          .google-btn:hover, .submit-btn:hover { transform: none !important; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -5380,13 +5399,21 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           .seg button { padding: 12px 8px; }
           .th-chip { height: 50px; }
         }
+        /* A touch screen fires a hover on tap and leaves it stuck until the
+           next tap somewhere else, so a tapped card stays lifted and a tapped
+           icon stays rotated. Colour and shadow on hover are harmless there;
+           movement is not, so movement is for pointers only. */
+        @media (hover: none), (pointer: coarse) {
+          .sw:hover, .th:hover, .next:hover, .pic-btn:hover, .shot-tile:hover { transform: none !important; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .shell, .hello-mark { animation: none !important; }
           .step { transition: none !important; transform: none !important; }
           .hello-mark { animation: none !important; }
           .step.on .stagger > * { animation: none !important; }
           .prev-in { transition: none; }
-          .sw:hover, .th:hover, .next:hover, .pic-btn:hover { transform: none; }
+          .sw:hover, .th:hover, .next:hover, .pic-btn:hover, .shot-tile:hover { transform: none; }
         }
         :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
       </style>
@@ -6062,6 +6089,14 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
           .card { padding: 20px 18px; border-radius: 16px; }
           .facts { grid-template-columns: minmax(0, 1fr); }
         }
+        /* A touch screen fires a hover on tap and leaves it stuck until the
+           next tap somewhere else, so a tapped card stays lifted and a tapped
+           icon stays rotated. Colour and shadow on hover are harmless there;
+           movement is not, so movement is for pointers only. */
+        @media (hover: none), (pointer: coarse) {
+          .hero-cta:hover, header a:hover, .stat-tile:hover { transform: none !important; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .anim, .meter i, .hero-glow { animation: none !important; }
           .meter i { width: var(--w); }
@@ -6774,14 +6809,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
         .topbar-date-chip svg { width: 13px; height: 13px; flex-shrink: 0; }
         .theme-toggle { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .15s, color .15s, border-color .15s, transform .25s ease; }
-        .theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: rotate(18deg); }
+        /* Every other hover in this dashboard is a 1-3px lift. An 18-degree
+           rotation on permanent topbar chrome was the only rotation in the app. */
+        .theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
         .theme-toggle svg { width: 16px; height: 16px; }
         .theme-toggle .theme-icon-moon { display: none; }
         [data-theme="dark"] .theme-toggle .theme-icon-sun { display: none; }
         [data-theme="dark"] .theme-toggle .theme-icon-moon { display: block; }
         .hamburger-btn { display: none; background: transparent; border: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; color: var(--text); flex-shrink: 0; }
         .hamburger-btn svg { width: 20px; height: 20px; }
+        .hamburger-btn { transition: transform var(--dur-press) var(--ease-out), background var(--dur-fast) ease; }
         .hamburger-btn:hover { background: var(--border-light); }
+        .hamburger-btn:active { transform: scale(0.97); }
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
@@ -6819,13 +6858,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            active one is marked by a rail plus a soft tinted fill rather than
            a solid block of brand colour. */
         nav.tabs button { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: transparent; border: none; color: rgba(255,255,255,0.62); padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .18s ease, color .18s ease, transform .18s ease; }
-        nav.tabs button::before { content: ""; position: absolute; left: -12px; top: 50%; width: 3px; height: 0; border-radius: 0 3px 3px 0; background: #a5b4fc; transform: translateY(-50%); transition: height .22s cubic-bezier(.4,0,.2,1); }
+        /* scaleY on a fixed-height rail, matching .list-item::before. The same
+           indicator was written twice, once as a transform and once as an
+           animated height -- and height is layout, on a control pressed all day. */
+        nav.tabs button::before { content: ""; position: absolute; left: -12px; top: 50%; width: 3px; height: 20px; border-radius: 0 3px 3px 0; background: #a5b4fc; transform: translateY(-50%) scaleY(0); transition: transform var(--dur-base) var(--ease-out); }
         nav.tabs button .nav-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(255,255,255,0.06); transition: background .18s ease, color .18s ease; }
         nav.tabs button svg { width: 15px; height: 15px; flex-shrink: 0; }
         nav.tabs button:hover { background: rgba(255,255,255,0.05); color: #fff; }
         nav.tabs button:hover .nav-icon { background: rgba(255,255,255,0.11); }
         nav.tabs button.active-tab { background: rgba(99,102,241,0.20); color: #fff; font-weight: 600; }
-        nav.tabs button.active-tab::before { height: 20px; }
+        nav.tabs button.active-tab::before { transform: translateY(-50%) scaleY(1); }
         nav.tabs button.active-tab .nav-icon { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; box-shadow: 0 3px 10px var(--accent-shadow-strong); }
         .sidebar-footer { margin-top: auto; padding: 16px 12px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
         .sidebar-footer .live-indicator { margin: 0 8px 2px; align-self: flex-start; }
@@ -6855,7 +6897,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .stat-tile .stat-label { font-size: 11.5px; color: var(--muted); margin-top: 5px; white-space: nowrap; font-weight: 500; }
         .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tile-bg); color: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-bg); transition: transform .2s ease; }
-        .stat-tile:hover .stat-icon { transform: scale(1.08) rotate(-4deg); }
+        .stat-tile:hover .stat-icon { transform: scale(1.06); }
         .stat-tile .stat-icon svg { width: 20px; height: 20px; }
         .layout { display: flex; flex: 1; min-height: 0; }
         .list-pane { width: 320px; border-right: 1px solid var(--border); background: var(--surface); flex-shrink: 0; display: flex; flex-direction: column; }
@@ -6889,22 +6931,31 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* The row you click to open a thread. The accent rail on the left is
            what makes "which conversation am I in" readable at a glance -- it
            grows in rather than snapping, and hover previews it faintly. */
-        .list-item { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px 13px 18px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background .18s ease, padding-left .18s ease; }
-        .list-item::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); transform: scaleY(0); transform-origin: center; transition: transform .22s cubic-bezier(.4,0,.2,1); }
-        .list-item:hover { background: var(--surface-2); padding-left: 21px; }
+        /* The 3px shift used to be an animated padding-left, which runs layout,
+           paint and composite on every row of a scrolling list. Same movement,
+           as a transform on the row's text, at a fraction of the cost. */
+        .list-item { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px 13px 18px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background var(--dur-fast) ease; }
+        .list-item-body { transition: transform var(--dur-fast) ease; }
+        .list-item::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); transform: scaleY(0); transform-origin: center; transition: transform var(--dur-base) var(--ease-out); }
+        .list-item:hover { background: var(--surface-2); }
         .list-item:hover::before { transform: scaleY(0.5); opacity: 0.45; }
         .list-item:active { background: var(--surface-3); }
-        .list-item.active-row { background: var(--accent-light); padding-left: 21px; }
+        .list-item:active .list-item-body { transform: scale(0.985); }
+        .list-item.active-row { background: var(--accent-light); }
+        .list-item:hover .list-item-body, .list-item.active-row .list-item-body { transform: translateX(3px); }
         .list-item.active-row::before { transform: scaleY(1); opacity: 1; }
         .list-item .list-avatar { transition: transform .2s ease; }
         .list-item:hover .list-avatar { transform: scale(1.06); }
         /* Rows stagger in when the list (re)renders, so switching a filter
            reads as the list rebuilding rather than snapping. */
         @keyframes rowIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-        .list-item.row-in { animation: rowIn .26s ease-out backwards; }
+        .list-item.row-in { animation: rowIn .26s var(--ease-out) backwards; }
         @media (prefers-reduced-motion: reduce) {
           .list-item.row-in, .stat-tile.tile-in, .msg-row.bubble-in { animation: none; }
-          .list-item, .list-item::before, .list-avatar, .stat-tile, .stat-icon { transition: none; }
+          /* Movement goes; the background fade that confirms which conversation
+             you just picked stays. Reduced motion is fewer and gentler, not none. */
+          .list-item::before, .list-avatar, .stat-icon, .list-item-body { transition: none; transform: none !important; }
+          .list-item, .stat-tile { transition: background .18s ease, border-color .18s ease; transform: none !important; }
         }
         .list-avatar { position: relative; width: 42px; height: 42px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; box-shadow: 0 1px 2px rgba(15,23,42,0.15); }
         .list-avatar svg { width: 22px; height: 22px; opacity: 0.95; }
@@ -7038,7 +7089,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .more-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); min-width: 190px; z-index: 20; overflow: hidden; }
         .more-menu-dropdown.open { display: block; }
         .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--text); cursor: pointer; font-family: inherit; }
+        .more-menu-dropdown button { transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         .more-menu-dropdown button:hover { background: var(--surface-2); }
+        .more-menu-dropdown button:active { transform: scale(0.98); }
         .more-menu-dropdown button.menu-danger { color: var(--danger); border-top: 1px solid var(--border-light); }
         .more-menu-dropdown button.menu-danger:hover { background: var(--dang-bg); }
         /* Only shown where the matching icon button has been hidden. */
@@ -7143,7 +7196,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           font-size: 21px; color: #fff; background: linear-gradient(140deg, #6366f1, #4338ca);
           box-shadow: 0 12px 34px rgba(79,70,229,.5);
           animation: bootPop .8s cubic-bezier(.22,1,.36,1) both; }
-        @keyframes bootPop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+        /* Every other scale in this product lives between .96 and .99. A .7
+           pop is a different product's vocabulary, and this one fires on every
+           dashboard load. */
+        @keyframes bootPop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
         .boot-name { margin-top: 20px; font-family: var(--font-heading); font-size: 17px; font-weight: 620;
           letter-spacing: -.02em; color: #fff; animation: riseUp .7s cubic-bezier(.22,1,.36,1) .18s both; }
         .boot-step { margin-top: 7px; font-size: 12.5px; color: rgba(255,255,255,.52);
@@ -7173,10 +7229,51 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-btn:active, .btn-quiet:active, .icon-btn:active,
         .sidebar-footer-link:active, .swatch:active { transform: scale(0.96); }
         .sidebar-footer-link { transition: background .15s, color .15s, transform .12s ease; }
-        .cat-chip, .swatch, .btn-quiet, .icon-btn { transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s ease; }
+        .cat-chip, .swatch, .btn-quiet, .icon-btn { transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform var(--dur-press) var(--ease-out); }
+        /* .list-tab and .seg-control button carry an :active scale but neither
+           listed transform in its transition, so both snapped in and out. */
+        .list-tab { transition-property: background, color, box-shadow, transform; transition-duration: var(--dur-fast), var(--dur-fast), var(--dur-fast), var(--dur-press); transition-timing-function: ease, ease, ease, var(--ease-out); }
+        /* A touch screen fires a hover on tap and leaves it stuck until the
+           next tap somewhere else, so a tapped card stays lifted and a tapped
+           icon stays rotated. Colour and shadow on hover are harmless there;
+           movement is not, so movement is for pointers only. */
+        @media (hover: none), (pointer: coarse) {
+          .theme-toggle:hover, .stat-tile:hover, .stat-tile:hover .stat-icon,
+          .list-item:hover .list-avatar, .list-item:hover .list-item-body,
+          .list-item:hover::before,
+          button.takeover-btn:hover, .catalog-btn:hover,
+          .kpi-card:hover, .kpi-card:hover .kpi-mark,
+          .dow:hover .dow-bar, .product-card:hover, .swatch:hover,
+          .msg-send-btn:hover, .htile:hover,
+          .ptile:hover .ptile-img, .ptile:hover .ptile-img img { transform: none !important; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           nav.tabs button:active, .list-tab:active, .cat-chip:active, .seg-control button:active,
-          .catalog-btn:active, .btn-quiet:active, .icon-btn:active, .sidebar-footer-link:active, .swatch:active { transform: none; }
+          .catalog-btn:active, .btn-quiet:active, .icon-btn:active, .sidebar-footer-link:active, .swatch:active,
+          .msg-send-btn:active:not(:disabled), .hamburger-btn:active, .more-menu-dropdown button:active,
+          .list-item:active .list-item-body { transform: none; }
+          /* The two largest position changes in the dashboard -- the phone
+             drawer and the phone master/detail slide -- were covered by none of
+             the reduced-motion blocks, which is exactly what "remove position
+             changes" means. Nor were the card lifts, the meters or the rings. */
+          /* Weighted, because the mobile rules for .sidebar and the pane
+             slides are declared further down the sheet and would otherwise win
+             on source order -- a reduced-motion override that loses a
+             specificity race is the same as not having written it. */
+          .sidebar { transition: none !important; }
+          .layout.thread-open .main, .layout:not(.thread-open) .list-pane { animation: none !important; }
+          .kpi-card, .kpi-mark, .htile, .product-card, .theme-toggle,
+          .ptile-img, .ptile-img img, .ptile-price, .dow-bar { transition: none !important; }
+          .kpi-card:hover, .kpi-card:hover .kpi-mark, .htile:hover, .product-card:hover,
+          .theme-toggle:hover, .dow:hover .dow-bar, .msg-send-btn:hover,
+          .ptile:hover .ptile-img, .ptile:hover .ptile-img img { transform: none !important; }
+          .ptile-price { opacity: 1; transform: none !important; }
+          .nr-seg, .conversion-fill, .setup-bar-fill, .wk-bar,
+          .ring-badge .fill, .health-ring .fill { transition: none !important; }
+          .boot { transition: opacity .3s ease, visibility .3s !important; }
+          .boot.done { transform: none !important; }
+          .spinner { animation-duration: 2.4s; }
         }
         /* Two separate things caused the box that flashed on click:
            the mobile tap highlight, and a focus ring left behind after a
@@ -7189,7 +7286,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            its real shape instead of collapsing to a spinner and jumping. */
         @keyframes shimmer { from { background-position: -200px 0; } to { background-position: calc(200px + 100%) 0; } }
         .skeleton-row { display: flex; align-items: flex-start; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border-light); }
-        .sk { background: var(--surface-3); background-image: linear-gradient(90deg, transparent, var(--border-light), transparent); background-size: 200px 100%; background-repeat: no-repeat; animation: shimmer 1.2s ease-in-out infinite; border-radius: 6px; }
+        .sk { background: var(--surface-3); background-image: linear-gradient(90deg, transparent, var(--border-light), transparent); background-size: 200px 100%; background-repeat: no-repeat; animation: shimmer 1.2s linear infinite; border-radius: 6px; }
         .sk-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
         .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; padding-top: 3px; }
         .sk-line { height: 10px; }
@@ -7203,7 +7300,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .inline-panel { animation: none; }
         }
         @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .stat-tile.tile-in { animation: tileIn 0.4s ease-out backwards; }
+        .stat-tile.tile-in { animation: tileIn var(--dur-slow) var(--ease-out) backwards; }
         /* A newly arrived message lands from its own side, so you can see
            where it came from rather than it just appearing. */
         @keyframes bubbleInLeft { from { opacity: 0; transform: translateY(8px) translateX(-6px); } to { opacity: 1; transform: none; } }
@@ -7310,7 +7407,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-card::after { content: ""; position: absolute; inset: 0; background: radial-gradient(125% 95% at 100% 0%, var(--tint-bg), transparent 60%); opacity: 0.8; pointer-events: none; }
         .kpi-card > * { position: relative; z-index: 1; }
         .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--tint); }
-        .kpi-card:hover .kpi-mark { transform: scale(1.08) rotate(-5deg); }
+        .kpi-card:hover .kpi-mark { transform: scale(1.06); }
         .kpi-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
         .kpi-mark { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tint-bg); color: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-bg); transition: transform .25s cubic-bezier(.22,1,.36,1); }
         .kpi-mark svg { width: 15px; height: 15px; }
@@ -7365,7 +7462,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .dow { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
         .dow-slot { position: relative; width: 100%; height: 100px; display: flex; align-items: flex-end; }
         .dow-slot::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--border); }
-        .dow-bar { position: relative; z-index: 1; width: 100%; min-height: 3px; border-radius: 8px 8px 3px 3px; background: linear-gradient(to top, var(--accent-soft), var(--accent-light)); box-shadow: inset 0 0 0 1px var(--accent-light); transition: height .7s cubic-bezier(.22,1,.36,1), transform .2s ease, box-shadow .2s ease; }
+        .dow-bar { position: relative; z-index: 1; width: 100%; min-height: 3px; border-radius: 8px 8px 3px 3px; background: linear-gradient(to top, var(--accent-soft), var(--accent-light)); box-shadow: inset 0 0 0 1px var(--accent-light); transition: height var(--dur-slow) var(--ease-out), transform .2s ease, box-shadow .2s ease; }
         .dow.is-zero .dow-bar { background: var(--surface-3); box-shadow: none; border-radius: 3px; }
         .dow.is-best .dow-bar { background: linear-gradient(to top, var(--accent-dark), var(--accent)); box-shadow: 0 4px 12px var(--accent-shadow); }
         .dow:hover .dow-bar { transform: translateY(-3px); }
@@ -7379,7 +7476,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .dow-note b { color: var(--text); }
 
         .nr-bar { display: flex; gap: 3px; height: 14px; margin-top: 20px; }
-        .nr-seg { height: 100%; border-radius: 999px; min-width: 0; transition: width .7s cubic-bezier(.22,1,.36,1); }
+        .nr-seg { height: 100%; border-radius: 999px; min-width: 0; transition: width var(--dur-slow) var(--ease-out); }
         .nr-seg.nr-new { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); box-shadow: 0 2px 8px var(--accent-shadow); }
         .nr-seg.nr-ret { background: linear-gradient(90deg, var(--ok-fg), var(--ok-fg)); }
         .nr-legend { display: flex; gap: 22px; margin-top: 16px; flex-wrap: wrap; }
@@ -7402,7 +7499,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .seller-units { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
         .conversion-block { display: flex; flex-direction: column; gap: 10px; }
         .conversion-meter { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
-        .conversion-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width .5s cubic-bezier(.4,0,.2,1); }
+        .conversion-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width var(--dur-slow) var(--ease-out); }
         .card-head-products > div:last-child { display: flex; align-items: center; }
         /* Products as cards led by their photo -- that photo is exactly what
            Amara sends a customer, so it's the thing worth recognising. */
@@ -7563,7 +7660,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .setting-static { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; flex-shrink: 0; }
         .setting-note { font-size: 12px; color: var(--muted); line-height: 1.55; margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
         .seg-control { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-3); border-radius: 10px; flex-shrink: 0; }
-        .seg-control button { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: background .15s, color .15s, box-shadow .15s; }
+        .seg-control button { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: background .15s, color .15s, box-shadow .15s, transform var(--dur-press) var(--ease-out); }
         .seg-control button:hover { color: var(--text); }
         .seg-control button.seg-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
         .swatches { display: flex; gap: 7px; flex-shrink: 0; }
@@ -7627,7 +7724,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .msg-compose textarea:focus { outline: none; }
         .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
         .msg-send-btn svg { width: 17px; height: 17px; }
+        .msg-send-btn { transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-fast) ease; }
         .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px var(--accent-shadow-strong); }
+        /* The most-pressed control in the product had a hover and a disabled
+           state but nothing for the press itself, and on a phone hover never
+           happens -- so sending a message acknowledged nothing at all. */
+        .msg-send-btn:active:not(:disabled) { transform: scale(0.97); }
         .msg-send-btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
         .notes-box-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .trend-chart-wrap { position: relative; height: 240px; padding-top: 8px; }
@@ -7746,7 +7848,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .setup-sub { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.55; max-width: 60ch; }
         .setup-progress { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
         .setup-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
-        .setup-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width .5s cubic-bezier(.22,1,.36,1); }
+        .setup-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width var(--dur-slow) var(--ease-out); }
         .setup-progress-text { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
         .setup-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 15px; }
         .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); padding: 9px 11px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-2); transition: border-color .15s, background .15s, transform .12s ease; }
@@ -7796,7 +7898,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-chart { display: flex; align-items: flex-end; gap: 7px; height: 92px; margin-top: 16px; }
         .wk-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; height: 100%; }
         .wk-bar-slot { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
-        .wk-bar { width: 100%; border-radius: 8px; background: linear-gradient(to top, var(--accent-dark), var(--accent)); transition: height .55s cubic-bezier(.22,1,.36,1); }
+        .wk-bar { width: 100%; border-radius: 8px; background: linear-gradient(to top, var(--accent-dark), var(--accent)); transition: height var(--dur-slow) var(--ease-out); }
         .wk-col.is-today .wk-bar-slot { box-shadow: inset 0 0 0 1.5px var(--accent-soft); }
         .wk-day { font-size: 10.5px; font-weight: 600; color: var(--muted-2); }
         .wk-col.is-today .wk-day { color: var(--accent); }
@@ -7813,7 +7915,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .ring-badge { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
         .ring-badge svg { width: 44px; height: 44px; transform: rotate(-90deg); }
         .ring-badge .track { fill: none; stroke: var(--surface-3); stroke-width: 4.5; }
-        .ring-badge .fill { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke-dashoffset .9s cubic-bezier(.22,1,.36,1); }
+        .ring-badge .fill { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .ring-badge b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 12.5px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
         .ring-badge b i { font-style: normal; font-size: 8px; margin-left: 0.5px; color: var(--muted-2); }
 
@@ -7875,7 +7977,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .health-ring { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
         .health-ring svg { width: 74px; height: 74px; transform: rotate(-90deg); }
         .health-ring .track { fill: none; stroke: var(--surface-3); stroke-width: 8; }
-        .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.22,1,.36,1); }
+        .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .health-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .health-num b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
         .health-num span { font-size: 9.5px; color: var(--muted-2); margin-top: 2px; }
@@ -8831,7 +8933,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             if (!el.isConnected) return;
             if (el.animate && !reduce) {
               const out = el.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(" + (fromY / 2) + "px)" }],
-                { duration: 200, easing: "ease-in", fill: "both" });
+                { duration: 200, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" });
               out.finished.then(() => el.remove()).catch(() => el.remove());
             } else {
               el.remove();
@@ -10415,7 +10517,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // after a tab transition on a phone that is a second of extra
               // frames for a chart the seller is already looking at, and it
               // measured as a 113ms frame. The chart appears drawn instead.
-              animation: narrow ? false : { duration: 400 },
+              // Every other JS motion site in this file checks the query; this one
+          // was gated on viewport width only, so a desktop user with reduced
+          // motion set still got the line drawn.
+          animation: (narrow || prefersReducedMotion()) ? false : { duration: 400 },
               interaction: { mode: "index", intersect: false },
               plugins: {
                 legend: { display: false },
@@ -10986,7 +11091,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             if (!el.animate) return;
             el.animate(
               [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }],
-              { duration: 300, delay: i * 40, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+              { duration: 300, delay: Math.min(i * 40, 200), easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
             );
           });
           // The four numbers count up, and their tiles land one after another
@@ -10995,15 +11100,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             if (!el.animate) return;
             el.animate(
               [{ opacity: 0, transform: "translateY(8px) scale(0.985)" }, { opacity: 1, transform: "none" }],
-              { duration: 320, delay: 160 + i * 45, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+              { duration: 320, delay: 120 + Math.min(i * 40, 160), easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
             );
           });
-          // Product tiles deal in from the left, in order.
+          // Clamped, and starting alongside the other groups rather than after
+          // them. Chained unclamped delays left the last product tile at
+          // opacity 0 until 815ms on a ten-product shop -- while it was already
+          // clickable, because fill: "both" hides an element without taking it
+          // out of hit-testing. Nothing here is invisible past about 460ms now.
           host.querySelectorAll(".ptile").forEach((el, i) => {
             if (!el.animate) return;
             el.animate(
               [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }],
-              { duration: 300, delay: 320 + i * 55, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+              { duration: 300, delay: 160 + Math.min(i * 40, 200), easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
             );
           });
           // The week bars grow from the baseline instead of appearing at full
@@ -11014,7 +11123,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             el.style.transformOrigin = "bottom";
             el.animate(
               [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }],
-              { duration: 520, delay: 300 + i * 50, easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+              { duration: 420, delay: 160 + Math.min(i * 32, 192), easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
             );
           });
         }
@@ -13655,7 +13764,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 35";
+const BUILD_ROUND = "Round 36";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
