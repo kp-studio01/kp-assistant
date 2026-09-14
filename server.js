@@ -3725,22 +3725,35 @@ const BRAND_TOKENS_CSS = `
     /* --navy is a structural dark surface (the sidebar, page headers), NOT a
        text colour -- it deliberately stays dark in both themes. Text uses
        --text so it can flip. */
-    --navy: #1e293b;
-    --accent: #4f46e5;
-    --accent-dark: #4338ca;
-    --accent-light: #eef2ff;
-    --accent-soft: #e0e7ff;
-    --bg: #f8fafc;
-    --surface: #ffffff;
-    --surface-2: #f8fafc;
-    --surface-3: #eef1f6;
-    --chat-bg: #f1f4f9;
-    --border: #e2e8f0;
-    --border-light: #f1f5f9;
-    --border-strong: #cbd5e1;
-    --muted: #64748b;
-    --muted-2: #94a3b8;
-    --text: #1e293b;
+    --navy: #221D18;
+    /* Stafly's own colour, kept separate from --accent. --accent is whatever
+       the SELLER picked for their dashboard and is rewritten at runtime;
+       --brand is the company and never changes. Green is deliberately not the
+       brand: it is reserved for one job, "connected, live, Amara is
+       answering", which is what green already means inside WhatsApp. Two
+       colours, two jobs, they never compete. */
+    --brand: #BC4B2A;
+    --brand-dark: #9E3D21;
+    --brand-light: #FBF0EB;
+    --accent: #BC4B2A;
+    --accent-dark: #9E3D21;
+    --accent-light: #FBF0EB;
+    --accent-soft: #F4DED5;
+    /* Every neutral below used to be a Tailwind slate value -- #f8fafc,
+       #e2e8f0, #64748b, #1e293b -- which is the default palette of every
+       generated dashboard on the internet. Same lightness, hue moved off
+       blue and onto warm. */
+    --bg: #F6F3ED;
+    --surface: #FFFDFA;
+    --surface-2: #F3EFE8;
+    --surface-3: #EBE5DB;
+    --chat-bg: #F0ECE3;
+    --border: #E4DDD1;
+    --border-light: #F0ECE3;
+    --border-strong: #CFC5B5;
+    --muted: #7A7268;
+    --muted-2: #A39A8E;
+    --text: #221D18;
     --danger: #dc2626;
     --danger-bg: #fef2f2;
     --success: #15803d;
@@ -3766,34 +3779,37 @@ const BRAND_TOKENS_CSS = `
     /* Tinted glow under accent-coloured controls. Set from the chosen
        accent at runtime (see applyAccent) so a teal button never keeps
        an indigo halo. */
-    --accent-shadow: rgba(79,70,229,0.30);
-    --accent-shadow-strong: rgba(79,70,229,0.45);
+    --accent-shadow: rgba(188,75,42,0.30);
+    --accent-shadow-strong: rgba(188,75,42,0.45);
     /* Focus was a full-strength accent border, which on a white field reads as
        a hard bright line the moment you click anything. A softened edge plus a
        faint halo says the same thing at a normal speaking volume. */
-    --focus-edge: rgba(79,70,229,0.38);
-    --focus-ring: rgba(79,70,229,0.10);
-    --chat-doodle: %23b9c6dc;
+    --focus-edge: rgba(188,75,42,0.38);
+    --focus-ring: rgba(188,75,42,0.10);
+    --chat-doodle: %23cfc5b5;
   }
   /* Dark theme. Applied by setting data-theme="dark" on <html>; every colour
      below is a token override, so no component needs a dark-specific rule. */
   [data-theme="dark"] {
-    --navy: #0b0f17;
-    --accent: #6366f1;
-    --accent-dark: #4f46e5;
-    --accent-light: #1e2440;
-    --accent-soft: #2a3157;
-    --bg: #0d1117;
-    --surface: #161b26;
-    --surface-2: #1c2331;
-    --surface-3: #232b3a;
-    --chat-bg: #0f141d;
-    --border: #2a3242;
-    --border-light: #222937;
-    --border-strong: #3a4457;
-    --muted: #94a3b8;
-    --muted-2: #6b7a90;
-    --text: #e6ecf7;
+    --navy: #0F0D0B;
+    --brand: #E0714B;
+    --brand-dark: #C4552F;
+    --brand-light: #2C1B14;
+    --accent: #E0714B;
+    --accent-dark: #C4552F;
+    --accent-light: #2C1B14;
+    --accent-soft: #3A241A;
+    --bg: #12100D;
+    --surface: #1B1814;
+    --surface-2: #221E19;
+    --surface-3: #2B2620;
+    --chat-bg: #141210;
+    --border: #322C25;
+    --border-light: #29241E;
+    --border-strong: #463E34;
+    --muted: #A39A8E;
+    --muted-2: #7A7268;
+    --text: #F2EDE4;
     --danger: #f87171;
     --danger-bg: #2a1315;
     --success: #4ade80;
@@ -3819,11 +3835,11 @@ const BRAND_TOKENS_CSS = `
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.28);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.34);
     --shadow-lg: 0 12px 30px rgba(0,0,0,0.42);
-    --accent-shadow: rgba(99,102,241,0.22);
-    --accent-shadow-strong: rgba(99,102,241,0.34);
-    --focus-edge: rgba(99,102,241,0.44);
-    --focus-ring: rgba(99,102,241,0.14);
-    --chat-doodle: %232b3446;
+    --accent-shadow: rgba(224,113,75,0.22);
+    --accent-shadow-strong: rgba(224,113,75,0.34);
+    --focus-edge: rgba(224,113,75,0.44);
+    --focus-ring: rgba(224,113,75,0.14);
+    --chat-doodle: %23463e34;
   }
 `;
 
@@ -5611,6 +5627,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           // Same palette and the same two storage keys the dashboard's Settings
           // page uses, so a choice made here is the choice it reads later.
           var ACCENTS = [
+            { id: "clay",   base: "#BC4B2A", dark: "#9E3D21", light: "#FBF0EB", soft: "#F4DED5", rgb: "188,75,42" },
             { id: "indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", rgb: "79,70,229" },
             { id: "teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", rgb: "13,148,136" },
             { id: "blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", rgb: "37,99,235" },
@@ -5624,7 +5641,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
             a.edge   = "rgba(" + a.rgb + ",.38)";
             a.ring   = "rgba(" + a.rgb + ",.10)";
           });
-          var accent = "indigo", theme = "light", step = 1, busy = false;
+          var accent = "clay", theme = "light", step = 1, busy = false;
           var root = document.documentElement;
           var msg = document.getElementById("obMsg");
           var nextBtn = document.getElementById("obNext");
@@ -5903,10 +5920,10 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           try {
             var sa = localStorage.getItem("stafly-accent");
             var stheme = localStorage.getItem("stafly-theme");
-            applyAccent(sa || "indigo");
+            applyAccent(sa || "clay");
             applyTheme(stheme === "dark" ? "dark" : "light");
             applyDensity(localStorage.getItem("stafly-density") === "compact" ? "compact" : "comfortable");
-          } catch (e) { applyAccent("indigo"); applyTheme("light"); applyDensity("comfortable"); }
+          } catch (e) { applyAccent("clay"); applyTheme("light"); applyDensity("comfortable"); }
           syncProfilePreview();
           step = 0; show(0);
         })();
@@ -6883,15 +6900,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Each tile carries its own hue through one --tile/--tile-bg pair, so
            the four read as a balanced set instead of indigo twice plus two
            odd ones. Everything below is driven off those two variables. */
-        .stat-tile { position: relative; overflow: hidden; --tile: var(--accent); --tile-bg: var(--accent-light); }
-        .stat-tile.tile-total { --tile: var(--accent); --tile-bg: var(--accent-light); }
-        .stat-tile.tile-active { --tile: var(--ok-fg); --tile-bg: var(--ok-bg); }
-        .stat-tile.tile-paused { --tile: var(--warn-fg); --tile-bg: var(--warn-bg); }
-        .stat-tile.tile-revenue { --tile: var(--info-fg); --tile-bg: var(--info-bg); }
+        /* One hue on the row, not four. Teal, green, amber and blue across a
+           single strip of tiles is four colours doing no work -- the tile
+           already says what it is in words. The rail stays because it marks
+           the row; the tinted blob behind the icon was decoration. */
+        .stat-tile { position: relative; overflow: hidden; --tile: var(--accent); --tile-bg: transparent; }
+        .stat-tile.tile-total, .stat-tile.tile-active,
+        .stat-tile.tile-paused, .stat-tile.tile-revenue { --tile: var(--accent); --tile-bg: transparent; }
         .stat-tile::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tile); opacity: 0.85; }
         /* A soft wash of the tile's own hue behind the icon -- depth without
            another border or shadow. */
-        .stat-tile::after { content: ""; position: absolute; right: -34px; top: -44px; width: 108px; height: 108px; border-radius: 50%; background: var(--tile-bg); opacity: 0.45; pointer-events: none; }
+        .stat-tile::after { content: none; }
         .stat-tile > * { position: relative; z-index: 1; }
         .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tile); }
         .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
@@ -7399,12 +7418,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-row > * { min-width: 0; }
         @media (min-width: 1080px) { .kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
         .kpi-card { position: relative; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px 15px; box-shadow: var(--shadow-sm); overflow: hidden; --tint: var(--accent); --tint-bg: var(--accent-light); transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease, border-color .2s ease; }
-        .kpi-card.k-revenue { --tint: var(--info-fg); --tint-bg: var(--info-bg); }
-        .kpi-card.k-orders { --tint: var(--accent); --tint-bg: var(--accent-light); }
-        .kpi-card.k-average { --tint: var(--ok-fg); --tint-bg: var(--ok-bg); }
-        .kpi-card.k-best { --tint: var(--warn-fg); --tint-bg: var(--warn-bg); }
+        .kpi-card.k-revenue, .kpi-card.k-orders,
+        .kpi-card.k-average, .kpi-card.k-best { --tint: var(--accent); --tint-bg: transparent; }
         .kpi-card::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: var(--tint); opacity: 0.9; }
-        .kpi-card::after { content: ""; position: absolute; inset: 0; background: radial-gradient(125% 95% at 100% 0%, var(--tint-bg), transparent 60%); opacity: 0.8; pointer-events: none; }
+        .kpi-card::after { content: none; }
         .kpi-card > * { position: relative; z-index: 1; }
         .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--tint); }
         .kpi-card:hover .kpi-mark { transform: scale(1.06); }
@@ -7878,11 +7895,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            next to the value and the two text lines stack cleanly beneath. */
         .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 13px; margin-bottom: 26px; }
         .htile { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 17px 15px; box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; --tint: var(--accent); --tint-bg: var(--accent-light); }
-        .htile.t-total { --tint: var(--accent); --tint-bg: var(--accent-light); }
-        .htile.t-active { --tint: var(--ok-fg); --tint-bg: var(--ok-bg); }
-        .htile.t-paused { --tint: var(--warn-fg); --tint-bg: var(--warn-bg); }
-        .htile.t-revenue { --tint: var(--info-fg); --tint-bg: var(--info-bg); }
-        .htile::after { content: ""; position: absolute; right: -40px; top: -48px; width: 104px; height: 104px; border-radius: 50%; background: var(--tint-bg); opacity: 0.42; pointer-events: none; }
+        /* One hue on the row, not four. Teal, green, amber and blue across a
+           single strip of tiles is four colours doing no work -- each tile
+           already says what it is in words. The tinted blob behind the icon
+           was decoration, which is the tell this palette is meant to remove. */
+        .htile.t-total, .htile.t-active, .htile.t-paused, .htile.t-revenue { --tint: var(--accent); --tint-bg: transparent; }
+        .htile::after { content: none; }
         .htile > * { position: relative; z-index: 1; }
         .htile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tint); }
         .htile-top { display: flex; align-items: center; gap: 10px; }
@@ -10091,6 +10109,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Overrides the three accent tokens at the document level, so every
         // component that already reads var(--accent) follows automatically.
         const ACCENTS = [
+          { id: "clay",   name: "Clay",   base: "#BC4B2A", dark: "#9E3D21", light: "#FBF0EB", soft: "#F4DED5", darkLight: "#2C1B14", darkSoft: "#3A241A", darkBase: "#E0714B" },
           { id: "indigo", name: "Indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", darkLight: "#1e2440", darkSoft: "#2a3157", darkBase: "#6366f1" },
           { id: "teal",   name: "Teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", darkLight: "#0f2b2a", darkSoft: "#12403c", darkBase: "#2dd4bf" },
           { id: "blue",   name: "Blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", darkLight: "#12203c", darkSoft: "#1c3260", darkBase: "#60a5fa" },
@@ -10099,7 +10118,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           { id: "amber",  name: "Amber",  base: "#d97706", dark: "#b45309", light: "#fffbeb", soft: "#fde68a", darkLight: "#2c1f0b", darkSoft: "#4a3413", darkBase: "#fbbf24" },
         ];
         function currentAccent() {
-          try { return localStorage.getItem("stafly-accent") || "indigo"; } catch (e) { return "indigo"; }
+          try { return localStorage.getItem("stafly-accent") || "clay"; } catch (e) { return "clay"; }
         }
         function applyAccent(id) {
           const a = ACCENTS.find((x) => x.id === id) || ACCENTS[0];
@@ -13764,7 +13783,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 36";
+const BUILD_ROUND = "Round 37";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
