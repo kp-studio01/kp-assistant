@@ -8835,26 +8835,77 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
 
         /* ==================================================================
-           Round 53 -- the product editor.
+           Round 54 -- the product editor is a page.
            ================================================================== */
-        .pform { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 22px; align-items: start; }
-        .pform-sec { background: var(--surface); border-radius: 14px; padding: 20px 22px; box-shadow: var(--shadow-sm); }
-        .pform-sec .an-head2 { margin-bottom: 16px; }
+        /* Its own header: title left with the way back under it, actions
+           pinned right. A form whose Save is at the bottom of a long scroll
+           makes you hunt for the one button you came to press. */
+        .catalog-card.editing > .card-head,
+        .catalog-card.editing > .cat-toolbar,
+        .catalog-card.editing > .cat-filter,
+        .catalog-card.editing > .product-grid,
+        .catalog-card.editing > .cat-summary { display: none; }
+        .catalog-card.editing { background: transparent; box-shadow: none; padding: 0; }
+        /* The catalogue list is capped at 800px, which is right for a grid of
+           cards and far too narrow for a two-column editor -- it left the main
+           column at 399px, half the width of the form it is modelled on. The
+           editor takes the room it needs while it is open, and the list gets
+           its narrow measure back when it closes. */
+        #catalogView:has(.catalog-card.editing) { max-width: 1180px; }
+        /* Delivery fees is a different job. It has no business sitting under
+           an open product form. */
+        #catalogView:has(.catalog-card.editing) > .catalog-card:not(.editing) { display: none; }
+        .peditor { margin-top: 4px; }
+        .peditor-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+          flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .peditor-title h2 { font-family: var(--font-heading); font-size: 22px; font-weight: 700; letter-spacing: -0.025em; color: var(--text); margin: 0; }
+        .peditor-crumb { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0;
+          background: none; border: 0; cursor: pointer; font-family: inherit; font-size: 12.5px; color: var(--muted-2); transition: color var(--dur-fast) ease; }
+        .peditor-crumb:hover { color: var(--accent); }
+        .peditor-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        /* Wide main column, a stack of small cards down the side -- the shape
+           the reference uses, and the reason its form reads as a workspace
+           rather than a dialog. */
+        .pform { display: grid; grid-template-columns: minmax(0,1fr) 316px; gap: 20px; align-items: start; }
+        .pform-main, .pform-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+        .pform-sec { background: var(--surface); border-radius: 16px; padding: 22px 24px 24px; box-shadow: var(--shadow-sm); }
+        .pform-sec .an-head2 { margin-bottom: 18px; }
         .pform-sec .field-grid { margin: 0; }
-        .pform-side .dropzone { min-height: 168px; }
-        /* The photo label is already the section heading two lines above it. */
-        .sr-lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-        /* The panel is a page now, not a tray wedged under the grid. */
-        #productPanel.inline-panel { background: transparent; border: 0; padding: 0; margin-top: 22px; }
-        #productPanel .inline-panel-head { margin-bottom: 16px; }
-        #productPanel .inline-panel-actions { margin-top: 20px; }
-        @media (max-width: 980px) {
-          .pform { grid-template-columns: minmax(0,1fr); gap: 16px; }
-          .pform-side .dropzone { min-height: 140px; }
+        .pform-side .dropzone { min-height: 172px; }
+
+        /* A toolbar that writes WhatsApp's own marks. Nothing on it is
+           decorative: *bold*, _italic_ and ~strike~ are what actually render
+           in the thread the customer is reading. */
+        .rte { border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); transition: box-shadow var(--dur-fast) ease; }
+        .rte:focus-within { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--focus-ring); }
+        .rte-bar { display: flex; align-items: center; gap: 2px; padding: 7px 9px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+        .rte-btn { width: 30px; height: 30px; border: 0; background: transparent; border-radius: 7px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; color: var(--muted); font-family: inherit; font-size: 13px;
+          transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .rte-btn.wide { width: auto; padding: 0 10px; font-size: 12px; font-weight: 600; }
+        .rte-btn:hover { background: var(--surface-3); color: var(--text); }
+        .rte-btn:active { transform: scale(0.94); }
+        .rte-sep { width: 1px; height: 18px; background: var(--border); margin: 0 6px; }
+        .rte-note { margin-left: auto; font-size: 11px; color: var(--muted-2); }
+        .rte textarea { width: 100%; border: 0; background: var(--surface); padding: 14px 15px; font-family: inherit;
+          font-size: 13.5px; line-height: 1.6; color: var(--text); resize: vertical; outline: none; display: block; }
+
+        .perf-row { display: flex; align-items: baseline; gap: 9px; padding: 9px 0; }
+        .perf-row + .perf-row { box-shadow: inset 0 1px 0 var(--border-light); }
+        .perf-row b { font-family: var(--font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.03em; color: var(--text); font-feature-settings: "tnum" 1; }
+        .perf-row span { font-size: 12.5px; color: var(--muted-2); }
+
+        @media (max-width: 1040px) {
+          .pform { grid-template-columns: minmax(0,1fr); }
         }
         @media (max-width: 700px) {
-          .pform-sec { padding: 16px 16px 18px; }
+          .peditor-bar { padding-bottom: 14px; margin-bottom: 16px; }
+          .peditor-title h2 { font-size: 19px; }
+          .peditor-actions { width: 100%; }
+          .pform-sec { padding: 18px 16px 20px; }
         }
+
         /* ==================================================================
            Round 52 -- the chart, built to the rules rather than by eye.
            Seven grey sticks with a number printed over every one of them is a
@@ -9318,83 +9369,109 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <div class="cat-filter" id="categoryFilter"></div>
           <div class="product-grid" id="productGrid"></div>
           <div class="cat-summary" id="catalogSummary"></div>
-          <div class="inline-panel" id="productPanel" style="display:none;">
-            <div class="inline-panel-head">
-              <span id="productPanelTitle">New product</span>
-              <button class="icon-btn small-icon-btn" onclick="closeProductForm()" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <!-- Round 54. This was a tray wedged under the product grid: one
+               narrow column, Save buried at the bottom, and the list still
+               sitting above it. It is a page now. Its own header carries the
+               title, the trail back to the list, and the two actions pinned
+               right where a header puts them; the list hides while it is open,
+               because you are editing one product, not browsing all of them. -->
+          <div class="peditor" id="productPanel" style="display:none;">
+            <div class="peditor-bar">
+              <div class="peditor-title">
+                <h2 id="productPanelTitle">New product</h2>
+                <button class="peditor-crumb" onclick="closeProductForm()">&larr; All products</button>
+              </div>
+              <div class="peditor-actions">
+                <span class="catalog-msg" id="catalogMsg"></span>
+                <button class="btn-quiet" onclick="closeProductForm()">Cancel</button>
+                <button class="catalog-btn" onclick="saveProduct()">Save product</button>
+              </div>
             </div>
-            <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin-bottom:10px;">
-              Editing "<b id="productEditingName"></b>" &middot; <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
+            <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin:-6px 0 16px;">
+              Editing "<b id="productEditingName"></b>" &middot; <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new one instead</a>
             </div>
             <input type="hidden" id="pKey">
-            <!-- Round 53. One cramped column became two: the facts on the
-                 left, the picture on the right. That is the shape of every
-                 product editor worth copying, and it matches how the job is
-                 actually done -- you type what the thing is, then you show it. -->
+
             <div class="pform">
-            <div class="pform-main">
-            <div class="pform-sec">
-            <div class="an-head2"><span class="home-eyebrow">Basic information</span>
-              <span class="an-note">What Amara reads out when a customer asks</span></div>
-            <div class="field-grid">
-              <div class="field">
-                <label>Name</label>
-                <input id="pName" placeholder="e.g. Plain white tee">
-              </div>
-              <div class="field">
-                <label>Price (N)</label>
-                <input id="pPrice" type="number" min="1" placeholder="7500">
-              </div>
-              <div class="field field-full">
-                <label>Category</label>
-                <div class="field-hint">Your own grouping &mdash; Amara uses it to answer questions like "what hoodies do you have?". Leave blank if you don't group products.</div>
-                <input id="pCategory" list="categorySuggestions" placeholder="e.g. Tees">
-                <datalist id="categorySuggestions"></datalist>
-              </div>
-              <div class="field field-full">
-                <label>Description</label>
-                <div class="field-hint">Materials, sizes, colours &mdash; anything Amara needs to answer questions accurately.</div>
-                <textarea id="pDescription" rows="2" placeholder="e.g. 100% cotton, true to size, available in S-XL, machine washable"></textarea>
-              </div>
-            </div>
-            </div>
-            </div>
-            <div class="pform-side">
-            <div class="pform-sec">
-            <div class="an-head2"><span class="home-eyebrow">Product photo</span>
-              <span class="an-note">The exact image Amara sends</span></div>
-            <div class="field-grid">
-              <div class="field field-full">
-                <label class="sr-lab">Photo</label>
-                <div class="field-hint">This is the exact image Amara sends a customer who asks to see it. Drag one in, or click to choose. Max 1.5MB.</div>
-                <div class="dropzone" id="photoDrop" tabindex="0" role="button" aria-label="Choose or drop a product photo"
-                     onclick="document.getElementById('pPhotoFile').click()"
-                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('pPhotoFile').click();}">
-                  <input id="pPhotoFile" type="file" accept="image/*" hidden onchange="handlePhotoPick(this.files)">
-                  <div class="dropzone-empty" id="dropEmpty">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 15-5-5L6 20"/></svg>
-                    <div class="dropzone-title">Drop a photo here</div>
-                    <div class="dropzone-sub">or click to browse &mdash; PNG or JPG, up to 1.5MB</div>
-                  </div>
-                  <div class="dropzone-preview" id="dropPreview" style="display:none;">
-                    <img id="dropPreviewImg" alt="Selected product photo">
-                    <div class="dropzone-meta"><span id="dropFileName"></span><button type="button" class="btn-quiet btn-tiny" onclick="event.stopPropagation();clearPhotoPick()">Remove</button></div>
+              <div class="pform-main">
+
+                <div class="pform-sec">
+                  <div class="an-head2"><span class="home-eyebrow">Basic information</span>
+                    <span class="an-note">What Amara reads out when a customer asks</span></div>
+                  <div class="field-grid">
+                    <div class="field field-full">
+                      <label for="pName">Product name</label>
+                      <input id="pName" placeholder="e.g. Plain white tee">
+                    </div>
+                    <div class="field">
+                      <label for="pPrice">Price (&#8358;)</label>
+                      <input id="pPrice" type="number" min="1" placeholder="7500">
+                    </div>
+                    <div class="field">
+                      <label for="pCategory">Category</label>
+                      <input id="pCategory" list="categorySuggestions" placeholder="e.g. Tees">
+                      <datalist id="categorySuggestions"></datalist>
+                    </div>
+                    <div class="field field-full">
+                      <div class="field-hint">Category is your own grouping &mdash; Amara uses it to answer "what hoodies do you have?". Leave it blank if you don't group products.</div>
+                    </div>
                   </div>
                 </div>
+
+                <div class="pform-sec">
+                  <div class="an-head2"><span class="home-eyebrow">Description</span>
+                    <span class="an-note">Materials, sizes, colours &mdash; anything she needs to answer accurately</span></div>
+                  <!-- The toolbar writes WhatsApp's own formatting marks, which
+                       is the only formatting that survives the trip: *bold*,
+                       _italic_, ~strike~. Nothing here is decorative. -->
+                  <div class="rte">
+                    <div class="rte-bar">
+                      <button type="button" class="rte-btn" title="Bold" onclick="wrapDesc('*')"><b>B</b></button>
+                      <button type="button" class="rte-btn" title="Italic" onclick="wrapDesc('_')"><i>I</i></button>
+                      <button type="button" class="rte-btn" title="Strikethrough" onclick="wrapDesc('~')"><s>S</s></button>
+                      <span class="rte-sep"></span>
+                      <button type="button" class="rte-btn wide" title="Bullet" onclick="bulletDesc()">&bull; List</button>
+                      <span class="rte-note">Formats the way WhatsApp shows it</span>
+                    </div>
+                    <textarea id="pDescription" rows="5" placeholder="e.g. 100% cotton, true to size, available in S-XL, machine washable"></textarea>
+                  </div>
+                </div>
+
               </div>
-              <div class="field field-full">
-                <label>...or paste a photo URL instead</label>
-                <div class="field-hint">Use this if the image already lives online somewhere.</div>
-                <input id="pImageUrl" placeholder="https://...">
+
+              <div class="pform-side">
+
+                <div class="pform-sec">
+                  <div class="an-head2"><span class="home-eyebrow">Product photo</span>
+                    <span class="an-note">The exact image Amara sends</span></div>
+                  <div class="dropzone" id="photoDrop" tabindex="0" role="button" aria-label="Choose or drop a product photo"
+                       onclick="document.getElementById('pPhotoFile').click()"
+                       onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('pPhotoFile').click();}">
+                    <input id="pPhotoFile" type="file" accept="image/*" hidden onchange="handlePhotoPick(this.files)">
+                    <div class="dropzone-empty" id="dropEmpty">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                      <div class="dropzone-title">Drop a photo here</div>
+                      <div class="dropzone-sub">or click to browse &mdash; PNG or JPG, up to 1.5MB</div>
+                    </div>
+                    <div class="dropzone-preview" id="dropPreview" style="display:none;">
+                      <img id="dropPreviewImg" alt="Selected product photo">
+                      <div class="dropzone-meta"><span id="dropFileName"></span><button type="button" class="btn-quiet btn-tiny" onclick="event.stopPropagation();clearPhotoPick()">Remove</button></div>
+                    </div>
+                  </div>
+                  <div class="field field-full" style="margin-top:14px;">
+                    <label for="pImageUrl">...or paste a photo URL</label>
+                    <input id="pImageUrl" placeholder="https://...">
+                  </div>
+                </div>
+
+                <div class="pform-sec" id="pPerf" style="display:none;">
+                  <div class="an-head2"><span class="home-eyebrow">How it has sold</span>
+                    <span class="an-note">Counted from paid orders</span></div>
+                  <div class="perf-row"><b id="pPerfSold">0</b><span>units sold</span></div>
+                  <div class="perf-row"><b id="pPerfRev">&#8358;0</b><span>taken</span></div>
+                </div>
+
               </div>
-            </div>
-            </div>
-            </div>
-            </div>
-            <div class="inline-panel-actions">
-              <button class="catalog-btn" onclick="saveProduct()">Save product</button>
-              <button class="btn-quiet" onclick="closeProductForm()">Cancel</button>
-              <span class="catalog-msg" id="catalogMsg"></span>
             </div>
           </div>
         </div>
@@ -12611,6 +12688,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             if (data.error) return;
             window.nigeriaStates = data.nigeriaStates || [];
             productSales = data.sales || {};
+            productRevenue = data.revenue || {};
             populateStateSelect();
             renderCatalog(data.products, data.deliveryStates, data.deliveryDefaultFee, data.bankDetails, data.bankDetails2);
           } catch (err) {
@@ -12630,6 +12708,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Absent simply means nothing recorded yet -- never a zero invented to
         // fill the space.
         let productSales = {};
+        let productRevenue = {};
 
         // The grid is rebuilt from the cache on every search keystroke, sort
         // change and category switch, so all three compose instead of each one
@@ -12945,16 +13024,68 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // The add/edit form is revealed on demand rather than sitting open
         // under the table -- it was the single biggest block of empty space
         // on this page when there was nothing to add.
+        // Round 54. Opening the editor puts the list away. You came here to
+        // work on one product; the grid of all of them behind the form was
+        // just something to scroll past.
         function openProductForm() {
           const panel = document.getElementById("productPanel");
           if (!panel) return;
+          const card = panel.closest(".catalog-card");
+          if (card) card.classList.add("editing");
           panel.style.display = "block";
           initDropzone();
+          showProductPerf();
+          const view = document.getElementById("catalogView");
+          if (view) view.scrollTop = 0;
           const name = document.getElementById("pName");
           if (name) name.focus();
         }
+
+        // Only shown when this product has actually sold something. No card
+        // that says zero for a product nobody has bought yet.
+        function showProductPerf() {
+          const box = document.getElementById("pPerf");
+          if (!box) return;
+          const key = (document.getElementById("pKey") || {}).value || "";
+          const sold = key ? (productSales[key] || 0) : 0;
+          if (!sold) { box.style.display = "none"; return; }
+          const rev = key ? (productRevenue[key] || 0) : 0;
+          document.getElementById("pPerfSold").textContent = sold;
+          document.getElementById("pPerfRev").textContent = "\u20A6" + Number(rev).toLocaleString();
+          box.style.display = "block";
+        }
+
+        // The toolbar writes the marks WhatsApp itself renders, around the
+        // selection if there is one.
+        function wrapDesc(mark) {
+          const el = document.getElementById("pDescription");
+          if (!el) return;
+          const s = el.selectionStart, e = el.selectionEnd, v = el.value;
+          const sel = v.slice(s, e) || "text";
+          el.value = v.slice(0, s) + mark + sel + mark + v.slice(e);
+          el.focus();
+          el.setSelectionRange(s + 1, s + 1 + sel.length);
+        }
+        function bulletDesc() {
+          const el = document.getElementById("pDescription");
+          if (!el) return;
+          const s = el.selectionStart, v = el.value;
+          // A lone backslash-n here is eaten by the server's own template
+          // literal and arrives in the browser as a real line break inside a
+          // string -- a syntax error, and exactly how this file has broken
+          // before. It has to be written doubled. That applies to the COMMENT
+          // as much as the code: the first version of this note contained the
+          // sequence it was warning about, and broke the page on its own.
+          const atLineStart = s === 0 || v[s - 1] === "\\n";
+          const insert = (atLineStart ? "" : "\\n") + "- ";
+          el.value = v.slice(0, s) + insert + v.slice(s);
+          el.focus();
+          el.setSelectionRange(s + insert.length, s + insert.length);
+        }
         function closeProductForm() {
           const panel = document.getElementById("productPanel");
+          const card = panel && panel.closest(".catalog-card");
+          if (card) card.classList.remove("editing");
           if (panel) panel.style.display = "none";
           cancelEditProduct();
           const msg = document.getElementById("catalogMsg");
@@ -13968,11 +14099,18 @@ app.get("/api/catalog", async (req, res) => {
   }
   // Units sold per product, so the grid can sort by what is actually moving.
   const sales = {};
+  // Round 54. Revenue per product alongside the unit count, so the editor can
+  // show what a product has actually taken. Same keys the analytics tab reads.
+  const revenue = {};
   try {
     const soldKeys = (await redisCommand(["SMEMBERS", nsKey(seller.sellerId, "analytics:products_sold")])) || [];
     await Promise.all(soldKeys.map(async (k) => {
-      const n = await redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:sold`)]);
+      const [n, r] = await Promise.all([
+        redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:sold`)]),
+        redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:revenue`)]),
+      ]);
       if (Number(n)) sales[k] = Number(n);
+      if (Number(r)) revenue[k] = Number(r);
     }));
   } catch (err) {
     console.error("api/catalog: sales lookup failed:", err.message);
@@ -13980,6 +14118,7 @@ app.get("/api/catalog", async (req, res) => {
   res.json({
     products,
     sales,
+    revenue,
     deliveryStates: seller.catalog.DELIVERY_STATES,
     deliveryDefaultFee: seller.catalog.DELIVERY_DEFAULT_FEE,
     nigeriaStates: NIGERIA_STATES,
@@ -15113,7 +15252,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 53";
+const BUILD_ROUND = "Round 54";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
