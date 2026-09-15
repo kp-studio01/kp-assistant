@@ -3743,17 +3743,22 @@ const BRAND_TOKENS_CSS = `
        #e2e8f0, #64748b, #1e293b -- which is the default palette of every
        generated dashboard on the internet. Same lightness, hue moved off
        blue and onto warm. */
-    --bg: #F6F3ED;
-    --surface: #FFFDFA;
-    --surface-2: #F3EFE8;
-    --surface-3: #EBE5DB;
-    --chat-bg: #F0ECE3;
-    --border: #E4DDD1;
-    --border-light: #F0ECE3;
-    --border-strong: #CFC5B5;
-    --muted: #7A7268;
-    --muted-2: #A39A8E;
-    --text: #221D18;
+    /* Round 41. The first warm pass landed on cream -- correct hue, no
+       body. Cream is what you get when you warm a white; brown is a colour
+       in its own right. Every neutral has been pulled toward the clay end
+       and dropped a step in lightness, so the page has ground under it and a
+       card genuinely lifts off the page instead of blending into it. */
+    --bg: #EAE2D6;
+    --surface: #F8F4EC;
+    --surface-2: #E3DACB;
+    --surface-3: #D9CEBB;
+    --chat-bg: #E5DCCD;
+    --border: #D5C9B6;
+    --border-light: #E3DACB;
+    --border-strong: #BBAB92;
+    --muted: #6E6255;
+    --muted-2: #95887A;
+    --text: #2A211A;
     --danger: #dc2626;
     --danger-bg: #fef2f2;
     --success: #15803d;
@@ -3773,9 +3778,13 @@ const BRAND_TOKENS_CSS = `
     --info-fg: #1d4ed8;
     --info-border: #bfdbfe;
     --star: #d97706;
-    --shadow-sm: 0 1px 2px rgba(15,23,42,0.07);
-    --shadow-md: 0 1px 3px rgba(15,23,42,0.12);
-    --shadow-lg: 0 8px 24px rgba(15,23,42,0.14);
+    /* Round 41. These were still slate -- a blue-grey shadow cast onto a
+       brown page. They are brown-black now, and --shadow-sm carries a second,
+       wider term: it is what holds a card off the page since the cards no
+       longer have borders to do it. */
+    --shadow-sm: 0 1px 2px rgba(42,33,26,0.06), 0 6px 16px -10px rgba(42,33,26,0.14);
+    --shadow-md: 0 1px 3px rgba(42,33,26,0.10), 0 10px 24px -14px rgba(42,33,26,0.18);
+    --shadow-lg: 0 10px 30px rgba(42,33,26,0.16);
     /* Tinted glow under accent-coloured controls. Set from the chosen
        accent at runtime (see applyAccent) so a teal button never keeps
        an indigo halo. */
@@ -3844,12 +3853,17 @@ const BRAND_TOKENS_CSS = `
 `;
 
 function brandMark({ dark = false, size = "normal" } = {}) {
-  const textColor = dark ? "#fff" : "var(--navy)";
+  // Round 38. Two bugs lived here. The light variant was pinned to --navy,
+  // which in dark mode is near-black, so the wordmark vanished the moment the
+  // rail went light-on-dark. And the wordmark sat directly inside the flex
+  // row, so "Stafly" and ".AI" were two anonymous flex items and the 8px gap
+  // was pushing them apart -- the mark read "Stafly  .AI" on every surface.
+  const textColor = dark ? "#fff" : "var(--text)";
   const fontSize = size === "small" ? "13px" : "16px";
   return (
-    `<span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:700;font-size:${fontSize};color:${textColor};">` +
+    `<span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:700;font-size:${fontSize};color:${textColor};letter-spacing:-0.02em;">` +
     `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--accent);color:#fff;font-size:13px;flex-shrink:0;">S</span>` +
-    `Stafly<span style="color:${dark ? "#a5b4fc" : "var(--accent)"};">.AI</span>` +
+    `<span style="white-space:nowrap;">Stafly<span style="color:${dark ? "#E8A184" : "var(--accent)"};">.AI</span></span>` +
     `</span>`
   );
 }
@@ -3912,7 +3926,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
       <title>${title} — Stafly.AI</title>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-      <meta name="theme-color" content="#0b1020">
+      <meta name="theme-color" content="#20130B">
       ${BRAND_FONT_LINKS}
       <script>
         // Applied before any paint so a dark-mode seller never gets a white flash.
@@ -3946,14 +3960,14 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            the content rises as the cover lifts. */
         .pre { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 22px;
-          background: radial-gradient(120% 90% at 50% 40%, #1a2140 0%, #0b1020 62%);
+          background: radial-gradient(120% 90% at 50% 40%, #40291A 0%, #20130B 62%);
           transition: opacity .62s cubic-bezier(.4,0,.2,1), visibility .62s, transform .62s cubic-bezier(.4,0,.2,1); }
         .pre.done { opacity: 0; visibility: hidden; transform: scale(1.035); }
         body:not(.ready) .shell, body:not(.ready) .shell * { animation-play-state: paused !important; }
         .pre-mark { width: 52px; height: 52px; border-radius: 15px; display: flex; align-items: center;
           justify-content: center; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
           color: #fff; font-family: var(--font-heading); font-weight: 700; font-size: 24px;
-          box-shadow: 0 14px 40px rgba(79,70,229,.42); animation: preMark .9s cubic-bezier(.22,1,.36,1) both; }
+          box-shadow: 0 14px 40px rgba(215,136,84,.42); animation: preMark .9s cubic-bezier(.22,1,.36,1) both; }
         .pre-bar { width: 116px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
         .pre-bar i { display: block; height: 100%; width: 40%; border-radius: 2px;
           background: linear-gradient(90deg, transparent, #fff, transparent); animation: preSweep 1.05s ease-in-out infinite; }
@@ -3968,17 +3982,17 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         /* ---- stage (left) --------------------------------------------- */
         .stage { position: relative; overflow: hidden; display: flex; flex-direction: column;
           padding: 40px 46px 44px; color: #fff;
-          background: linear-gradient(163deg, #080b22 0%, #1b1856 38%, #3a2694 70%, #6b2ea8 100%); }
+          background: linear-gradient(163deg, #14100C 0%, #251A12 38%, #4C2A17 70%, #8A3E1F 100%); }
         /* Three light sources rather than a tinted overlay -- a flat wash over
            a flat gradient was the reason the first pass read as a dark block
            instead of a lit surface. No blur filter: it was averaging the
            three into one muddy colour. */
         .stage-glow { position: absolute; inset: 0; pointer-events: none; will-change: transform;
           background:
-            radial-gradient(58% 50% at 16% 12%, rgba(129,140,248,.62), transparent 72%),
-            radial-gradient(64% 56% at 88% 84%, rgba(232,74,232,.44), transparent 74%),
-            radial-gradient(48% 40% at 74% 6%, rgba(56,205,248,.30), transparent 70%),
-            radial-gradient(46% 52% at 2% 76%, rgba(99,102,241,.40), transparent 72%);
+            radial-gradient(58% 50% at 16% 12%, rgba(224,138,96,.52), transparent 72%),
+            radial-gradient(64% 56% at 88% 84%, rgba(216,140,90,.44), transparent 74%),
+            radial-gradient(48% 40% at 74% 6%, rgba(216,139,88,.30), transparent 70%),
+            radial-gradient(46% 52% at 2% 76%, rgba(188,75,42,.38), transparent 72%);
           animation: drift 26s ease-in-out infinite alternate; }
         /* Photography, when the platform owner has uploaded any. The gradient
            below stays and becomes the bed the scrim sits on, so a slow
@@ -3999,9 +4013,9 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            somewhere to sit rather than floating on a busy image. */
         .stage-scrim { position: absolute; inset: 0; pointer-events: none;
           background:
-            radial-gradient(52% 40% at 46% 40%, rgba(120,160,200,.13), transparent 72%),
-            linear-gradient(180deg, rgba(5,8,22,.50) 0%, rgba(5,8,22,.04) 26%, rgba(5,8,22,.10) 52%, rgba(5,8,22,.72) 88%, rgba(5,8,22,.88) 100%),
-            linear-gradient(96deg, rgba(6,8,28,.46) 0%, rgba(6,8,28,.04) 52%, transparent 100%); }
+            radial-gradient(52% 40% at 46% 40%, rgba(200,152,120,.13), transparent 72%),
+            linear-gradient(180deg, rgba(22,12,5,.50) 0%, rgba(22,12,5,.04) 26%, rgba(22,12,5,.10) 52%, rgba(22,12,5,.72) 88%, rgba(22,12,5,.88) 100%),
+            linear-gradient(96deg, rgba(28,15,6,.46) 0%, rgba(28,15,6,.04) 52%, transparent 100%); }
         .stage.has-shots .stage-glow { opacity: .42; mix-blend-mode: screen; }
         .stage.has-shots .stage-weave { opacity: .22; }
         .stage.has-shots .stage-grain { opacity: .08; }
@@ -4061,17 +4075,17 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .scene-links { position: absolute; inset: 0; z-index: 0; overflow: visible;
           pointer-events: none; opacity: 0; transition: opacity .5s ease .1s; }
         .scene-links.ready { opacity: 1; }
-        .link-trace { fill: none; stroke: rgba(206,214,255,.34); stroke-width: 1.4;
+        .link-trace { fill: none; stroke: rgba(246,227,215,.34); stroke-width: 1.4;
           stroke-linecap: round; stroke-linejoin: round; }
         .link-draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
           animation: linkDraw 1.1s cubic-bezier(.22,1,.36,1) var(--d, 0s) forwards; }
-        .link-flow { fill: none; stroke: rgba(224,231,255,.95); stroke-width: 1.6;
-          stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(165,180,252,.85));
+        .link-flow { fill: none; stroke: rgba(249,238,230,.95); stroke-width: 1.6;
+          stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(244,196,170,.85));
           stroke-dasharray: 16 var(--gap); stroke-dashoffset: 16;
           animation: linkFlow 3.4s linear var(--d, 0s) infinite; opacity: 0; }
         .scene-links.ready .link-flow { opacity: 1; }
-        .link-node { fill: rgba(224,231,255,.92); }
-        .link-halo { fill: rgba(165,180,252,.16); stroke: rgba(206,214,255,.30); stroke-width: 1; }
+        .link-node { fill: rgba(249,238,230,.92); }
+        .link-halo { fill: rgba(244,196,170,.16); stroke: rgba(250,224,209,.30); stroke-width: 1; }
         @keyframes linkDraw { to { stroke-dashoffset: 0; } }
         @keyframes linkFlow { to { stroke-dashoffset: calc(-1 * var(--len)); } }
 
@@ -4094,12 +4108,12 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            below stay true glass, and the contrast between the two is the
            hierarchy: one is the app, the others are highlights on top of it. */
         .scene-thread { position: relative; width: min(376px, 100%); border-radius: 22px; padding: 6px 6px 10px;
-          background: linear-gradient(158deg, rgba(30,34,64,.80), rgba(18,21,44,.86) 55%, rgba(26,30,58,.82));
+          background: linear-gradient(158deg, rgba(64,44,30,.80), rgba(44,28,18,.86) 55%, rgba(58,39,26,.82));
           box-shadow:
-            0 1px 2px rgba(2,4,16,.40),
-            0 12px 28px rgba(2,4,16,.36),
-            0 48px 96px rgba(2,4,16,.56),
-            0 0 90px -14px rgba(129,140,248,.30);
+            0 1px 2px rgba(15,8,3,.40),
+            0 12px 28px rgba(15,8,3,.36),
+            0 48px 96px rgba(15,8,3,.56),
+            0 0 90px -14px rgba(224,138,96,.26);
           backdrop-filter: blur(28px) saturate(1.7); -webkit-backdrop-filter: blur(28px) saturate(1.7);
           animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobA 11s ease-in-out 1.2s infinite; }
         /* A lit edge, not a border. The mask leaves only the 1px ring, and the
@@ -4109,7 +4123,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
           background: linear-gradient(148deg,
             rgba(255,255,255,.72) 0%, rgba(255,255,255,.28) 22%,
             rgba(255,255,255,.05) 48%, rgba(255,255,255,0) 66%,
-            rgba(190,200,255,.20) 100%);
+            rgba(243,218,202,.20) 100%);
           -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask-composite: exclude; }
@@ -4126,22 +4140,22 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .st-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; flex-shrink: 0;
           box-shadow: 0 0 0 3px rgba(52,211,153,.22); }
         .st-name { font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
-        .st-live { margin-left: auto; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.62); }
+        .st-live { margin-left: auto; font-size: 11.5px; font-weight: 500; color: rgba(255,255,255,.62); }
         .st-body { position: relative; border-radius: 16px; padding: 13px 13px 14px;
           display: flex; flex-direction: column; gap: 7px;
-          background: linear-gradient(172deg, rgba(9,11,30,.52), rgba(12,15,36,.34));
+          background: linear-gradient(172deg, rgba(30,17,9,.52), rgba(36,22,12,.34));
           box-shadow: inset 0 1px 2px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.06); }
         .st-row { display: flex; }
         .st-row.out, .st-row.typing { justify-content: flex-end; }
         .st-bub { max-width: 82%; padding: 8px 12px 9px; font-size: 12.8px; line-height: 1.45;
           border-radius: 13px; }
-        .st-row.in .st-bub { color: #131a2e; border-bottom-left-radius: 5px;
-          background: linear-gradient(168deg, #ffffff, #eef1f8);
-          box-shadow: 0 1px 1px rgba(3,5,20,.22), 0 5px 12px rgba(3,5,20,.18), inset 0 1px 0 rgba(255,255,255,.9); }
+        .st-row.in .st-bub { color: #2E1E13; border-bottom-left-radius: 5px;
+          background: linear-gradient(168deg, #ffffff, #F8F2EE);
+          box-shadow: 0 1px 1px rgba(19,10,4,.22), 0 5px 12px rgba(19,10,4,.18), inset 0 1px 0 rgba(255,255,255,.9); }
         .st-row.out .st-bub, .st-row.typing .st-bub {
-          background: linear-gradient(152deg, #7c7cf7 0%, #5b53e8 42%, #4130bd 100%); color: #fff;
+          background: linear-gradient(152deg, #E5B18E 0%, #DA9161 42%, #BD6830 100%); color: #fff;
           border-bottom-right-radius: 5px;
-          box-shadow: 0 1px 1px rgba(3,5,20,.28), 0 6px 16px rgba(49,38,148,.44),
+          box-shadow: 0 1px 1px rgba(19,10,4,.28), 0 6px 16px rgba(148,82,38,.44),
             inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.12); }
         .st-typing { display: flex; align-items: center; gap: 4px; padding: 11px 14px; }
         .st-typing i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.9);
@@ -4152,11 +4166,11 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
 
         .scene-chip { position: relative; display: flex; align-items: center; gap: 10px;
           padding: 11px 16px 11px 12px; border-radius: 16px; white-space: nowrap;
-          background: linear-gradient(152deg, rgba(34,38,70,.60), rgba(20,23,46,.68) 55%, rgba(28,32,60,.62));
+          background: linear-gradient(152deg, rgba(70,48,34,.60), rgba(46,30,20,.68) 55%, rgba(60,41,28,.62));
           box-shadow:
-            0 1px 2px rgba(2,4,16,.34),
-            0 10px 22px rgba(2,4,16,.30),
-            0 30px 60px rgba(2,4,16,.44);
+            0 1px 2px rgba(15,8,3,.34),
+            0 10px 22px rgba(15,8,3,.30),
+            0 30px 60px rgba(15,8,3,.44);
           backdrop-filter: blur(26px) saturate(1.45);
           -webkit-backdrop-filter: blur(26px) saturate(1.45);
           animation: dealIn .8s cubic-bezier(.22,1,.36,1) var(--d, 0s) both, bobB 8.5s ease-in-out 1.4s infinite; }
@@ -4165,24 +4179,24 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .chip-mark { position: relative; width: 30px; height: 30px; border-radius: 10px; display: flex;
           align-items: center; justify-content: center; flex-shrink: 0;
           background: rgba(52,211,153,.20); color: #6ee7b7; }
-        .chip-mark.alt { background: rgba(147,197,253,.18); color: #93c5fd; }
+        .chip-mark.alt { background: rgba(234,193,166,.18); color: #EAC1A6; }
         .chip-mark svg { width: 16px; height: 16px; }
         /* The tick draws itself once on arrival rather than appearing whole. */
         .tick-path { stroke-dasharray: 26; stroke-dashoffset: 26;
           animation: drawTick .5s cubic-bezier(.65,0,.35,1) 1s forwards; }
         @keyframes drawTick { to { stroke-dashoffset: 0; } }
-        .pulse-ring { position: absolute; inset: 0; border-radius: 10px; border: 1.5px solid #93c5fd;
+        .pulse-ring { position: absolute; inset: 0; border-radius: 10px; border: 1.5px solid #EAC1A6;
           animation: ringOut 2.8s ease-out infinite; }
         @keyframes ringOut {
           0% { opacity: .7; transform: scale(1); }
           70%, 100% { opacity: 0; transform: scale(1.55); }
         }
         .chip-swatch { width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
-          background: linear-gradient(135deg, #f0abfc, #818cf8 55%, #38bdf8);
+          background: linear-gradient(135deg, #EECEB9, #E6B493 55%, #D88B58);
           box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); }
         .chip-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
         .chip-text b { font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; }
-        .chip-text small { font-size: 10.5px; color: rgba(255,255,255,.62); margin-top: 3px; }
+        .chip-text small { font-size: 11.5px; color: rgba(255,255,255,.62); margin-top: 3px; }
         /* Five bars, fixed heights, illustrative of the card it sits on --
            not a chart and not presented as data. */
         .chip-spark { display: flex; align-items: flex-end; gap: 3px; height: 20px; margin-left: 4px; flex-shrink: 0; }
@@ -4202,7 +4216,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
            down and away from the light, so it reads as hovering above the
            surface rather than pasted onto it. */
         .tilt::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -16px; height: 26px;
-          border-radius: 50%; background: rgba(3,5,20,.42); filter: blur(15px); z-index: -1;
+          border-radius: 50%; background: rgba(19,10,4,.42); filter: blur(15px); z-index: -1;
           animation: castA 11s ease-in-out 1.2s infinite; }
         .tilt-pay::after, .tilt-cat::after { animation-name: castB; }
         @keyframes castA { 0%, 100% { opacity: .5; transform: scaleX(1); } 50% { opacity: .32; transform: scaleX(.9); } }
@@ -4210,10 +4224,10 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
 
         .stage-foot { max-width: 470px; padding-top: 8px; }
         .stage-eyebrow { display: inline-flex; align-items: center; gap: 9px;
-          font-size: 10.5px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase;
-          color: rgba(210,218,255,.72); margin: 0 0 16px;
+          font-size: 11.5px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase;
+          color: rgba(246,230,219,.72); margin: 0 0 16px;
           animation: riseIn .7s cubic-bezier(.22,1,.36,1) .40s both; }
-        .stage-eyebrow::before { content: ""; width: 22px; height: 1px; background: rgba(210,218,255,.45); }
+        .stage-eyebrow::before { content: ""; width: 22px; height: 1px; background: rgba(246,230,219,.45); }
         /* Thinning the second line read as washed out, so the contrast is a
            change of voice instead of a change of weight: the statement in the
            display grotesk, the turn in an italic serif. Same optical size,
@@ -4238,7 +4252,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .stage-line em { font-style: normal; font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -.012em; }
         .stage-line span { font-size: 12.5px; color: rgba(255,255,255,.62); line-height: 1.4; }
         .stage-line::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px;
-          border-radius: 2px; background: linear-gradient(180deg, #c7d2fe, rgba(199,210,254,.15)); }
+          border-radius: 2px; background: linear-gradient(180deg, #F4C4AA, rgba(244,196,170,.15)); }
         .stage-top { animation: riseIn .7s cubic-bezier(.22,1,.36,1) .06s both; }
         @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
@@ -4251,7 +4265,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
             radial-gradient(40% 34% at 4% 96%, var(--accent-light), transparent 72%);
           opacity: .55; }
         .panel > * { position: relative; z-index: 1; }
-        .panel-foot { padding: 26px 0 22px; font-size: 11.5px; color: var(--muted-2);
+        .panel-foot { padding: 26px 0 22px; font-size: 12px; color: var(--muted-2);
           display: flex; align-items: center; gap: 14px; animation: riseIn .7s cubic-bezier(.22,1,.36,1) .46s both; }
         .panel-foot span { opacity: .62; }
         .card { width: 100%; max-width: 408px; }
@@ -4271,7 +4285,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .google-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
 
         .auth-or { display: flex; align-items: center; gap: 13px; margin: 22px 0 4px; --d: .26s;
-          color: var(--muted-2); font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+          color: var(--muted-2); font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
         .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
         form { --d: .30s; }
@@ -4327,7 +4341,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .auth-footer a { color: var(--accent); font-weight: 600; text-decoration: none;
           border-bottom: 1px solid transparent; transition: border-color .18s; }
         .auth-footer a:hover { border-bottom-color: var(--accent); }
-        .auth-legal { font-size: 11.5px; color: var(--muted-2); margin-top: 26px; text-align: center;
+        .auth-legal { font-size: 12px; color: var(--muted-2); margin-top: 26px; text-align: center;
           line-height: 1.6; --d: .40s; }
 
         :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
@@ -4463,7 +4477,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
             ${error ? `<div class="auth-error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 7.6v5.2"/><path d="M12 16.3h.01"/></svg><span>${escapeHtmlServer(error)}</span></div>` : ""}
             ${googleAuthEnabled() ? `
               <a class="google-btn" href="/auth/google${isSignup ? "?mode=signup" : ""}">
-                <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#D98F5D" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                 Continue with Google
               </a>
               <div class="auth-or">or</div>
@@ -5102,20 +5116,20 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { margin: 0; padding: 0; }
-        body { font-family: var(--font-sans); color: #0f1729; min-height: 100dvh;
+        body { font-family: var(--font-sans); color: #29190F; min-height: 100dvh;
           display: flex; align-items: center; justify-content: center; padding: 34px 24px;
-          background: #eceef3; -webkit-font-smoothing: antialiased; }
+          background: #F3EFEC; -webkit-font-smoothing: antialiased; }
         /* A single soft light behind the card, so the grey ground is not flat. */
         body::before { content: ""; position: fixed; inset: 0; pointer-events: none;
           background:
-            radial-gradient(46% 42% at 22% 14%, rgba(129,140,248,.20), transparent 70%),
-            radial-gradient(44% 40% at 84% 88%, rgba(217,70,239,.13), transparent 72%); }
+            radial-gradient(46% 42% at 22% 14%, rgba(224,138,96,.18), transparent 70%),
+            radial-gradient(44% 40% at 84% 88%, rgba(217,142,92,.13), transparent 72%); }
 
         .shell { position: relative; width: 100%; max-width: 1060px; height: min(684px, calc(100dvh - 56px));
           display: grid; grid-template-columns: 1.02fr .98fr; grid-template-rows: 100%;
           border-radius: 26px; overflow: hidden;
           background: #fff;
-          box-shadow: 0 1px 2px rgba(15,23,41,.08), 0 12px 30px rgba(15,23,41,.10), 0 44px 90px rgba(15,23,41,.14);
+          box-shadow: 0 1px 2px rgba(41,25,15,.08), 0 12px 30px rgba(41,25,15,.10), 0 44px 90px rgba(41,25,15,.14);
           animation: cardIn .8s cubic-bezier(.22,1,.36,1) both; }
         @keyframes cardIn { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
 
@@ -5125,7 +5139,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .pane-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
         .ring { width: 30px; height: 30px; flex-shrink: 0; }
         .ring circle { fill: none; stroke-width: 2.6; stroke-linecap: round; }
-        .ring .ring-bg { stroke: #e4e7ee; }
+        .ring .ring-bg { stroke: #EEE8E4; }
         .ring .ring-fg { stroke: var(--accent); stroke-dasharray: 82; transition: stroke-dashoffset .55s cubic-bezier(.22,1,.36,1); }
 
         /* Every step occupies the same grid cell, so one can genuinely leave
@@ -5156,18 +5170,18 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .step.on .stagger > *:nth-child(5) { animation-delay: .50s; }
         @keyframes fieldIn { from { opacity: 0; transform: translateY(11px); } to { opacity: 1; transform: none; } }
         h1 { font-family: var(--font-heading); font-size: 27px; font-weight: 650; letter-spacing: -.038em;
-          line-height: 1.16; margin: 0 0 7px; color: #0b1220; }
-        .lede { font-size: 14px; line-height: 1.58; color: #5b6577; margin: 0 0 24px; max-width: 42ch; }
+          line-height: 1.16; margin: 0 0 7px; color: #20130B; }
+        .lede { font-size: 14px; line-height: 1.58; color: #77665B; margin: 0 0 24px; max-width: 42ch; }
 
-        .lbl { display: block; font-size: 12.5px; font-weight: 600; color: #0f1729; margin: 0 0 9px; }
+        .lbl { display: block; font-size: 12.5px; font-weight: 600; color: #29190F; margin: 0 0 9px; }
         .fld { margin-bottom: 20px; }
-        input, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #0f1729;
-          background: #f5f6fa; border: 1px solid #e2e5ec; border-radius: 11px; resize: none;
+        input, textarea { width: 100%; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #29190F;
+          background: #FAF7F5; border: 1px solid #ECE6E2; border-radius: 11px; resize: none;
           transition: border-color .18s, box-shadow .18s, background .18s; }
-        input::placeholder, textarea::placeholder { color: #99a1b0; }
+        input::placeholder, textarea::placeholder { color: #B0A299; }
         input:focus, textarea:focus { outline: none; background: #fff; border-color: var(--focus-edge);
           box-shadow: 0 0 0 2px var(--focus-ring); }
-        .hint { font-size: 12px; color: #8b94a3; margin-top: 7px; line-height: 1.5; }
+        .hint { font-size: 12px; color: #A3958B; margin-top: 7px; line-height: 1.5; }
 
         .swatches { display: flex; gap: 9px; flex-wrap: wrap; }
         /* The selection ring is drawn INSIDE the swatch, not around it. An
@@ -5184,7 +5198,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .sw.on::after { border-color: currentColor; }
 
         .themes { display: flex; gap: 12px; }
-        .th { flex: 1; cursor: pointer; border: 1.5px solid #e2e5ec; border-radius: 13px; padding: 7px;
+        .th { flex: 1; cursor: pointer; border: 1.5px solid #ECE6E2; border-radius: 13px; padding: 7px;
           background: #fff; transition: border-color .18s, box-shadow .18s, transform .18s cubic-bezier(.22,1,.36,1); }
         .th:hover { transform: translateY(-2px); }
         /* Inset, for the same reason as the swatches: an outset ring made the
@@ -5192,15 +5206,15 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
            its left edge off the column. */
         .th.on { border-color: var(--focus-edge); box-shadow: inset 0 0 0 2px var(--focus-ring); }
         .th-chip { height: 44px; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px; gap: 4px; }
-        .th-light .th-chip { background: #f1f3f8; }
-        .th-dark .th-chip { background: #161d2c; }
+        .th-light .th-chip { background: #F8F4F1; }
+        .th-dark .th-chip { background: #2C1F16; }
         .th-chip i { display: block; height: 6px; border-radius: 3px; }
-        .th-light .th-chip i { background: #ccd2de; }
-        .th-dark .th-chip i { background: #33405a; }
+        .th-light .th-chip i { background: #DED3CC; }
+        .th-dark .th-chip i { background: #5A4333; }
         .th-chip i:nth-child(1) { width: 34%; background: var(--accent); }
         .th-chip i:nth-child(2) { width: 26%; }
         .th-chip i:nth-child(3) { width: 18%; }
-        .th-name { display: block; text-align: center; font-size: 12px; font-weight: 550; color: #5b6577; margin-top: 7px; }
+        .th-name { display: block; text-align: center; font-size: 12px; font-weight: 550; color: #77665B; margin-top: 7px; }
 
         .pic-row { display: flex; align-items: center; gap: 13px; }
         .pic { width: 52px; height: 52px; border-radius: 15px; flex-shrink: 0; overflow: hidden; color: #fff;
@@ -5209,15 +5223,15 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           box-shadow: 0 6px 16px var(--accent-shadow); }
         .pic img { width: 100%; height: 100%; object-fit: cover; }
         .pic-btn { padding: 9px 15px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
-          color: #0f1729; background: #fff; border: 1px solid #d9dde5; border-radius: 10px;
+          color: #29190F; background: #fff; border: 1px solid #E5DED9; border-radius: 10px;
           transition: background .18s, border-color .18s, transform .16s; }
-        .pic-btn:hover { background: #f5f6fa; border-color: #b9c0cd; transform: translateY(-1px); }
+        .pic-btn:hover { background: #FAF7F5; border-color: #CDC1B9; transform: translateY(-1px); }
 
         .done-list { list-style: none; margin: 4px 0 0; padding: 0; }
-        .done-list li { display: flex; gap: 11px; padding: 11px 0; border-top: 1px solid #eef0f4; font-size: 13.5px;
-          line-height: 1.55; color: #5b6577; }
+        .done-list li { display: flex; gap: 11px; padding: 11px 0; border-top: 1px solid #F4F0EE; font-size: 13.5px;
+          line-height: 1.55; color: #77665B; }
         .done-list li:first-child { border-top: none; }
-        .done-list b { display: block; color: #0f1729; font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
+        .done-list b { display: block; color: #29190F; font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
         .done-mark { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; margin-top: 1px;
           display: flex; align-items: center; justify-content: center;
           background: var(--accent-light); color: var(--accent); }
@@ -5225,9 +5239,9 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
 
         .foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 18px; }
         .foot-l { display: flex; align-items: center; gap: 16px; }
-        .skip, .back { background: none; border: none; font-family: inherit; font-size: 13px; color: #8b94a3;
+        .skip, .back { background: none; border: none; font-family: inherit; font-size: 13px; color: #A3958B;
           cursor: pointer; padding: 8px 0; transition: color .18s; }
-        .skip:hover, .back:hover { color: #0f1729; }
+        .skip:hover, .back:hover { color: #29190F; }
         .back { display: inline-flex; align-items: center; gap: 6px; }
         .back svg { width: 13px; height: 13px; }
         .back[hidden] { display: none; }
@@ -5235,26 +5249,26 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .hello { text-align: center; padding: 8px 0; max-width: 34ch; }
         .seg { display: flex; gap: 8px; }
         .seg button { flex: 1; padding: 10px 8px; border-radius: 11px; cursor: pointer; font-family: inherit;
-          font-size: 13px; font-weight: 550; color: #5b6577; background: #f5f6fa; border: 1px solid #e2e5ec;
+          font-size: 13px; font-weight: 550; color: #77665B; background: #FAF7F5; border: 1px solid #ECE6E2;
           transition: border-color .18s, color .18s, background .18s, box-shadow .18s; }
-        .seg button:hover { border-color: #b9c0cd; }
-        .seg button.on { border-color: var(--focus-edge); color: #0f1729; background: #fff;
+        .seg button:hover { border-color: #CDC1B9; }
+        .seg button.on { border-color: var(--focus-edge); color: #29190F; background: #fff;
           box-shadow: inset 0 0 0 2px var(--focus-ring); }
-        .seg small { display: block; font-size: 11px; font-weight: 450; color: #99a1b0; margin-top: 3px; }
+        .seg small { display: block; font-size: 11.5px; font-weight: 450; color: #B0A299; margin-top: 3px; }
         /* Both tiles share one footprint and one internal rhythm: a preview
            band of the same height, then the label. The first pass gave the
            avatar a small floating square in a mostly empty box, so the two
            read as different kinds of control rather than a pair. */
         .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
-        .shot-tile { border: 1.5px dashed #dde2ea; border-radius: 15px; padding: 11px 11px 13px;
-          text-align: center; cursor: pointer; background: #fcfcfe;
+        .shot-tile { border: 1.5px dashed #EAE2DD; border-radius: 15px; padding: 11px 11px 13px;
+          text-align: center; cursor: pointer; background: #FEFDFC;
           transition: border-color .18s, background .18s, transform .18s cubic-bezier(.22,1,.36,1); }
-        .shot-tile:hover { border-color: var(--focus-edge); background: #fafbff; transform: translateY(-2px); }
-        .shot-tile.filled { border-style: solid; border-color: #e2e5ec; background: #fff; }
+        .shot-tile:hover { border-color: var(--focus-edge); background: #FEFCFB; transform: translateY(-2px); }
+        .shot-tile.filled { border-style: solid; border-color: #ECE6E2; background: #fff; }
         .shot-prev { position: relative; height: 86px; border-radius: 11px; margin-bottom: 11px;
-          overflow: hidden; background: #eef0f6 center/cover no-repeat;
+          overflow: hidden; background: #F6F1EE center/cover no-repeat;
           display: flex; align-items: center; justify-content: center; }
-        .shot-prev.avatar { background: #eef0f6; }
+        .shot-prev.avatar { background: #F6F1EE; }
         .shot-prev.avatar::after { content: attr(data-initial); width: 52px; height: 52px; border-radius: 16px;
           display: flex; align-items: center; justify-content: center; color: #fff;
           font-family: var(--font-heading); font-weight: 700; font-size: 21px;
@@ -5264,8 +5278,8 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .shot-prev.avatar img { width: 52px; height: 52px; border-radius: 16px; object-fit: cover;
           box-shadow: 0 5px 14px var(--accent-shadow); }
         .shot-prev.cover-empty { background: linear-gradient(128deg, var(--accent), var(--accent-dark)); }
-        .shot-tile b { display: block; font-size: 12.5px; font-weight: 600; color: #0f1729; }
-        .shot-tile span { display: block; font-size: 11px; color: #99a1b0; margin-top: 3px; }
+        .shot-tile b { display: block; font-size: 12.5px; font-weight: 600; color: #29190F; }
+        .shot-tile span { display: block; font-size: 11.5px; color: #B0A299; margin-top: 3px; }
         .hello-mark { width: 62px; height: 62px; border-radius: 19px; margin: 0 auto 22px; color: #fff;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
           font-weight: 700; font-size: 27px; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
@@ -5285,20 +5299,20 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .msg { font-size: 12.5px; min-height: 16px; margin-top: 10px; color: var(--danger); }
 
         /* ---- right: a live preview of their actual dashboard ---- */
-        .prev { position: relative; overflow: hidden; background: #f4f5f9; border-left: 1px solid #eceef3; }
+        .prev { position: relative; overflow: hidden; background: #F9F6F4; border-left: 1px solid #F3EFEC; }
         .prev-in { position: absolute; left: 44px; top: 50%; transform: translateY(-50%);
           width: 640px; border-radius: 16px 0 0 16px; overflow: hidden; display: grid;
           grid-template-columns: 132px 1fr; background: #fff;
-          box-shadow: 0 2px 6px rgba(15,23,41,.08), 0 24px 54px rgba(15,23,41,.14);
+          box-shadow: 0 2px 6px rgba(41,25,15,.08), 0 24px 54px rgba(41,25,15,.14);
           transition: background .3s ease; }
-        .prev-side { background: #131a29; padding: 13px 11px; display: flex; flex-direction: column; gap: 5px; }
+        .prev-side { background: #291C13; padding: 13px 11px; display: flex; flex-direction: column; gap: 5px; }
         .prev-brand { display: flex; align-items: center; gap: 7px; margin-bottom: 13px; }
         .prev-mark { width: 19px; height: 19px; border-radius: 6px; background: var(--accent); flex-shrink: 0; }
         .prev-brand > span:not(.prev-mark) { height: 6px; width: 46px; border-radius: 3px; background: rgba(255,255,255,.34); }
         .prev-me { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 9px;
           background: rgba(255,255,255,.07); margin-bottom: 13px; }
         .prev-av { width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; overflow: hidden; color: #fff;
-          display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700;
           font-family: var(--font-heading); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); }
         .prev-av img { width: 100%; height: 100%; object-fit: cover; }
         .prev-me-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
@@ -5311,24 +5325,24 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .prev-nav.on i { background: var(--accent); }
         .prev-nav.on span { background: rgba(255,255,255,.52); }
         .prev-main { padding: 15px 16px; min-width: 0; transition: background .3s ease; }
-        .prev-h { height: 9px; width: 118px; border-radius: 4px; background: #d4d9e3; margin-bottom: 14px; }
+        .prev-h { height: 9px; width: 118px; border-radius: 4px; background: #E3DAD4; margin-bottom: 14px; }
         .prev-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 13px; }
-        .prev-tile { border: 1px solid #e7eaf1; border-radius: 10px; padding: 10px; background: #fff; }
+        .prev-tile { border: 1px solid #F1EBE7; border-radius: 10px; padding: 10px; background: #fff; }
         .prev-tile i { display: block; width: 18px; height: 18px; border-radius: 6px; background: var(--accent-light); margin-bottom: 9px; }
-        .prev-tile b { display: block; height: 9px; width: 62%; border-radius: 4px; background: #cfd5e0; margin-bottom: 6px; }
-        .prev-tile s { display: block; height: 5px; width: 84%; border-radius: 3px; background: #e7eaf1; }
-        .prev-card { border: 1px solid #e7eaf1; border-radius: 10px; padding: 12px; background: #fff; }
-        .prev-card u { display: block; height: 7px; width: 44%; border-radius: 3px; background: #cfd5e0; margin-bottom: 11px; }
+        .prev-tile b { display: block; height: 9px; width: 62%; border-radius: 4px; background: #E0D6CF; margin-bottom: 6px; }
+        .prev-tile s { display: block; height: 5px; width: 84%; border-radius: 3px; background: #F1EBE7; }
+        .prev-card { border: 1px solid #F1EBE7; border-radius: 10px; padding: 12px; background: #fff; }
+        .prev-card u { display: block; height: 7px; width: 44%; border-radius: 3px; background: #E0D6CF; margin-bottom: 11px; }
         .prev-bars { display: flex; align-items: flex-end; gap: 6px; height: 46px; }
         .prev-bars i { flex: 1; border-radius: 4px 4px 2px 2px; background: var(--accent-light); }
         .prev-bars i:nth-child(3) { background: var(--accent); }
         /* Dark preview: the same structure, the tokens the real dashboard uses. */
-        .prev-in.dark { background: #10151f; }
-        .prev-in.dark .prev-main { background: #10151f; }
-        .prev-in.dark .prev-h { background: #2c3647; }
-        .prev-in.dark .prev-tile, .prev-in.dark .prev-card { background: #171e2b; border-color: #252e3e; }
-        .prev-in.dark .prev-tile b, .prev-in.dark .prev-card u { background: #37425a; }
-        .prev-in.dark .prev-tile s, .prev-in.dark .prev-bars i { background: #232c3c; }
+        .prev-in.dark { background: #1F1610; }
+        .prev-in.dark .prev-main { background: #1F1610; }
+        .prev-in.dark .prev-h { background: #47372C; }
+        .prev-in.dark .prev-tile, .prev-in.dark .prev-card { background: #2B1F17; border-color: #3E2F25; }
+        .prev-in.dark .prev-tile b, .prev-in.dark .prev-card u { background: #5A4537; }
+        .prev-in.dark .prev-tile s, .prev-in.dark .prev-bars i { background: #3C2D23; }
         .prev-in.dark .prev-bars i:nth-child(3) { background: var(--accent); }
         /* Two surfaces in the same frame, one shown at a time. */
         .prev-in[data-show="profile"] .prev-side,
@@ -5340,7 +5354,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .prev-profile { background: #fff; }
         .pp-cover { height: 92px; background: linear-gradient(128deg, var(--accent), var(--accent-dark));
           background-size: cover; background-position: center; position: relative; }
-        .pp-cover.has-photo::after { background: linear-gradient(180deg, rgba(8,11,26,.10), rgba(8,11,26,.32)); }
+        .pp-cover.has-photo::after { background: linear-gradient(180deg, rgba(26,15,8,.10), rgba(26,15,8,.32)); }
         .pp-cover::after { content: ""; position: absolute; inset: 0;
           background: radial-gradient(60% 90% at 78% 8%, rgba(255,255,255,.30), transparent 68%); }
         .pp-body { padding: 0 22px 24px; }
@@ -5352,28 +5366,28 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           margin-top: -29px; color: #fff; overflow: hidden;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
           font-size: 23px; font-weight: 700; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
-          box-shadow: 0 0 0 4px #fff, 0 6px 16px rgba(15,23,41,.16); }
+          box-shadow: 0 0 0 4px #fff, 0 6px 16px rgba(41,25,15,.16); }
         .pp-av img { width: 100%; height: 100%; object-fit: cover; }
         .pp-name { font-family: var(--font-heading); font-size: 18px; font-weight: 660; letter-spacing: -.025em;
-          color: #0b1220; margin: 13px 0 5px; }
-        .pp-tag { font-size: 13.5px; line-height: 1.5; color: #4a5568; min-height: 20px;
+          color: #20130B; margin: 13px 0 5px; }
+        .pp-tag { font-size: 13.5px; line-height: 1.5; color: #68564A; min-height: 20px;
           transition: color .2s ease; }
-        .pp-tag.ghost, .pp-loc.ghost { color: #b6bdc9; }
-        .pp-meta { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-size: 12px; color: #7b8494; }
-        .pp-dot { width: 3px; height: 3px; border-radius: 50%; background: #c3cad5; }
-        .pp-about { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eef0f4;
-          font-size: 12.5px; line-height: 1.6; color: #5b6577; }
+        .pp-tag.ghost, .pp-loc.ghost { color: #C9BEB6; }
+        .pp-meta { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-size: 12px; color: #94857B; }
+        .pp-dot { width: 3px; height: 3px; border-radius: 50%; background: #D5CAC3; }
+        .pp-about { margin-top: 14px; padding-top: 14px; border-top: 1px solid #F4F0EE;
+          font-size: 12.5px; line-height: 1.6; color: #77665B; }
         .pp-rows { margin-top: 20px; display: flex; flex-direction: column; gap: 9px; }
-        .pp-rows i { display: block; height: 9px; border-radius: 4px; background: #eef0f4; }
+        .pp-rows i { display: block; height: 9px; border-radius: 4px; background: #F4F0EE; }
         .pp-rows i:nth-child(2) { width: 72%; }
         .pp-rows i:nth-child(3) { width: 48%; }
-        .prev-cap { position: absolute; left: 44px; bottom: 26px; font-size: 11.5px; color: #8b94a3;
+        .prev-cap { position: absolute; left: 44px; bottom: 26px; font-size: 12px; color: #A3958B;
           display: flex; align-items: center; gap: 7px; }
         .prev-cap i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
         /* Compact stand-in for the side preview, phone only. */
-        .mprev { display: none; margin-bottom: 20px; border: 1px solid #e9ebf1; border-radius: 16px;
-          overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(12,18,38,.05); }
+        .mprev { display: none; margin-bottom: 20px; border: 1px solid #F1ECE9; border-radius: 16px;
+          overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(38,22,12,.05); }
         .mprev-cover { height: 74px; background: linear-gradient(128deg, var(--accent), var(--accent-dark));
           background-size: cover; background-position: center; }
         .mprev-body { display: flex; align-items: center; gap: 12px; padding: 0 15px 15px; margin-top: -20px; }
@@ -5384,10 +5398,10 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .mprev-av img { width: 100%; height: 100%; object-fit: cover; }
         .mprev-txt { min-width: 0; padding-top: 20px; }
         .mprev-txt b { display: block; font-family: var(--font-heading); font-size: 15px; font-weight: 640;
-          letter-spacing: -.02em; color: #0b1220; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .mprev-txt span { display: block; font-size: 11.5px; color: #8b94a3; margin-top: 2px; }
+          letter-spacing: -.02em; color: #20130B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mprev-txt span { display: block; font-size: 12px; color: #A3958B; margin-top: 2px; }
         .mprev-rows { display: flex; flex-direction: column; gap: 8px; padding: 0 15px 18px; }
-        .mprev-rows i { display: block; height: 8px; border-radius: 4px; background: #eef0f4; }
+        .mprev-rows i { display: block; height: 8px; border-radius: 4px; background: #F4F0EE; }
         .mprev-rows i:nth-child(2) { width: 72%; }
         .mprev-rows i:nth-child(3) { width: 48%; }
 
@@ -5409,7 +5423,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           h1 { font-size: 24px; letter-spacing: -.032em; }
           .lede { font-size: 14.5px; margin-bottom: 22px; }
           .foot { padding: 16px 0 calc(18px + env(safe-area-inset-bottom, 0px));
-            border-top: 1px solid #f0f2f6; background: #fff; }
+            border-top: 1px solid #F6F2F0; background: #fff; }
           .next { padding: 13px 22px; }
           .shots { gap: 11px; }
           .seg button { padding: 12px 8px; }
@@ -5628,10 +5642,10 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           // page uses, so a choice made here is the choice it reads later.
           var ACCENTS = [
             { id: "clay",   base: "#BC4B2A", dark: "#9E3D21", light: "#FBF0EB", soft: "#F4DED5", rgb: "188,75,42" },
-            { id: "indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", rgb: "79,70,229" },
-            { id: "teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", rgb: "13,148,136" },
-            { id: "blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", rgb: "37,99,235" },
-            { id: "violet", base: "#7c3aed", dark: "#6d28d9", light: "#f5f3ff", soft: "#ede9fe", rgb: "124,58,237" },
+            { id: "indigo", base: "#D78854", dark: "#CA7238", light: "#FCF5F1", soft: "#F9EEE6", rgb: "79,70,229" },
+            { id: "teal",   base: "#82471F", dark: "#6C3A19", light: "#ecfdf9", soft: "#ccfbf1", rgb: "13,148,136" },
+            { id: "blue",   base: "#D2793E", dark: "#C66B2F", light: "#FCF6F2", soft: "#F8EAE1", rgb: "37,99,235" },
+            { id: "violet", base: "#D68651", dark: "#CF7132", light: "#FDF8F5", soft: "#FBF2EC", rgb: "124,58,237" },
             { id: "rose",   base: "#e11d48", dark: "#be123c", light: "#fff1f3", soft: "#ffe4e8", rgb: "225,29,72" },
             { id: "amber",  base: "#d97706", dark: "#b45309", light: "#fffbeb", soft: "#fde68a", rgb: "217,119,6" }
           ];
@@ -6039,17 +6053,17 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
         /* The masthead states what is true right now, in the seller's own
            name, rather than opening with a generic greeting. */
         .hero { position: relative; overflow: hidden; border-radius: 22px; padding: 30px 30px 28px;
-          color: #fff; background: linear-gradient(158deg, #0b1028 0%, #211d63 44%, #4a2a9c 100%);
-          box-shadow: 0 20px 50px rgba(10,14,38,.28); }
+          color: #fff; background: linear-gradient(158deg, #28170B 0%, #63391D 44%, #9C582A 100%);
+          box-shadow: 0 20px 50px rgba(38,21,10,.28); }
         .hero-glow { position: absolute; inset: 0; pointer-events: none;
           background:
-            radial-gradient(58% 62% at 14% 12%, rgba(129,140,248,.55), transparent 70%),
-            radial-gradient(58% 58% at 90% 88%, rgba(232,74,232,.36), transparent 72%);
+            radial-gradient(58% 62% at 14% 12%, rgba(224,138,96,.48), transparent 70%),
+            radial-gradient(58% 58% at 90% 88%, rgba(216,140,90,.36), transparent 72%);
           animation: heroDrift 24s ease-in-out infinite alternate; }
         @keyframes heroDrift { from { transform: scale(1.02) translate3d(-1%, -1%, 0); } to { transform: scale(1.12) translate3d(2%, 2%, 0); } }
         .hero > *:not(.hero-glow) { position: relative; z-index: 1; }
         .hero-badge { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 9px;
-          border-radius: 999px; font-size: 11.5px; font-weight: 600;
+          border-radius: 999px; font-size: 12px; font-weight: 600;
           background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); }
         .hero-badge i { width: 7px; height: 7px; border-radius: 50%; background: #34d399; display: block; }
         .hero-badge.off i { background: #fbbf24; }
@@ -6057,13 +6071,13 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
           letter-spacing: -.04em; line-height: 1.14; margin: 16px 0 8px; }
         .hero p { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,.74); margin: 0; max-width: 46ch; }
         .hero-cta { display: inline-flex; align-items: center; gap: 9px; margin-top: 22px; padding: 12px 20px;
-          border-radius: 12px; background: #fff; color: #1b1856; font-size: 14px; font-weight: 650;
-          text-decoration: none; box-shadow: 0 10px 26px rgba(6,10,30,.34);
+          border-radius: 12px; background: #fff; color: #2A211A; font-size: 14px; font-weight: 650;
+          text-decoration: none; box-shadow: 0 10px 26px rgba(29,16,7,.34);
           transition: transform .18s cubic-bezier(.22,1,.36,1), box-shadow .2s; }
-        .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(6,10,30,.42); }
+        .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(29,16,7,.42); }
         .hero-cta svg { width: 15px; height: 15px; }
 
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+        .card { background: var(--surface); border-radius: 18px;
           padding: 24px 26px; margin-top: 22px; box-shadow: var(--shadow-sm); }
         .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
         .card h2 { font-family: var(--font-heading); font-size: 16.5px; font-weight: 640; letter-spacing: -.022em; margin: 0; }
@@ -6093,7 +6107,7 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
         .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px;
           background: var(--border-light); border-radius: 14px; overflow: hidden; margin-top: 18px; }
         .fact { background: var(--surface); padding: 15px 16px; }
-        .fact dt { font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase;
+        .fact dt { font-size: 11.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase;
           color: var(--muted-2); margin: 0 0 6px; }
         .fact dd { margin: 0; font-size: 14px; font-weight: 550; color: var(--text); word-break: break-word; }
 
@@ -6233,17 +6247,17 @@ app.get("/customers", async (req, res) => {
         header a:hover { transform: translateY(-1px); box-shadow: 0 4px 10px var(--accent-shadow-strong); }
         .wrap { max-width: 1160px; margin: 28px auto 48px; padding: 0 24px; }
         .stats-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
-        .stat-tile { flex: 1; min-width: 150px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease; }
-        .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.09); }
+        .stat-tile { flex: 1; min-width: 150px; background: white; border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; box-shadow: 0 1px 2px rgba(42,26,15,0.04); transition: transform .15s ease, box-shadow .15s ease; }
+        .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(42,26,15,0.09); }
         .stat-tile .stat-value { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--navy); line-height: 1.1; }
         .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
-        .table-card { background: white; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(15,23,42,0.04); overflow: hidden; }
+        .table-card { background: white; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(42,26,15,0.04); overflow: hidden; }
         .table-scroll { overflow-x: auto; }
         table { border-collapse: collapse; width: 100%; min-width: 920px; }
         th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-light); font-size: 13px; white-space: nowrap; }
-        th { background: #f8fafc; color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+        th { background: #FCFAF8; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
         tbody tr { transition: background .15s; }
-        tbody tr:hover { background: #fafafe; }
+        tbody tr:hover { background: #FEFCFA; }
         tbody tr:last-child td { border-bottom: none; }
 
   /* Tables become stacked cards below 760px. Each cell keeps its column
@@ -6256,7 +6270,7 @@ app.get("/customers", async (req, res) => {
     tbody tr:hover { background: var(--surface, #fff); }
     tbody td { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 6px 0; border-bottom: 1px solid var(--border-light); white-space: normal; text-align: right; }
     tbody td:last-child { border-bottom: none; }
-    tbody td::before { content: attr(data-label); font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; flex-shrink: 0; }
+    tbody td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--muted); text-align: left; flex-shrink: 0; }
     tbody td.cell-primary { display: block; text-align: left; font-size: 15px; font-weight: 600; padding-top: 2px; }
     tbody td.cell-primary::before { display: block; margin-bottom: 4px; }
     tbody td.cell-actions { display: block; text-align: left; }
@@ -6274,7 +6288,7 @@ app.get("/customers", async (req, res) => {
         .badge { display:inline-block; font-size:11px; padding:2px 9px; border-radius:999px; white-space:nowrap; font-weight:600; }
         .badge.paused { background: var(--warning-bg); color: var(--warning); }
         .badge.active { background: var(--success-bg); color: var(--success); }
-        .badge.paid { background: #dbeafe; color: #1d4ed8; }
+        .badge.paid { background: #F8EAE1; color: #C66B2F; }
         .empty-note { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 56px 24px; color: var(--muted); text-align: center; }
         .empty-note .empty-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; }
         .empty-note .empty-icon svg { width: 24px; height: 24px; }
@@ -6414,7 +6428,7 @@ function adminPanelHtml(key, sellers) {
           tbody tr { display: block; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; padding: 10px 12px; background: #fff; }
           tbody td { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 6px 0; border-bottom: 1px solid var(--border-light); text-align: right; }
           tbody td:last-child { border-bottom: none; }
-          tbody td::before { content: attr(data-label); font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; flex-shrink: 0; }
+          tbody td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--muted); text-align: left; flex-shrink: 0; }
           tbody td.cell-primary, tbody td.cell-actions { display: block; text-align: left; }
           tbody td.cell-primary { font-size: 15px; font-weight: 600; }
           tbody td.cell-primary::before, tbody td.cell-actions::before { display: block; margin-bottom: 5px; }
@@ -6808,11 +6822,27 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Depth from a very slight top-to-bottom lift and a hairline edge --
            an accent glow was tried here and removed: on a rail this narrow it
            reads as a coloured blob rather than lighting. */
-        .sidebar { position: relative; width: 232px; flex-shrink: 0; background: linear-gradient(180deg, #202b40 0%, var(--navy) 55%); display: flex; flex-direction: column; height: 100vh; height: 100dvh; border-right: 1px solid rgba(255,255,255,0.07); }
-        .sidebar-brand { padding: 20px 20px 16px; }
-        .sidebar-section-label { padding: 14px 20px 7px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: rgba(255,255,255,0.42); }
+        /* Round 38. The rail was a dark navy gradient -- the single largest
+           block of cool colour left in the product, and the thing that made
+           the warm dashboard look like it was bolted onto a different app.
+           It is now one step off the canvas in the same warm family: no
+           gradient, one hairline, and the only saturated things on it are
+           the brand tile and the live dot. */
+        .sidebar { position: relative; width: 240px; flex-shrink: 0; background: var(--surface-2); display: flex; flex-direction: column; height: 100vh; height: 100dvh; border-right: 1px solid var(--border); }
+        /* Round 39. The vendor wordmark used to sit here. It is the seller's
+           workspace, so the top of the rail is now the seller's shop -- the
+           thing they recognise -- and Stafly signs the bottom instead. */
+        .sidebar-brand { padding: 20px 18px 24px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+        /* Dark mode wants the rail recessed rather than raised, so the rail
+           goes below the canvas and the active pill climbs to surface-2. */
+        [data-theme="dark"] .sidebar { background: #100E0C; }
         .main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; }
-        .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+        /* Round 40. Three warm tones used to stack up the left edge: a white
+           topbar, a bone rail and the canvas between them, which is what read
+           as "the panels do not match". The topbar is the canvas now, so the
+           product has two surfaces -- rail and page -- and cards are the only
+           thing that sits above them. */
+        .topbar { background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
         .topbar-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
         .topbar h1 { font-family: var(--font-heading); font-size: 17px; margin: 0; font-weight: 700; color: var(--text); letter-spacing: -0.015em; white-space: nowrap; }
         /* The business name was a grey "· Name" tacked onto the title; as its
@@ -6821,6 +6851,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .topbar-biz { display: inline-flex; align-items: center; gap: 6px; max-width: 230px; padding: 4px 11px 4px 9px; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-soft); border-radius: 999px; font-size: 12px; font-weight: 600; }
         .topbar-biz svg { width: 13px; height: 13px; flex-shrink: 0; }
         .topbar-biz span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Round 40. The shop's name now sits at the top of the rail, so on any
+           screen wide enough to show the rail this chip was the same name a
+           second time, 200px away, in the only other spot of brand colour up
+           there. It stays below 1000px, where the rail is a closed drawer and
+           this is the only place the shop is named. */
+        @media (min-width: 1001px) { .topbar-biz { display: none; } }
         .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
         .topbar-right { display: flex; align-items: center; gap: 12px; }
         .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
@@ -6838,7 +6874,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hamburger-btn { transition: transform var(--dur-press) var(--ease-out), background var(--dur-fast) ease; }
         .hamburger-btn:hover { background: var(--border-light); }
         .hamburger-btn:active { transform: scale(0.97); }
-        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 29; }
+        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(34,26,20,0.42); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
         .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
@@ -6850,47 +6886,85 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            here, not just a wordmark. */
         /* The seller's own card, raised off the rail rather than sitting flat
            on it, which is what made the top of the sidebar feel empty. */
-        .sidebar-profile { display: flex; align-items: center; gap: 10px; margin: 0 12px 6px; padding: 10px 11px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); }
-        .sidebar-profile-avatar { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 15px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 3px 10px var(--accent-shadow); }
+        /* Round 38. It used to be a tinted card stacked under the wordmark,
+           so the top of the rail carried two identity blocks fighting each
+           other. It is now one quiet row at the foot of the rail, where every
+           tool that people use all day puts the account. */
+        .sidebar-profile { display: flex; align-items: center; gap: 10px; margin: 0; padding: 7px 10px; border-radius: 9px; background: transparent; border: 0; }
+        .spa-wrap { position: relative; flex-shrink: 0; display: block; }
+        /* Connected, and therefore green -- the one colour this product
+           reserves for "the line to WhatsApp is open". */
+        .spa-wrap::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 2px var(--surface-2); }
+        [data-theme="dark"] .spa-wrap::after { box-shadow: 0 0 0 2px #100E0C; }
+        .sidebar-profile-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; overflow: hidden; box-shadow: none; }
         /* Once a shop has a picture it should be the shop everywhere, not just
            on Home. The accent glow is dropped when a real photo is in place --
            a coloured halo behind someone's own photograph looks like a mistake. */
         .sidebar-profile-avatar img, .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .sidebar-profile-avatar.has-photo, .topbar-avatar.has-photo { background: var(--surface-3); box-shadow: none; }
-        .sidebar-profile-name { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: white; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .sidebar-profile-role { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+        .sidebar-profile-name { font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Mono, tiny, uppercase, widely tracked. This is the one typographic
+           move that separates a dashboard that looks designed from one that
+           looks generated, and it costs nothing -- the mono face is already
+           loaded for the money figures. */
+        .sidebar-profile-role { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-vendor { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); padding: 2px 10px 0; }
+        .sidebar-vendor b { font-weight: 500; color: var(--accent); }
         /* An honest "yes, this is actually refreshing itself" cue -- the
            dashboard really does poll every few seconds (see setInterval
            near the bottom), so this isn't decoration pretending to be
            realtime, it's a label for something that's already true. */
-        .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; color: #86efac; background: rgba(34,197,94,0.13); border: 1px solid rgba(34,197,94,0.24); padding: 5px 12px; border-radius: 999px; }
+        /* Was a filled green pill. A pill is a thing you press; this is a
+           status, so it is now a dot and a label and nothing else. */
+        .live-indicator { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 0; border-radius: 0; }
         .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); animation: liveDotPulse 2s infinite; flex-shrink: 0; }
         @keyframes liveDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
           70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
           100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
         }
-        nav.tabs { display: flex; flex-direction: column; gap: 3px; padding: 4px 12px; }
-        /* Each item keeps a fixed icon slot so the labels line up, and the
-           active one is marked by a rail plus a soft tinted fill rather than
-           a solid block of brand colour. */
-        nav.tabs button { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: transparent; border: none; color: rgba(255,255,255,0.62); padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .18s ease, color .18s ease, transform .18s ease; }
-        /* scaleY on a fixed-height rail, matching .list-item::before. The same
-           indicator was written twice, once as a transform and once as an
-           animated height -- and height is layout, on a control pressed all day. */
-        nav.tabs button::before { content: ""; position: absolute; left: -12px; top: 50%; width: 3px; height: 20px; border-radius: 0 3px 3px 0; background: #a5b4fc; transform: translateY(-50%) scaleY(0); transition: transform var(--dur-base) var(--ease-out); }
-        nav.tabs button .nav-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: rgba(255,255,255,0.06); transition: background .18s ease, color .18s ease; }
+        nav.tabs { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
+        /* Round 39. One pill that travels, instead of a background that
+           appears on one row and disappears from another. Position and size
+           come from the active button at runtime; the movement is a FLIP on
+           the compositor, so it costs nothing on a mid-range phone.
+           The CSS fallback below still paints the active row if that script
+           never runs, so the rail is never left without an indicator. */
+        .nav-pill { position: absolute; left: 12px; right: 12px; top: 0; height: 36px; border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgba(34,26,20,0.05); pointer-events: none; z-index: 0; }
+        [data-theme="dark"] .nav-pill { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+        nav.tabs.pill-on button.active-tab { background: transparent; box-shadow: none; }
+        [data-theme="dark"] nav.tabs.pill-on button.active-tab { background: transparent; box-shadow: none; }
+        nav.tabs button > *, nav.tabs button svg { position: relative; z-index: 1; }
+        /* Round 38. Every item used to carry a rounded chip behind its icon,
+           and the active one lit that chip up in brand colour and added a rail
+           down the left. Three separate markers for one piece of information.
+           There is now one: the active row sits on a lighter surface than the
+           rail, with a hairline and a single-pixel shadow, so it reads as
+           raised rather than painted. The icon chips are gone -- display:
+           contents drops the wrapper without touching six pieces of markup. */
+        nav.tabs button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; color: var(--muted); padding: 0 10px; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 500; letter-spacing: -0.005em; cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        nav.tabs button .nav-icon { display: contents; }
         nav.tabs button svg { width: 15px; height: 15px; flex-shrink: 0; }
-        nav.tabs button:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        nav.tabs button:hover .nav-icon { background: rgba(255,255,255,0.11); }
-        nav.tabs button.active-tab { background: rgba(99,102,241,0.20); color: #fff; font-weight: 600; }
-        nav.tabs button.active-tab::before { transform: translateY(-50%) scaleY(1); }
-        nav.tabs button.active-tab .nav-icon { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; box-shadow: 0 3px 10px var(--accent-shadow-strong); }
-        .sidebar-footer { margin-top: auto; padding: 16px 12px 16px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer .live-indicator { margin: 0 8px 2px; align-self: flex-start; }
-        .sidebar-footer-link { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 8px; color: rgba(255,255,255,0.55); font-size: 12.5px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s; }
-        .sidebar-footer-link svg { width: 15px; height: 15px; flex-shrink: 0; }
-        .sidebar-footer-link:hover { background: rgba(255,255,255,0.06); color: white; }
+        nav.tabs button:hover { background: var(--surface-3); color: var(--text); }
+        /* inset rings, not a border: a real border would add a pixel to the
+           box and nudge every label sideways as you move between tabs. */
+        /* Round 40. The active row used to go from 500 to 600. Two problems
+           with that: the label re-flows as the weight changes, which is
+           visible as a twitch while the pill is still travelling underneath
+           it, and it meant the rail carried two text weights for no reason.
+           The reference keeps one weight throughout and lets colour carry the
+           state. So does this now. */
+        nav.tabs button.active-tab { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgba(34,26,20,0.05); }
+        nav.tabs button.active-tab svg { color: var(--accent); }
+        nav.tabs button svg { transition: color var(--dur-base) var(--ease-out); }
+        [data-theme="dark"] nav.tabs button:hover { background: rgba(255,255,255,0.04); }
+        [data-theme="dark"] nav.tabs button.active-tab { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+        .sidebar-footer { margin-top: auto; padding: 14px 12px 14px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; border-top: 1px solid var(--border); }
+        .sidebar-footer .live-indicator { margin: 2px 10px 12px; align-self: flex-start; }
+        .sidebar-footer-link { display: flex; align-items: center; gap: 10px; padding: 0 10px; height: 32px; border-radius: 8px; color: var(--muted-2); font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s, transform .12s ease; }
+        .sidebar-footer-link svg { width: 14px; height: 14px; flex-shrink: 0; }
+        .sidebar-footer-link:hover { background: var(--surface-3); color: var(--text); }
+        .sidebar-divider { height: 1px; background: var(--border); margin: 10px 10px; }
         /* stat tiles -- a light strip of its own between the topbar and
            the working area, each tile a small elevated card with an
            icon-in-a-circle, echoing the "Total Project Handled"-style
@@ -6914,7 +6988,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .stat-tile > * { position: relative; z-index: 1; }
         .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tile); }
         .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-        .stat-tile .stat-label { font-size: 11.5px; color: var(--muted); margin-top: 5px; white-space: nowrap; font-weight: 500; }
+        .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 5px; white-space: nowrap; font-weight: 500; }
         .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tile-bg); color: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-bg); transition: transform .2s ease; }
         .stat-tile:hover .stat-icon { transform: scale(1.06); }
         .stat-tile .stat-icon svg { width: 20px; height: 20px; }
@@ -6935,7 +7009,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            but only one word at a time -- descriptive without four labels
            competing above a list that's already full of text. */
         .list-tabs { display: flex; gap: 3px; margin: 0 12px 10px; padding: 3px; background: var(--surface-3); border-radius: 11px; }
-        .list-tab { flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 7px 9px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 9px; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; white-space: nowrap; min-width: 0; }
+        .list-tab { flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 7px 9px; font-size: 12px; font-weight: 600; color: var(--muted); border-radius: 9px; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; white-space: nowrap; min-width: 0; }
         .list-tab-icon { display: flex; flex-shrink: 0; }
         .list-tab-icon svg { width: 14px; height: 14px; }
         .list-tab-label { display: none; }
@@ -6943,9 +7017,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .list-tab.active-list-tab { flex: 1 1 auto; background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
         .list-tab.active-list-tab .list-tab-label { display: inline; }
         .list-tab.active-list-tab .list-tab-icon { color: var(--accent); }
-        .list-tab-count { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; text-align: center; }
+        .list-tab-count { font-size: 11px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; text-align: center; }
         .list-tab.active-list-tab .list-tab-count { background: var(--accent-light); color: var(--accent); }
-        .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; line-height: 1.5; flex-shrink: 0; }
+        /* It still means "these people are waiting on you", so it still has
+           to be seen -- but a red dot on a rail this quiet was a siren. Brand
+           colour on a soft tint carries the same weight without the alarm. */
+        .nav-badge { margin-left: auto; background: var(--accent-light); color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 600; font-feature-settings: "tnum" 1; padding: 2px 6px; border-radius: 6px; line-height: 1.4; flex-shrink: 0; }
         .list { flex: 1; overflow-y: auto; }
         /* The row you click to open a thread. The accent rail on the left is
            what makes "which conversation am I in" readable at a glance -- it
@@ -6984,7 +7061,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .list-item-body { min-width: 0; flex: 1; }
         .list-item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
         .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 13px; color: var(--text); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; }
-        .row-time { font-size: 11px; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .row-time { font-size: 11.5px; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
         /* Second line: what was actually last said, one line, ellipsised --
            the thing that turns this from a table of counts into an inbox. */
         .list-item-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; }
@@ -7004,7 +7081,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the label itself sits in ordinary text colour on a neutral pill.
            A row that needs a reply should read as informative, not as an
            alarm going off down the side of the screen. */
-        .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 500; padding: 2px 8px 2px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); line-height: 1.55; white-space: nowrap; flex-shrink: 0; }
+        .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; padding: 2px 8px 2px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); line-height: 1.55; white-space: nowrap; flex-shrink: 0; }
         .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
         .badge.paused { color: var(--muted); }
         .badge.paused::before { background: var(--warning); }
@@ -7043,14 +7120,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .detail-value { font-size: 12.5px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
         .detail-muted { font-size: 12px; color: var(--muted); line-height: 1.5; }
         .detail-amount { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--ok-fg); letter-spacing: -0.02em; line-height: 1.15; }
-        .detail-ref { font-size: 10.5px; color: var(--muted-2); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .detail-ref { font-size: 11.5px; color: var(--muted-2); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .detail-card.paid-card { background: var(--ok-bg); border-color: var(--ok-border); }
         .detail-card.warn-card { background: var(--warn-bg); border-color: var(--warn-border); }
         .detail-card.warn-card .detail-card-title { color: var(--warn-fg); }
         .detail-pane textarea { width: 100%; min-height: 74px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 12.5px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .detail-pane textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .icon-btn.active-toggle { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
-        .compose-hint { font-size: 11px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
+        .compose-hint { font-size: 11.5px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
         .thread-header { padding: 11px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .thread-avatar { position: relative; width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
@@ -7161,7 +7238,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            "by" field written by /api/send-message) -- an outgoing message
            without that field is left unlabelled rather than credited to
            Amara on a guess. */
-        .bubble-by { float: right; font-size: 10px; line-height: 1; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin: 5px -1px -2px 9px; color: rgba(255,255,255,0.92); }
+        .bubble-by { float: right; font-size: 11px; line-height: 1; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin: 5px -1px -2px 9px; color: rgba(255,255,255,0.92); }
         .bubble-by + .bubble-time { margin-left: 5px; }
         /* Real per-message time -- only rendered when the stored message
            actually has one (see history.push's "at" field server-side).
@@ -7169,11 +7246,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            on purpose, rather than a guessed one. Floated so the message
            text wraps around it and it settles bottom-right in the bubble,
            exactly like WhatsApp, instead of adding another line of text. */
-        .bubble-time { float: right; font-size: 10.5px; line-height: 1; margin: 6px -1px -2px 10px; opacity: 0.72; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .bubble-time { float: right; font-size: 11.5px; line-height: 1; margin: 6px -1px -2px 10px; opacity: 0.72; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .bubble.user .bubble-time { color: var(--muted-2); }
         .bubble.assistant .bubble-time { color: rgba(255,255,255,0.85); }
         .day-divider { display: flex; align-items: center; justify-content: center; margin: 14px 0; }
-        .day-divider span { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface); padding: 5px 14px; border-radius: 999px; box-shadow: var(--shadow-md); }
+        .day-divider span { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface); padding: 5px 14px; border-radius: 999px; box-shadow: var(--shadow-md); }
         button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
         button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
@@ -7417,7 +7494,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
         .kpi-row > * { min-width: 0; }
         @media (min-width: 1080px) { .kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
-        .kpi-card { position: relative; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px 15px; box-shadow: var(--shadow-sm); overflow: hidden; --tint: var(--accent); --tint-bg: var(--accent-light); transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease, border-color .2s ease; }
+        .kpi-card { position: relative; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border-radius: 16px; padding: 16px 18px 15px; box-shadow: var(--shadow-sm); overflow: hidden; --tint: var(--accent); --tint-bg: var(--accent-light); transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease, border-color .2s ease; }
         .kpi-card.k-revenue, .kpi-card.k-orders,
         .kpi-card.k-average, .kpi-card.k-best { --tint: var(--accent); --tint-bg: transparent; }
         .kpi-card::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: var(--tint); opacity: 0.9; }
@@ -7428,7 +7505,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
         .kpi-mark { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tint-bg); color: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-bg); transition: transform .25s cubic-bezier(.22,1,.36,1); }
         .kpi-mark svg { width: 15px; height: 15px; }
-        .kpi-name { font-size: 11px; font-weight: 700; letter-spacing: 0.055em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .kpi-name { font-size: 11.5px; font-weight: 700; letter-spacing: 0.055em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .kpi-figure { font-family: var(--font-heading); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; color: var(--text); font-variant-numeric: tabular-nums; margin-top: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .kpi-foot { margin-top: 10px; display: flex; align-items: center; min-height: 21px; min-width: 0; }
         .kpi-bottom { display: flex; flex-direction: column; min-width: 0; }
@@ -7441,7 +7518,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .kpi-bottom .kpi-figure { font-size: 30px; margin-top: 15px; }
           .kpi-bottom .kpi-foot { margin-top: 12px; }
         }
-        .kpi-sub { font-size: 11px; color: var(--muted-2); margin-top: 3px; }
+        .kpi-sub { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; }
 
         /* ---- Analytics ---- */
         .an-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -7464,7 +7541,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* A pill, not loose red text. At 172px the old two-line "-37% vs last
            14 days" wrapped out of its own card; one line that can ellipsis
            cannot. */
-        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; font-size: 11px; font-weight: 650; line-height: 1.2; padding: 4px 9px 4px 7px; border-radius: 999px; white-space: nowrap; }
+        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; font-size: 11.5px; font-weight: 650; line-height: 1.2; padding: 4px 9px 4px 7px; border-radius: 999px; white-space: nowrap; }
         .kpi-delta .d-txt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .kpi-delta svg { width: 11px; height: 11px; flex-shrink: 0; }
         .kpi-delta.up { color: var(--ok-fg); background: var(--ok-bg); }
@@ -7487,7 +7564,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .dow-n { font-size: 12.5px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
         .dow.is-zero .dow-n { color: var(--muted-2); font-weight: 600; }
         .dow.is-best .dow-n { color: var(--accent); }
-        .dow-name { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-2); line-height: 1; }
+        .dow-name { font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-2); line-height: 1; }
         .dow.is-best .dow-name { color: var(--accent); }
         .dow-note { position: absolute; left: 0; bottom: 0; font-size: 12.5px; color: var(--muted); }
         .dow-note b { color: var(--text); }
@@ -7504,16 +7581,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .nr-dot.nr-ret { background: var(--ok-fg); }
         .nr-foot { font-size: 12.5px; color: var(--muted); margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--border-light); line-height: 1.5; }
         .nr-foot b { color: var(--text); }
-        .period-chip { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; flex-shrink: 0; }
+        .period-chip { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; flex-shrink: 0; }
         .seller-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
         .seller-row:last-child { border-bottom: none; }
-        .seller-rank { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-3); color: var(--muted); font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .seller-rank { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-3); color: var(--muted); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
         .seller-row:first-child .seller-rank { background: var(--accent-light); color: var(--accent); }
         .seller-main { flex: 1; min-width: 0; }
         .seller-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
         .seller-name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .seller-rev { font-family: var(--font-heading); font-size: 13.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-        .seller-units { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+        .seller-units { font-size: 12px; color: var(--muted); margin-top: 5px; }
         .conversion-block { display: flex; flex-direction: column; gap: 10px; }
         .conversion-meter { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
         .conversion-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width var(--dur-slow) var(--ease-out); }
@@ -7543,12 +7620,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .bk-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
         .bk-time { flex-shrink: 0; width: 66px; display: flex; flex-direction: column; gap: 2px; padding-right: 14px; border-right: 1px solid var(--border-light); }
         .bk-time b { font-family: var(--font-heading); font-size: 16px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
-        .bk-time span { font-size: 10.5px; color: var(--muted-2); }
+        .bk-time span { font-size: 11.5px; color: var(--muted-2); }
         .bk-main { flex: 1; min-width: 0; }
         .bk-service { font-size: 14px; font-weight: 650; color: var(--text); }
         .bk-who { font-size: 12.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .bk-phone { color: var(--muted-2); font-variant-numeric: tabular-nums; }
-        .bk-ref { font-size: 11px; color: var(--muted-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+        .bk-ref { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
         .bk-actions { display: flex; gap: 7px; flex-shrink: 0; }
         .bk-reschedule { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); padding: 14px; margin: -4px 0 12px; }
         .bk-resched-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
@@ -7564,7 +7641,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .svc-meta > span:last-child { border-right: none; padding-right: 0; }
         .svc-price { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
         .svc-mode.warn, .svc-price.warn { color: var(--warn-fg); font-weight: 650; }
-        .svc-key { font-size: 11px; color: var(--muted-2); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .svc-key { font-size: 11.5px; color: var(--muted-2); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .svc-actions { display: flex; gap: 7px; flex-shrink: 0; }
 
         .cat-summary { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); font-size: 12px; color: var(--muted-2); }
@@ -7576,10 +7653,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .product-card { position: relative; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
         /* A product Amara can't quote properly is worth pointing at, quietly. */
         .product-card.needs-work { border-color: var(--warn-border); }
-        .thumb-cat, .thumb-sold { position: absolute; z-index: 2; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.01em; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .thumb-cat, .thumb-sold { position: absolute; z-index: 2; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.01em; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
         .thumb-cat { left: 9px; top: 9px; background: rgba(255,255,255,0.9); color: #111827; }
         .thumb-sold { right: 9px; top: 9px; background: rgba(17,24,39,0.78); color: #fff; }
-        .product-flag { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--warn-fg); margin-top: 7px; }
+        .product-flag { display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--warn-fg); margin-top: 7px; }
         .product-flag svg { width: 12px; height: 12px; flex-shrink: 0; }
         .price-missing { color: var(--warn-fg); font-weight: 600; font-size: 13px; }
         /* Actions read as controls now, not two words of body text. */
@@ -7603,12 +7680,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .product-thumb.no-photo::after { content: ""; position: absolute; inset: 0; background-repeat: no-repeat; background-position: center; background-size: 30px 30px; opacity: 0.32;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='10' r='1.6'/%3E%3Cpath d='m3.6 17.5 4.9-4.4a2 2 0 0 1 2.7 0l3.4 3.1a2 2 0 0 0 2.7 0l3.1-2.8'/%3E%3C/svg%3E"); }
         .product-body { padding: 11px 12px 4px; flex: 1; }
-        .product-cat { display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-soft); padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
+        .product-cat { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-soft); padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
         .product-name { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
         .product-price { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums; }
-        .product-desc { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .product-desc { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .product-actions { display: flex; gap: 6px; padding: 10px 12px 12px; }
-        .btn-tiny { padding: 5px 10px; font-size: 11.5px; }
+        .btn-tiny { padding: 5px 10px; font-size: 12px; }
         .danger-quiet:hover { background: var(--dang-bg); color: var(--dang-fg); border-color: var(--dang-border); }
         /* Category chips, built from the categories actually in use. */
         .cat-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
@@ -7616,16 +7693,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .cat-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
         .cat-chip:hover { color: var(--text); border-color: var(--border-strong); }
         .cat-chip-active { background: var(--accent-light); color: var(--accent); border-color: var(--accent-soft); }
-        .cat-chip-count { font-size: 10px; font-weight: 700; opacity: 0.75; }
+        .cat-chip-count { font-size: 11px; font-weight: 700; opacity: 0.75; }
         /* A real drop target with a preview, instead of a bare file input. */
         .dropzone { border: 1.5px dashed var(--border-strong); border-radius: 12px; background: var(--surface); padding: 18px; text-align: center; cursor: pointer; transition: border-color .18s ease, background .18s ease; }
         .dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: var(--accent-light); }
         .dropzone.dragging { border-color: var(--accent); background: var(--accent-light); }
         .dropzone-empty svg { width: 28px; height: 28px; color: var(--muted-2); }
         .dropzone-title { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 8px; }
-        .dropzone-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+        .dropzone-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
         .dropzone-preview img { max-height: 150px; max-width: 100%; border-radius: 10px; display: block; margin: 0 auto; box-shadow: var(--shadow-md); }
-        .dropzone-meta { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
+        .dropzone-meta { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
         /* The add/edit form, revealed on demand, as one coherent grid rather
            than three stacked half-grids. */
         .inline-panel { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); animation: panelIn .18s ease-out; }
@@ -7634,7 +7711,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
         .field-full { grid-column: 1 / -1; }
         .field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
-        .field-hint { font-size: 11.5px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
+        .field-hint { font-size: 12px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
         .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
         .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .inline-panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
@@ -7645,7 +7722,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .form-step { padding: 15px 0; border-top: 1px solid var(--border); }
         .form-step:first-of-type { border-top: none; padding-top: 4px; }
         .form-step-label { display: flex; align-items: center; gap: 9px; font-family: var(--font-heading); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 11px; letter-spacing: -0.005em; }
-        .form-step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-sans); }
+        .form-step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-sans); }
         .edit-note { font-size: 12.5px; color: var(--muted); background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 9px; padding: 8px 11px; margin-bottom: 13px; }
         .edit-note b { color: var(--text); }
 
@@ -7769,7 +7846,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (max-width: 1000px) {
           .hamburger-btn { display: flex; }
           .sidebar { position: fixed; left: 0; top: 0; z-index: 30; transform: translateX(-100%); transition: transform .2s ease; }
-          .sidebar.open { transform: translateX(0); box-shadow: 8px 0 24px rgba(15,23,42,0.3); }
+          .sidebar.open { transform: translateX(0); box-shadow: 8px 0 28px rgba(34,26,20,0.16); }
           .list-pane { width: 260px; }
         }
         /* Below this three columns stop fitting side by side, so the details
@@ -7786,24 +7863,101 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .home-view { flex: 1; overflow-y: auto; scrollbar-gutter: stable; padding: 22px 24px 34px; background: var(--bg); }
         .home-inner { max-width: 960px; margin: 0 auto; }
 
-        .brand-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 22px; }
+        .brand-card { position: relative; background: var(--surface); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 22px; }
         /* Without a photo the cover is still a designed surface: three
            accent-derived washes over a deep base, so it changes with the
            seller's accent instead of being a flat grey band. */
-        .brand-cover {
-          position: relative; height: 168px;
-          background-color: var(--accent-dark);
+        /* Round 40. This was a 958x168 slab of full-strength brand colour --
+           the loudest thing on the screen, and it was a placeholder for a
+           photo the seller has not uploaded yet. An empty state should not be
+           the brightest element in the room. It is a warm neutral now, with
+           the faintest wash of accent in one corner so it is still ours, and
+           the avatar is left as the only saturated thing on the card. */
+        /* Round 42. The cover band and the avatar hanging off its bottom edge
+           are gone. That shape is a social profile -- it is what Facebook does
+           -- and it was never what this page is for. In its place is one hero
+           panel: a line of label, the shop's name, what it sells, whether
+           Amara is answering, and the shop's picture held in a soft ring on
+           the right. The seller's cover photo is not lost; it becomes this
+           panel's own background, behind a scrim, which is the only place a
+           wide photograph was ever doing any work. */
+        .hero { position: relative; overflow: hidden; border-radius: 22px; margin-bottom: 20px;
+          padding: 30px 32px 28px; display: flex; align-items: center; gap: 30px;
+          background-color: var(--surface);
           background-image:
-            radial-gradient(115% 165% at 8% 100%, var(--accent) 0%, transparent 60%),
-            radial-gradient(95% 150% at 95% 0%, rgba(255,255,255,0.30) 0%, transparent 58%),
-            linear-gradient(115deg, var(--accent-dark) 0%, var(--accent) 58%, var(--accent-dark) 100%);
+            radial-gradient(135% 210% at 6% 112%, var(--accent-soft) 0%, transparent 52%),
+            linear-gradient(116deg, var(--surface) 0%, var(--surface-2) 62%, var(--surface-3) 100%);
+          box-shadow: var(--shadow-sm); }
+        .hero.has-cover { background-image: var(--cover-img); background-size: cover; background-position: center; }
+        /* The scrim exists so the seller's own photograph cannot make their own
+           name unreadable, whatever they upload. */
+        .hero.has-cover::before { content: ""; position: absolute; inset: 0;
+          background: linear-gradient(100deg, rgba(20,15,11,0.80) 0%, rgba(20,15,11,0.58) 52%, rgba(20,15,11,0.30) 100%); }
+        .hero.has-cover > * { position: relative; z-index: 1; }
+        .hero.has-cover .hero-eyebrow, .hero.has-cover .hero-tag, .hero.has-cover .hero-meta { color: rgba(255,255,255,0.72); }
+        .hero.has-cover .hero-name { color: #fff; }
+        .hero.has-cover .hero-ring { background: rgba(255,255,255,0.14); }
+
+        .hero-text { flex: 1; min-width: 0; }
+        /* Mono, tiny, tracked -- the same label style the rail uses, so the two
+           surfaces are speaking one language. */
+        .hero-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted-2); }
+        /* 38px/700 was shouting. A display face at 600 and -0.03em tracking is
+           the same size on the page and reads as composed rather than loud --
+           the weight was doing the work that hierarchy should do. */
+        .hero-name { font-family: var(--font-heading); font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; color: var(--text); margin: 11px 0 0; }
+        .hero-tag { font-size: 14px; line-height: 1.5; color: var(--muted); margin-top: 9px; max-width: 46ch; }
+        .hero-tag button { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        .hero-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+        .hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 16px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-2); }
+        .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+        .hero-meta svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+        .hero-figure { position: relative; flex-shrink: 0; }
+        /* A ring of light rather than a border: the picture sits in it instead
+           of being cut out of the page by a hard edge. */
+        .hero-ring { position: relative; width: 128px; height: 128px; border-radius: 50%; padding: 9px; background: var(--accent-soft); }
+        .hero-avatar { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: linear-gradient(145deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 42px; font-weight: 600; letter-spacing: -0.03em; box-shadow: 0 8px 22px rgba(42,33,26,0.22); }
+        .hero-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .hero-avatar.has-photo { background: var(--surface-3); }
+        .hero-figure .photo-btn { right: 2px; bottom: 6px; padding: 8px; border-radius: 50%; }
+        .hero-figure .photo-btn svg { width: 15px; height: 15px; }
+        /* Frosted, because it sits over whatever the seller uploaded. */
+        .hero-cover-btn { position: absolute; top: 16px; right: 16px; z-index: 2;
+          display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 0; border-radius: 999px; cursor: pointer;
+          font-family: inherit; font-size: 12px; font-weight: 600;
+          background: rgba(255,255,255,0.58); color: var(--text);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 2px 10px rgba(42,33,26,0.10);
+          -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
+          transition: background .15s ease, transform .12s ease; }
+        .hero-cover-btn svg { width: 14px; height: 14px; }
+        .hero-cover-btn:hover { background: rgba(255,255,255,0.78); }
+        .hero-cover-btn:active { transform: scale(0.96); }
+        .hero.has-cover .hero-cover-btn { background: rgba(255,255,255,0.16); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.26); }
+        .hero.has-cover .hero-cover-btn:hover { background: rgba(255,255,255,0.26); }
+        [data-theme="dark"] .hero-cover-btn { background: rgba(255,255,255,0.10); color: var(--text); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); }
+        [data-theme="dark"] .hero-cover-btn:hover { background: rgba(255,255,255,0.17); }
+        @media (max-width: 760px) {
+          .hero { flex-direction: column-reverse; align-items: flex-start; gap: 20px; padding: 22px 20px 22px; border-radius: 18px; }
+          .hero-ring { width: 92px; height: 92px; padding: 7px; }
+          .hero-avatar { font-size: 32px; }
+          .hero-name { font-size: 27px; }
+          .hero-cover-btn { top: 12px; right: 12px; }
+        }
+
+        .brand-cover {
+          position: relative; height: 132px;
+          background-color: var(--surface-3);
+          background-image:
+            radial-gradient(130% 190% at 14% 100%, var(--accent-soft) 0%, transparent 56%),
+            linear-gradient(118deg, var(--surface-2) 0%, var(--surface-3) 48%, var(--border-strong) 100%);
           background-size: cover; background-position: center;
         }
         /* A very fine diagonal weave keeps the placeholder from reading as a
            flat CSS gradient. It is one repeating SVG, no image request. */
         .brand-cover::before {
           content: ""; position: absolute; inset: 0; opacity: 0.5;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 40L40 0M-10 10L10 -10M30 50L50 30' stroke='%23ffffff' stroke-opacity='0.09' stroke-width='1.2'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 40L40 0M-10 10L10 -10M30 50L50 30' stroke='%23221d18' stroke-opacity='0.055' stroke-width='1.2'/%3E%3C/svg%3E");
         }
         .brand-cover.has-photo { background-image: var(--cover-img); }
         .brand-cover.has-photo::before { display: none; }
@@ -7823,15 +7977,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .cover-photo-btn { right: 16px; bottom: 16px; }
 
         .brand-body { padding: 0 26px 24px; position: relative; }
-        .brand-avatar-wrap { position: relative; width: 104px; margin-top: -52px; margin-bottom: 16px; }
+        .brand-avatar-wrap { position: relative; width: 96px; margin-top: -48px; margin-bottom: 15px; }
         /* The ring is the card's own background, so the avatar reads as
            mounted on the card rather than pasted over the cover. */
-        .brand-avatar { width: 104px; height: 104px; border-radius: 30px; border: 5px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 38px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 10px 26px var(--accent-shadow); }
+        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(42,33,26,0.20); }
         /* With a real photograph in it, an accent-coloured glow reads as a
            rendering fault rather than depth. A neutral drop shadow is what a
            photo actually wants. */
         .brand-avatar.has-photo { background: var(--surface-3); box-shadow: 0 8px 22px rgba(15,23,42,0.18); }
         [data-theme="dark"] .brand-avatar.has-photo { box-shadow: 0 8px 22px rgba(0,0,0,0.42); }
+        /* The weave was drawn in white for a dark cover; on a light one it has
+           to be ink. Dark mode takes it back to white at a lower strength. */
+        [data-theme="dark"] .brand-cover::before {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 40L40 0M-10 10L10 -10M30 50L50 30' stroke='%23ffffff' stroke-opacity='0.05' stroke-width='1.2'/%3E%3C/svg%3E");
+        }
+        /* White-on-dark is right over a seller's photograph and wrong over the
+           empty placeholder, so the empty one gets the ordinary quiet button. */
+        .brand-cover:not(.has-photo) .cover-photo-btn { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--border), 0 1px 3px rgba(34,26,20,0.07); }
+        .brand-cover:not(.has-photo) .cover-photo-btn:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-strong), 0 2px 7px rgba(34,26,20,0.10); }
         .brand-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .avatar-photo-btn { right: -6px; bottom: -2px; padding: 7px; border-radius: 50%; }
         .avatar-photo-btn svg { width: 15px; height: 15px; }
@@ -7842,7 +8005,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .brand-name { font-family: var(--font-heading); font-size: 30px; font-weight: 800; letter-spacing: -0.025em; color: var(--text); margin: 0; line-height: 1.12; }
         /* Real state, not decoration: this only says live when the number is
            actually connected (see the connected flag from /api/home). */
-        .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); white-space: nowrap; }
+        .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); white-space: nowrap; }
         .live-pill.off { background: var(--warn-bg); color: var(--warn-fg); }
         .live-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
         .brand-tagline { font-size: 15px; color: var(--muted); margin-top: 7px; line-height: 1.5; max-width: 56ch; }
@@ -7858,7 +8021,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .brand-edit-btn { flex-shrink: 0; }
 
         /* Setup prompt */
-        .setup-card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
+        .setup-card { position: relative; overflow: hidden; background: var(--surface); border-radius: 18px; padding: 20px 22px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
         .setup-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(to bottom, var(--accent), var(--accent-dark)); }
         .setup-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
         .setup-title { font-family: var(--font-heading); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
@@ -7868,7 +8031,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .setup-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width var(--dur-slow) var(--ease-out); }
         .setup-progress-text { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
         .setup-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 15px; }
-        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); padding: 9px 11px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-2); transition: border-color .15s, background .15s, transform .12s ease; }
+        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); padding: 9px 11px; border: 1px solid transparent; border-radius: 11px; background: var(--surface-2); transition: border-color .15s, background .15s, transform .12s ease; }
         .setup-step:not(.done) { cursor: pointer; }
         .setup-step:not(.done):hover { border-color: var(--accent); background: var(--accent-light); }
         .setup-step:not(.done):active { transform: scale(0.985); }
@@ -7887,14 +8050,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         .home-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 12px; }
         .home-section-label { display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); font-size: 13px; font-weight: 700; letter-spacing: -0.005em; color: var(--text); }
-        .home-section-note { font-size: 11.5px; color: var(--muted-2); }
+        .home-section-note { font-size: 12px; color: var(--muted-2); }
         .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 3px var(--ok-bg); }
 
         /* Home's own tiles. The analytics tile is a number with an icon beside
            it; these carry a third line of real context, so the icon moves up
            next to the value and the two text lines stack cleanly beneath. */
         .home-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 13px; margin-bottom: 26px; }
-        .htile { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 17px 15px; box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; --tint: var(--accent); --tint-bg: var(--accent-light); }
+        /* Round 41. No border here, and none on .brand-card, .setup-card, .card
+           or .kpi-card either. On a brown page a card is already a lighter
+           rectangle; an outline around it draws that same edge a second time,
+           and forty of them across a screen is what makes an interface look
+           assembled rather than designed. Separation is lightness plus one
+           soft shadow. Borders are kept only where they carry meaning: an
+           input you can type in, a chip you can select, the edge of the rail. */
+        .htile { position: relative; overflow: hidden; background: var(--surface); border-radius: 18px; padding: 16px 17px 15px; box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; --tint: var(--accent); --tint-bg: var(--accent-light); }
         /* One hue on the row, not four. Teal, green, amber and blue across a
            single strip of tiles is four colours doing no work -- each tile
            already says what it is in words. The tinted blob behind the icon
@@ -7908,7 +8078,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .htile-icon svg { width: 16px; height: 16px; }
         .htile-value { font-family: var(--font-heading); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .htile-label { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 12px; }
-        .htile-context { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; line-height: 1.35; }
+        .htile-context { font-size: 12px; color: var(--muted-2); margin-top: 3px; line-height: 1.35; }
 
         .home-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
@@ -7918,13 +8088,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-bar-slot { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
         .wk-bar { width: 100%; border-radius: 8px; background: linear-gradient(to top, var(--accent-dark), var(--accent)); transition: height var(--dur-slow) var(--ease-out); }
         .wk-col.is-today .wk-bar-slot { box-shadow: inset 0 0 0 1.5px var(--accent-soft); }
-        .wk-day { font-size: 10.5px; font-weight: 600; color: var(--muted-2); }
+        .wk-day { font-size: 11.5px; font-weight: 600; color: var(--muted-2); }
         .wk-col.is-today .wk-day { color: var(--accent); }
         .wk-foot { display: flex; gap: 0; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
         .wk-stat { flex: 1; display: flex; flex-direction: column; gap: 2px; padding-right: 12px; border-right: 1px solid var(--border-light); }
         .wk-stat:last-child { border-right: none; padding-right: 0; }
         .wk-stat b { font-family: var(--font-heading); font-size: 17px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
-        .wk-stat span { font-size: 11px; color: var(--muted-2); }
+        .wk-stat span { font-size: 11.5px; color: var(--muted-2); }
 
         /* The catalogue card. The point of it is the products, so they get the
            space: the price sits on the image rather than on a line of its own,
@@ -7935,7 +8105,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .ring-badge .track { fill: none; stroke: var(--surface-3); stroke-width: 4.5; }
         .ring-badge .fill { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .ring-badge b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 12.5px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
-        .ring-badge b i { font-style: normal; font-size: 8px; margin-left: 0.5px; color: var(--muted-2); }
+        .ring-badge b i { font-style: normal; font-size: 10px; margin-left: 0.5px; color: var(--muted-2); }
 
         .ptile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; margin-top: 18px; }
         .ptile { min-width: 0; cursor: pointer; }
@@ -7950,14 +8120,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* The price rides up out of the image on hover; the veil is what keeps
            it readable over a photograph of any brightness. */
         .ptile-veil { position: absolute; left: 0; right: 0; bottom: 0; height: 54%; background: linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0)); opacity: 0; transition: opacity .25s ease; pointer-events: none; }
-        .ptile-price { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 11.5px; font-weight: 750; color: #fff; letter-spacing: -0.01em; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ptile-price { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 12px; font-weight: 750; color: #fff; letter-spacing: -0.01em; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .ptile:hover .ptile-veil { opacity: 1; }
         .ptile:hover .ptile-price { opacity: 1; transform: none; }
-        .ptile-sold { position: absolute; right: 7px; top: 7px; font-size: 9.5px; font-weight: 750; padding: 2.5px 7px; border-radius: 999px; background: rgba(17,24,39,0.82); color: #fff; }
+        .ptile-sold { position: absolute; right: 7px; top: 7px; font-size: 11px; font-weight: 750; padding: 2.5px 7px; border-radius: 999px; background: rgba(17,24,39,0.82); color: #fff; }
         .ptile-name { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .gap-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border-light); }
-        .gchip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); }
+        .gchip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); }
         .gchip.ok { background: var(--ok-bg); color: var(--ok-fg); }
         .gchip svg { width: 11px; height: 11px; }
         /* min-width:0 on the tracks. A grid item defaults to min-content
@@ -7983,9 +8153,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .waiting-main { min-width: 0; flex: 1; }
         .waiting-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .waiting-name { font-size: 14px; font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .waiting-when { font-size: 11.5px; color: var(--muted-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .waiting-when { font-size: 12px; color: var(--muted-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
         .waiting-preview { font-size: 13px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .waiting-flag { font-size: 10px; font-weight: 750; padding: 2.5px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; letter-spacing: 0.01em; }
+        .waiting-flag { font-size: 11px; font-weight: 750; padding: 2.5px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; letter-spacing: 0.01em; }
         .waiting-chev { color: var(--muted-2); flex-shrink: 0; display: flex; }
         .waiting-chev svg { width: 16px; height: 16px; }
 
@@ -7998,7 +8168,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .health-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .health-num b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
-        .health-num span { font-size: 9.5px; color: var(--muted-2); margin-top: 2px; }
+        .health-num span { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
         .gap-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
         .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
         .gap-label { color: var(--muted); }
@@ -8064,7 +8234,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .htile-icon svg { width: 15px; height: 15px; }
           .htile-value { font-size: 25px; }
           .htile-label { font-size: 12px; margin-top: 8px; }
-          .htile-context { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .htile-context { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .htile::after { width: 82px; height: 82px; right: -30px; top: -38px; }
           /* A thin accent rule at the top of each tile, so the four read as a
              set of distinct things at a glance rather than four grey boxes. */
@@ -8073,24 +8243,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .wk-chart { height: 76px; gap: 5px; margin-top: 14px; }
           .wk-foot { margin-top: 13px; padding-top: 12px; }
           .wk-stat b { font-size: 15.5px; }
-          .wk-stat span { font-size: 10.5px; }
+          .wk-stat span { font-size: 11.5px; }
           /* Two across on a phone, bigger than four squeezed ones, and the
              price stays visible rather than waiting for a hover that a touch
              screen never delivers. */
           .ptile-row { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
           .ptile-img { border-radius: 12px; }
           .ptile-veil, .ptile-price { opacity: 1; transform: none; }
-          .ptile-name { font-size: 11.5px; margin-top: 7px; }
+          .ptile-name { font-size: 12px; margin-top: 7px; }
           .ring-badge, .ring-badge svg { width: 40px; height: 40px; }
           .gap-chips { gap: 6px; margin-top: 14px; padding-top: 13px; }
-          .gchip { font-size: 11px; padding: 4px 9px; }
+          .gchip { font-size: 11.5px; padding: 4px 9px; }
           .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; flex-direction: row-reverse; align-items: center; gap: 9px; }
           .stat-tile::before { height: 0; }
           .stat-tile::after { display: none; }
           .stat-tile .stat-icon { width: 29px; height: 29px; border-radius: 9px; flex-shrink: 0; }
           .stat-tile .stat-icon svg { width: 14px; height: 14px; }
           .stat-tile .stat-value { font-size: 15.5px; letter-spacing: -0.2px; }
-          .stat-tile .stat-label { font-size: 10.5px; margin-top: 1px; }
+          .stat-tile .stat-label { font-size: 11.5px; margin-top: 1px; }
           .stat-tile:hover { transform: none; box-shadow: var(--shadow-sm); }
           /* Home on a phone. The masthead keeps its proportions -- a smaller
              cover and avatar, the same relationship between them -- so it
@@ -8098,13 +8268,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .home-view { padding: 14px 13px 24px; }
           .home-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
           .brand-card { border-radius: 18px; margin-bottom: 16px; }
-          .brand-cover { height: 120px; }
+          .brand-cover { height: 104px; }
           .brand-body { padding: 0 17px 18px; }
           .brand-avatar-wrap { width: 78px; margin-top: -39px; margin-bottom: 13px; }
           .brand-avatar { width: 78px; height: 78px; border-radius: 24px; font-size: 29px; border-width: 4px; }
           .brand-name { font-size: 23px; }
           .brand-title-line { gap: 8px; }
-          .live-pill { font-size: 10.5px; padding: 3px 9px 3px 7px; }
+          .live-pill { font-size: 11.5px; padding: 3px 9px 3px 7px; }
           .brand-tagline { font-size: 14px; margin-top: 6px; }
           /* The hairline separators only work on a single line. Once the row
              wraps -- which it does on a phone -- the last item on each line
@@ -8115,7 +8285,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .brand-about { font-size: 13.5px; margin-top: 15px; padding-top: 15px; }
           .brand-head-row { flex-direction: column; gap: 0; }
           .brand-edit-btn { width: 100%; text-align: center; margin-top: 16px; padding: 10px 14px; }
-          .cover-photo-btn { right: 11px; bottom: 11px; padding: 6px 11px; font-size: 11.5px; }
+          .cover-photo-btn { right: 11px; bottom: 11px; padding: 6px 11px; font-size: 12px; }
           .setup-card { padding: 16px 16px; border-radius: 16px; margin-bottom: 16px; }
           /* One per row. Two columns squeezed "Profile picture" and left the
              completed rows floating in half-width boxes with nothing in them. */
@@ -8155,7 +8325,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .sidebar { padding-top: env(safe-area-inset-top); }
           .topbar-left { gap: 8px; flex: 1; min-width: 0; }
           .topbar h1 { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
-          .topbar-biz { max-width: 40vw; padding: 3px 9px 3px 8px; font-size: 11.5px; }
+          .topbar-biz { max-width: 40vw; padding: 3px 9px 3px 8px; font-size: 12px; }
           .topbar-right { gap: 8px; flex-shrink: 0; }
           .theme-toggle { width: 32px; height: 32px; }
           .topbar-avatar { width: 30px; height: 30px; font-size: 12.5px; box-shadow: 0 2px 6px var(--accent-shadow); }
@@ -8243,7 +8413,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .product-body { padding: 9px 10px 10px; gap: 3px; }
           .product-name { font-size: 13px; line-height: 1.3; }
           .product-price { font-size: 13.5px; }
-          .product-cat { font-size: 10px; padding: 2px 7px; }
+          .product-cat { font-size: 11px; padding: 2px 7px; }
           /* Bookings and services stack on a phone: the actions go full width
              under the detail rather than being squeezed beside it. */
           .bk-card, .svc-card { flex-wrap: wrap; gap: 10px 12px; padding: 12px 13px; }
@@ -8261,11 +8431,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .cat-search { min-width: 0; flex: 1 1 100%; }
           .cat-sort { flex: 1 1 100%; }
           .cat-sort select { flex: 1; }
-          .cat-summary { gap: 4px 12px; font-size: 11.5px; }
+          .cat-summary { gap: 4px 12px; font-size: 12px; }
           .cat-summary span { padding-right: 12px; }
           .product-actions { gap: 6px; padding: 0 10px 10px; }
-          .pact { padding: 6px 8px; font-size: 11.5px; gap: 5px; }
-          .thumb-cat, .thumb-sold { font-size: 9.5px; padding: 2px 7px; }
+          .pact { padding: 6px 8px; font-size: 12px; gap: 5px; }
+          .thumb-cat, .thumb-sold { font-size: 11px; padding: 2px 7px; }
           .dropzone { padding: 14px; }
           .dropzone-preview img { max-height: 110px; }
 
@@ -8281,7 +8451,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .an-two { grid-template-columns: minmax(0, 1fr); gap: 14px; }
           .dow-row { gap: 5px; margin-top: 15px; }
           .dow-slot { height: 68px; border-radius: 7px; }
-          .dow-n { font-size: 11px; }
+          .dow-n { font-size: 11.5px; }
           .nr-legend { gap: 16px; }
           /* Same card, phone proportions: the mark shrinks, the figure stays
              the biggest thing in the card, and the pill gets its own line
@@ -8292,21 +8462,355 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .kpi-top { gap: 7px; }
           .kpi-mark { width: 25px; height: 25px; border-radius: 8px; }
           .kpi-mark svg { width: 13px; height: 13px; }
-          .kpi-name { font-size: 9.5px; letter-spacing: 0.045em; }
+          .kpi-name { font-size: 11px; letter-spacing: 0.045em; }
           .kpi-figure { font-size: 19px; margin-top: 9px; letter-spacing: -0.025em; }
           .kpi-foot { margin-top: 7px; min-height: 18px; }
-          .kpi-delta { font-size: 9.5px; padding: 3px 7px 3px 6px; gap: 3px; }
+          .kpi-delta { font-size: 11px; padding: 3px 7px 3px 6px; gap: 3px; }
           .kpi-delta svg { width: 9px; height: 9px; }
           .trend-chart-wrap { height: 190px; padding-top: 4px; }
           .seller-row { padding: 10px 0; gap: 10px; }
           .seller-name { font-size: 13px; }
           .seller-rev { font-size: 13px; }
-          .seller-units { font-size: 11px; }
+          .seller-units { font-size: 11.5px; }
           .conversion-stat { font-size: 30px; }
         }
         @media (max-width: 480px) {
           .topbar-date-chip { display: none; }
           .topbar h1 { font-size: 14px; }
+        }
+
+        /* ==================================================================
+           Round 43 -- the last four surfaces on Home.
+           Written as one block at the end of the sheet on purpose: every rule
+           here overrides something declared earlier, and source order is the
+           only thing in this file that has reliably decided those fights.
+           ================================================================== */
+
+        /* --- the stat row -------------------------------------------------
+           Was: a tinted icon chip and the number side by side, then the label
+           under both. The chip was decoration and the number was competing
+           with it for the top-left corner, which is where the eye lands. Now
+           the label states what this is in the same small mono caps the rail
+           and the hero use, the icon retreats to a grey glyph on the right,
+           and the number gets the corner to itself at display size. */
+        .htile-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .htile-icon { width: auto; height: auto; border-radius: 0; background: none; color: var(--muted-2); }
+        .htile-icon svg { width: 14px; height: 14px; }
+        .htile-label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.11em; color: var(--muted-2); margin: 0; }
+        .htile-value { font-family: var(--font-heading); font-size: 34px; font-weight: 600; letter-spacing: -0.035em; line-height: 1; margin-top: 15px; display: block; }
+        .htile-context { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+        /* --- the setup checklist ------------------------------------------
+           The clay stripe down its left edge was the only element of its kind
+           on the page: pure decoration, and in the loudest colour available.
+           The four steps were filled boxes inside a box. Both gone; the steps
+           are quiet rows that only fill in on hover, when they are actually
+           about to be clicked. */
+        .setup-card::before { content: none; }
+        .setup-card { padding: 22px 24px 20px; }
+        .setup-steps { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 2px; margin-top: 14px; }
+        .setup-step { background: transparent; padding: 9px 10px; border-radius: 9px; font-size: 13px; }
+        .setup-step:not(.done):hover { background: var(--surface-2); border-color: transparent; }
+        .setup-progress-text { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2); }
+        .setup-bar { height: 4px; background: var(--surface-3); }
+        .setup-bar-fill { background: var(--accent); }
+        .setup-title { font-size: 15px; font-weight: 650; }
+        .setup-sub { font-size: 12.5px; max-width: 54ch; }
+
+        /* --- the week chart -----------------------------------------------
+           Every bar was a full-strength clay gradient, including the ones
+           standing for days when nothing happened -- which is a lot of colour
+           spent on zero. Height already carries the count, so colour is free
+           to carry something else: which one is today. The empty track behind
+           the bars is gone and a single baseline replaces it. */
+        .wk-chart { gap: 9px; height: 96px; border-bottom: 1px solid var(--border); }
+        .wk-bar-slot { background: transparent; border-radius: 0; }
+        .wk-bar { background: var(--accent); border-radius: 5px 5px 0 0; opacity: 0.38; transition: opacity var(--dur-base) ease; }
+        .wk-col.is-today .wk-bar { opacity: 1; }
+        .wk-day { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted-2); }
+        .wk-col.is-today .wk-day { color: var(--accent); }
+        /* The ring around today's column was drawn back when the slot had a
+           filled track behind it. With the track gone it was an empty box
+           floating over the baseline. The vertical rules between the three
+           totals go for the same reason: gap already separates them. */
+        .wk-col.is-today .wk-bar-slot { box-shadow: none; }
+        .wk-stat { border-right: 0; padding-right: 0; gap: 5px; }
+        .wk-stat b { font-family: var(--font-heading); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+        .wk-stat span { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); }
+
+        /* --- the waiting list ---------------------------------------------
+           Times and counts are figures, so they are set in the mono face and
+           tabular, which is what stops a list from jittering as the numbers
+           change under the five-second poll. */
+        .home-count-chip { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; font-feature-settings: "tnum" 1; letter-spacing: 0.04em; }
+        .waiting-when, .waiting-flag { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; }
+        .waiting-row { border-radius: 11px; }
+        .waiting-row + .waiting-row { box-shadow: inset 0 1px 0 var(--border-light); }
+        .waiting-chev { color: var(--muted-2); }
+        .home-card h3 { letter-spacing: -0.02em; }
+        .home-card-sub { font-size: 12.5px; }
+
+        @media (max-width: 760px) {
+          .htile-value { font-size: 27px; margin-top: 12px; }
+          .setup-card { padding: 18px 18px 16px; }
+        }
+
+        /* ==================================================================
+           Round 44 -- Home gets a structure instead of a stack.
+           Cards of four different widths piled one on the next is what "not
+           organized" meant. The page is sections now: a masthead, then bands
+           separated by a single hairline and a lot of vertical air, each with
+           a mono label and its content sitting directly on the canvas. Only
+           the hero and the four metric tiles are still objects; everything
+           else is type on a page, which is what makes the rhythm readable.
+           ================================================================== */
+        .home-masthead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+        .home-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+        .home-eyebrow-note { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); }
+        .hair { height: 1px; background: var(--border); border: 0; margin: 0; }
+        .home-sec { padding: 34px 0 6px; }
+        .home-sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .home-sec-head .home-eyebrow-note { margin-left: auto; }
+        /* "2 WAITING" -- the count and its unit in one chip, tabular so the
+           row does not shift when the number changes under the poll. */
+        .sec-count { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-feature-settings: "tnum" 1; color: var(--accent); background: var(--accent-light); padding: 3px 8px; border-radius: 6px; }
+        .sec-count.calm { color: var(--muted-2); background: var(--surface-2); }
+        .home-split { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start; }
+        .home-split.flip { grid-template-columns: 5fr 7fr; }
+        @media (max-width: 1100px) { .home-split, .home-split.flip { grid-template-columns: 1fr; gap: 34px; } }
+
+        /* Inside a section a card is redundant: the hairline above it and the
+           space around it have already said where it starts and stops. */
+        .home-sec .home-card { background: transparent; box-shadow: none; border: 0; padding: 0; border-radius: 0; margin: 0; }
+        .home-sec .home-card-head { margin-bottom: 14px; }
+        .home-sec .setup-card { background: transparent; box-shadow: none; padding: 0; margin: 0; }
+        .home-sec .setup-card::before { content: none; }
+
+        /* --- live activity ------------------------------------------------ */
+        .act-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; cursor: pointer; }
+        .act-row + .act-row { box-shadow: inset 0 1px 0 var(--border-light); }
+        .act-mark { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 7px; background: var(--accent); }
+        .act-row.amara .act-mark { background: var(--ok-fg); }
+        .act-main { flex: 1; min-width: 0; }
+        .act-top { display: flex; align-items: baseline; gap: 10px; }
+        .act-who { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .act-when { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; }
+        .act-line { font-size: 12.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .act-line b { font-weight: 500; color: var(--muted-2); }
+        .act-row:hover .act-who { color: var(--accent); }
+
+        .home-footline { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 22px 0 4px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); }
+
+        /* overflow:hidden was there for the clay stripe down the card's left
+           edge, which no longer exists. With the card landing on a fractional
+           x the clip rounded inward and shaved the first glyph off its own
+           label. */
+        .home-sec .setup-card { overflow: visible; }
+        /* .pulse-dot is declared inline elsewhere, so inside a label it
+           collapsed to zero width and painted as a green hairline sliver. */
+        .home-eyebrow .pulse-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+        /* The count is in the section head now; the bar does not need to say
+           it a second time eight pixels away. */
+        .home-sec .setup-progress-text { display: none; }
+        .home-sec .setup-progress { margin-top: 13px; }
+        .home-sec .setup-sub { margin-top: 0; margin-bottom: 2px; }
+
+        @media (max-width: 760px) {
+          .home-sec { padding: 26px 0 4px; }
+          .home-masthead { margin-bottom: 16px; }
+        }
+
+        /* ==================================================================
+           Round 45 -- coordination.
+           The bands from Round 44 were right but the numbers inside them were
+           not: 34 here, 26 there, 13, 22, 56, 18, all chosen one at a time.
+           Everything below is on one scale, so the page has a rhythm you can
+           feel rather than a set of unrelated decisions that happen to look
+           roughly even.
+           ================================================================== */
+        .home-inner, #analyticsView { --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px; }
+
+        /* Every band opens and closes on the same measure, so the hairlines
+           land on a regular beat down the page instead of drifting. */
+        .home-sec { padding: var(--s7) 0 var(--s7); }
+        .home-masthead { margin-bottom: var(--s4); }
+        .home-sec-head { margin-bottom: var(--s5); gap: var(--s3); }
+        .home-split { gap: var(--s8); }
+        .home-footline { padding: var(--s5) 0 var(--s1); }
+
+        /* auto-fit was laying down a fifth, empty 0px track at desktop width.
+           Four tiles, four columns, said once. */
+        .home-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); margin-bottom: 0; }
+        @media (max-width: 900px) { .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); margin-bottom: 0; } }
+
+        /* --- levels --------------------------------------------------------
+           Three sizes of type and nothing in between: the figure, the thing it
+           is called, and the note under it. A tile that reads in that order at
+           a glance is doing the whole job of a dashboard. */
+        .htile { padding: var(--s4) var(--s4) var(--s4); transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) ease; }
+        .htile:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .htile-value { margin-top: var(--s3); }
+        .htile-context { margin-top: var(--s2); }
+
+        /* --- the chart gets a scale ---------------------------------------
+           Seven bars with no number anywhere is a shape, not a measurement.
+           The top of the axis is labelled, so a bar means something. */
+        .wk-scale { display: flex; align-items: baseline; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); margin-bottom: var(--s2); }
+        .wk-chart { margin-top: 0; }
+        /* Three totals on three columns rather than three flex items that
+           happen to be equal: the labels start on the same x every time. */
+        .wk-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); margin-top: var(--s4); padding-top: var(--s4); }
+        .wk-stat { display: flex; flex-direction: column; gap: var(--s1); }
+
+        /* --- the activity feed --------------------------------------------
+           A dot told you who spoke. A face tells you who it was, which is what
+           a person is actually scanning for. The initials and the colour come
+           from the same helpers the conversation list uses, so a customer is
+           the same colour everywhere in the product. */
+        .act-row { gap: var(--s3); padding: var(--s3) 0; align-items: center; }
+        .act-avatar { position: relative; width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 650; color: #fff; }
+        .act-avatar .act-mark { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; margin: 0; box-shadow: 0 0 0 2px var(--bg); }
+        .act-line { margin-top: 2px; }
+
+        /* --- empty states --------------------------------------------------
+           Centred text in a tall column reads as a hole in the layout. These
+           sit on the left margin like everything else in their band, and take
+           the height they need rather than the height they were given. */
+        .home-sec .home-empty { text-align: left; padding: var(--s2) 0 var(--s3); display: flex; align-items: flex-start; gap: var(--s3); max-width: 46ch; }
+        .home-sec .home-empty-icon { display: block; margin: 1px 0 0; flex-shrink: 0; }
+        .home-sec .home-empty-icon svg { width: 18px; height: 18px; }
+
+        .home-sec .setup-steps { gap: var(--s1); margin-top: var(--s4); }
+        .home-sec .setup-actions { margin-top: var(--s4); }
+        .home-sec .setup-progress { margin-top: var(--s3); }
+
+        @media (max-width: 1100px) {
+          .home-sec { padding: var(--s6) 0 var(--s6); }
+          .home-split, .home-split.flip { gap: var(--s6); }
+        }
+        @media (max-width: 700px) {
+          .home-sec { padding: var(--s5) 0 var(--s5); }
+          .home-sec-head { margin-bottom: var(--s4); }
+          .act-avatar { width: 30px; height: 30px; font-size: 11.5px; }
+        }
+
+        /* ==================================================================
+           Round 46 -- what the reference actually does, read properly.
+           Two things I had got backwards. First, its bars are NOT accent: the
+           ordinary days are drawn in the strong border grey and only today
+           carries colour, so colour means "today" instead of meaning "bar".
+           Second, it does not strip every container -- lists keep a panel and
+           charts do not. A list is a set of records and wants an edge; a chart
+           is a picture and wants the page. That distinction is the thing that
+           reads as organised.
+           ================================================================== */
+
+        /* --- chart --------------------------------------------------------- */
+        .wk-scale { justify-content: space-between; }
+        .wk-chart { height: 168px; align-items: stretch; gap: 10px; border-bottom: 1px solid var(--border-strong); }
+        .wk-col { justify-content: flex-end; gap: 0; }
+        /* Every bar prints its own count. Seven bars and no number anywhere is
+           a shape; the number is what makes it a measurement. */
+        .wk-n { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; font-feature-settings: "tnum" 1; color: var(--muted-2); margin-bottom: 7px; transition: color var(--dur-fast) ease; }
+        .wk-bar-slot { flex: 1; align-items: flex-end; }
+        .wk-bar { background: var(--border-strong); border-radius: 3px 3px 0 0; opacity: 1; transition: background var(--dur-base) ease; }
+        .wk-col.is-today .wk-bar { background: var(--accent); }
+        .wk-col:hover .wk-bar { background: var(--accent-dark); }
+        .wk-col.is-today .wk-n, .wk-col:hover .wk-n { color: var(--text); font-weight: 600; }
+        .wk-days { display: flex; gap: 10px; margin-top: 11px; }
+        .wk-day { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); }
+        .wk-day.today { color: var(--accent); font-weight: 600; }
+
+        /* --- lists get a panel back ---------------------------------------
+           The label stays out on the canvas with the count beside it; the
+           records sit inside one surface with hairlines between them and a
+           note along the bottom. Section label outside, data inside: that is
+           the level the page was missing. */
+        .list-panel { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+        .list-panel > * + * { box-shadow: inset 0 1px 0 var(--border-light); }
+        .list-panel-note { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface-2); font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+        .list-panel-note svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--muted-2); }
+        .sec-count { background: none; padding: 0; color: var(--muted-2); font-weight: 500; }
+        .sec-count.hot { color: var(--accent); }
+
+        /* rows */
+        .q-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; transition: background var(--dur-fast) ease; }
+        .q-row:hover { background: var(--surface-2); }
+        .q-av { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 650; color: #fff; }
+        .q-main { flex: 1; min-width: 0; }
+        .q-top { display: flex; align-items: center; gap: 8px; }
+        .q-name { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-wait { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; font-feature-settings: "tnum" 1; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-2); }
+        .q-wait svg { width: 11px; height: 11px; }
+        .q-wait.mine { color: var(--accent); }
+        .q-line { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-btn { flex-shrink: 0; height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .q-btn:hover { background: var(--accent-dark); }
+        .q-btn:active { transform: scale(0.96); }
+        .list-empty { display: flex; align-items: center; gap: 10px; padding: 18px 16px; font-size: 12.5px; color: var(--muted); }
+        .list-empty svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ok-fg); }
+
+        /* the activity feed joins the same panel so the two columns balance */
+        .home-sec .act-list { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+        .act-row { padding: 12px 16px; }
+        .act-row:hover { background: var(--surface-2); }
+        .act-avatar .act-mark { box-shadow: 0 0 0 2px var(--surface); }
+
+
+
+        /* ==================================================================
+           Round 48 -- Analytics keeps the brand type and gets its edges back.
+           ================================================================== */
+        .an-masthead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+        /* Label above, note under it. Spread across a card the two read as a
+           pair; spread across a full-width band they read as two unrelated
+           fragments at opposite ends of the screen, which is what made the
+           page feel scattered. */
+        .an-head2 { margin-bottom: 18px; }
+        .an-head2 .home-eyebrow { display: block; white-space: normal; }
+        .an-note { display: block; font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+        /* Room to breathe between cards, and inside them. */
+        #analyticsView .catalog-card { padding: 22px 24px 24px; margin-bottom: 22px; border: 0; }
+        #analyticsView .an-two { gap: 22px; margin-bottom: 0; }
+        #analyticsView .an-two > .catalog-card { margin-bottom: 22px; }
+        #analyticsView .kpi-row { margin-bottom: 22px; }
+        #analyticsView .trend-chart-wrap { margin-top: 0; }
+        @media (max-width: 760px) {
+          #analyticsView .catalog-card { padding: 18px 16px 20px; margin-bottom: 16px; }
+          #analyticsView .an-two { gap: 16px; }
+          .an-head2 { margin-bottom: 14px; }
+        }
+        /* ==================================================================
+           Round 47 -- Analytics joins the rest of the product.
+           ================================================================== */
+        /* A section label must not wrap; its note gives way instead. */
+        .home-eyebrow { white-space: nowrap; }
+        .home-sec-head .home-eyebrow-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+
+        /* The KPI cards kept a coloured stripe down their left edge -- the
+           same decoration taken off the setup card in Round 43, still here
+           because Analytics had not been touched since. */
+        .kpi-card::before { content: none; }
+
+        /* "Came back" was drawn in the saturated green this product reserves
+           for "connected, live, Amara is answering". Two different meanings
+           in one colour is worse than a duller chart: returning customers are
+           a second tone of the accent now, and the legend follows. */
+        .nr-seg.nr-ret { background: var(--accent-soft); }
+        .nr-dot.nr-ret { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--border-strong); }
+        .nr-seg.nr-new { box-shadow: none; }
+        .nr-item b { font-weight: 600; }
+
+        /* Analytics still had its own card chrome in places the bands now
+           handle. */
+        #analyticsView .home-card { background: transparent; box-shadow: none; border: 0; padding: 0; }
+        #analyticsView .trend-chart-wrap { margin-top: 0; }
+        @media (max-width: 700px) {
+          .wk-chart { height: 132px; gap: 6px; }
+          .wk-days { gap: 6px; }
+          .wk-n { font-size: 11px; }
+          .q-row, .act-row { padding: 11px 13px; }
+          .q-btn { display: none; }
         }
       </style>
     </head>
@@ -8327,31 +8831,32 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
     <div class="app-shell">
       <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
       <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">${brandMark({ dark: true, size: "small" })}</div>
-        <div class="sidebar-profile">
-          <div class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</div>
+        <div class="sidebar-brand">
+          <span class="spa-wrap"><span class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span></span>
           <div style="min-width:0;">
             <div class="sidebar-profile-name">${escapeHtmlServer(businessName || "Your business")}</div>
-            <div class="sidebar-profile-role">${isBookable ? "Bookings &amp; services" : "Product seller"}</div>
+            <div class="sidebar-profile-role">${isBookable ? "Bookings" : "WhatsApp sales"}</div>
           </div>
         </div>
-        <div class="sidebar-section-label">Menu</div>
         <nav class="tabs">
-          <button id="tabHome" class="active-tab" onclick="switchTab('home')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/></svg></span>Home</button>
-          <button id="tabConversations" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
+          <button id="tabHome" class="active-tab" onclick="switchTab('home')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>Dashboard</button>
+          <button id="tabConversations" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
           ${
             isBookable
-              ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>Services</button>
-          <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>Bookings</button>`
-              : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>Catalog</button>`
+              ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg></span>Services</button>
+          <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span>Bookings</button>`
+              : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Catalog</button>`
           }
-          <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>Analytics</button>
-          <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.6.66 1.03 1.28 1.06H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>Settings</button>
+          <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-6"/><path d="M12 21V3"/><path d="M19 21V9"/></svg></span>Analytics</button>
+          <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></span>Settings</button>
         </nav>
         <div class="sidebar-footer">
           <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
-          <a class="sidebar-footer-link" href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Plain table view</a>
-          ${key ? `<a class="sidebar-footer-link" href="/admin?key=${key}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>All sellers</a>` : ""}
+
+          <a class="sidebar-footer-link" href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Plain table view</a>
+          ${key ? `<a class="sidebar-footer-link" href="/admin?key=${key}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>All sellers</a>` : ""}
+          <div class="sidebar-divider"></div>
+          <div class="sidebar-vendor">Stafly<b>.AI</b></div>
         </div>
       </aside>
       <div class="main-column">
@@ -8827,11 +9332,23 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         <!-- Every figure below is derived from the same 14-day trend the
              chart draws, or from stored payment records. Nothing here is
              projected, estimated or benchmarked. -->
-        <div class="an-head">
-          <div>
-            <h2 class="an-title">Analytics</h2>
-            <div class="card-sub" id="anRangeLabel">Last 14 days</div>
-          </div>
+        <!-- Round 47. This page was six stacked cards, each opening with a
+             heading and a sentence of prose explaining itself. Six titles and
+             six explanations is what "the words are scattered all over" meant.
+             It uses Home's structure now: one masthead, then bands separated
+             by a hairline, each opened by a single mono label with its note on
+             the right instead of underneath. The explanations did not get
+             deleted, they got moved out of the way. -->
+        <!-- Round 48. Back to cards. Bands work on Home because its blocks
+             are short; here they put a label at the far left of a 1200px
+             column and its note at the far right, with a metre of nothing in
+             between, and nothing to stop one block running into the next. A
+             card gives each measurement its own edge, and at card width a
+             label and its note read as a pair. What stays from the band pass
+             is the type: mono caps for the label, the note quietly under it,
+             the figure in the display face. -->
+        <div class="an-masthead">
+          <span class="home-eyebrow">Analytics &mdash; <span id="anRangeLabel">last 14 days</span></span>
           <div class="seg-control an-range" id="anRange">
             <button data-days="7" onclick="setAnalyticsRange(7)">7d</button>
             <button data-days="14" class="seg-active" onclick="setAnalyticsRange(14)">14d</button>
@@ -8841,54 +9358,46 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         <div id="analyticsEmpty" style="display:none;"></div>
         <div class="kpi-row" id="analyticsKpis"></div>
         <div class="catalog-card">
-          <div class="card-head">
-            <div>
-              <h2>Revenue</h2>
-              <div class="card-sub" id="revenueCardSub">Paid orders over the last 14 days.</div>
-            </div>
+          <div class="an-head2">
+            <span class="home-eyebrow">Revenue</span>
+            <span class="an-note" id="revenueCardSub">Paid orders over the last 14 days</span>
           </div>
           <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
         </div>
         <div class="an-two">
           <div class="catalog-card">
-            <div class="card-head">
-              <div>
-                <h2>Busiest days</h2>
-                <div class="card-sub">Which days of the week orders actually land on.</div>
-              </div>
+            <div class="an-head2">
+              <span class="home-eyebrow">Busiest days</span>
+              <span class="an-note">Which days orders actually land on</span>
             </div>
             <div class="dow-row" id="dowRow"></div>
           </div>
           <div class="catalog-card">
-            <div class="card-head">
-              <div>
-                <h2>New and returning</h2>
-                <div class="card-sub" id="nrSub">People who messaged you in this window.</div>
-              </div>
+            <div class="an-head2">
+              <span class="home-eyebrow">New and returning</span>
+              <span class="an-note" id="nrSub">People who messaged you in this window</span>
             </div>
             <div id="newReturning"></div>
           </div>
         </div>
-        <div class="catalog-card">
-          <div class="card-head">
-            <div>
-              <h2>Best sellers</h2>
-              <div class="card-sub">By units sold, across every paid order.</div>
+        <div class="an-two">
+          <div class="catalog-card">
+            <div class="an-head2">
+              <span class="home-eyebrow">Chat to order</span>
+              <span class="an-note">How many people who messaged you have gone on to pay</span>
+            </div>
+            <div class="conversion-block">
+              <div class="conversion-stat" id="conversionStat">&mdash;</div>
+              <div class="conversion-meter"><div class="conversion-fill" id="conversionFill" style="width:0%"></div></div>
+              <div class="conversion-sub" id="conversionSub"></div>
             </div>
           </div>
-          <div id="bestSellersList"></div>
-        </div>
-        <div class="catalog-card">
-          <div class="card-head">
-            <div>
-              <h2>Chat to order</h2>
-              <div class="card-sub">How many people who ever messaged you have gone on to pay.</div>
+          <div class="catalog-card">
+            <div class="an-head2">
+              <span class="home-eyebrow">Best sellers</span>
+              <span class="an-note">By units sold, across every paid order</span>
             </div>
-          </div>
-          <div class="conversion-block">
-            <div class="conversion-stat" id="conversionStat">&mdash;</div>
-            <div class="conversion-meter"><div class="conversion-fill" id="conversionFill" style="width:0%"></div></div>
-            <div class="conversion-sub" id="conversionSub"></div>
+            <div id="bestSellersList"></div>
           </div>
         </div>
       </div>
@@ -8987,7 +9496,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // the same customer always lands on the same color and the list
         // reads as genuinely distinct people, the same pattern Slack/Gmail
         // use for contacts without a picture.
-        const AVATAR_PALETTE = ["#4f46e5", "#0891b2", "#be185d", "#b45309", "#15803d", "#7c3aed", "#0f766e", "#c2410c", "#1d4ed8", "#a21caf"];
+        // Round 45. This was indigo, cyan, pink, violet, teal, fuchsia -- a
+        // full rainbow left over from the cool palette, and once avatars
+        // appeared in Live Activity it was the loudest thing on a warm brown
+        // page. Ten identities are still ten identities in one temperature
+        // family: clays, ochres, walnuts, olives. The desaturated greens here
+        // are moss and olive, nowhere near the saturated green reserved for
+        // "connected, live, Amara is answering", so the two never read as the
+        // same signal. All ten clear 4.5:1 against the white initials.
+        const AVATAR_PALETTE = ["#A8482A", "#7A5537", "#806127", "#57623A", "#94495A", "#665040", "#97562A", "#4A5747", "#834637", "#68466A"];
         function avatarColorFor(phone) {
           const str = String(phone || "");
           let hash = 0;
@@ -9910,6 +10427,57 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           setTimeout(run, 400);
         }
 
+        // Round 39. The active marker travels between rows instead of blinking
+        // off one and onto another. It is a single element positioned from the
+        // active button at runtime, moved with a transform, so the browser
+        // animates it on the compositor and nothing reflows. The easing
+        // overshoots by about a tenth -- enough that it reads as a physical
+        // thing settling, not enough to look bouncy on a control pressed all
+        // day. If this never runs, the CSS still paints the active row.
+        let navPillEl = null;
+        function moveNavPill(animate) {
+          const nav = document.querySelector("nav.tabs");
+          if (!nav) return;
+          const act = nav.querySelector("button.active-tab");
+          if (!act) return;
+          if (!navPillEl) {
+            navPillEl = document.createElement("span");
+            navPillEl.className = "nav-pill";
+            nav.insertBefore(navPillEl, nav.firstChild);
+            nav.classList.add("pill-on");
+          }
+          const y = act.offsetTop;
+          const h = act.offsetHeight;
+          if (!h) return;
+          const prev = navPillEl.pillY;
+          navPillEl.pillY = y;
+          navPillEl.style.height = h + "px";
+          navPillEl.style.transform = "translateY(" + y + "px)";
+          const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          if (!animate || prev === undefined || prev === y || reduce) return;
+          if (!navPillEl.animate) return;
+          navPillEl.animate(
+            [{ transform: "translateY(" + prev + "px)" }, { transform: "translateY(" + y + "px)" }],
+            // Round 40. Was 340ms with a tenth of overshoot, which outlasted
+            // the view's own 240ms entrance -- so a tab switch read as two
+            // separate movements, the page settling and then the rail catching
+            // up. 280ms with a much smaller overshoot lands them together.
+            { duration: 280, easing: "cubic-bezier(.3, 1.05, .4, 1)" }
+          );
+        }
+        // The rail only has real geometry once the shell has laid out, and the
+        // row count differs between a goods seller and a bookable one, so the
+        // pill is placed by observing the nav rather than by guessing a moment.
+        (function watchNavPill() {
+          const nav = document.querySelector("nav.tabs");
+          if (!nav) return;
+          if (typeof ResizeObserver === "function") {
+            new ResizeObserver(() => moveNavPill(false)).observe(nav);
+          }
+          moveNavPill(false);
+          window.addEventListener("resize", () => moveNavPill(false));
+        })();
+
         function switchTab(tab) {
           // Not every element below exists on every seller's dashboard --
           // a goods seller never gets tabServices/tabBookings, a bookable
@@ -9933,6 +10501,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
           }
+          moveNavPill(true);
           // Coming back to Conversations from the menu should land on the
           // LIST, not silently reopen whichever thread was last read -- on a
           // phone that made it look like the menu item did nothing.
@@ -10713,6 +11282,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_TICK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><polyline points="8 12.2 11 15.2 16 9.5"/></svg>';
         const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+        const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
         const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
         const ICON_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg>';
 
@@ -10740,9 +11310,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function homeBrandCard(p, d) {
           const initial = escapeHtml((p.businessName || "S").trim().charAt(0).toUpperCase());
           const avatar = p.avatarUrl ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">' : initial;
-          const coverStyle = p.coverUrl
-            ? ' class="brand-cover has-photo" style="--cover-img:url(' + encodeURI(p.coverUrl) + ')"'
-            : ' class="brand-cover"';
           const meta = [];
           if (p.location) meta.push('<span>' + ICON_PIN + escapeHtml(p.location) + '</span>');
           meta.push('<span>' + ICON_BOX + d.catalogue.total + ' product' + (d.catalogue.total === 1 ? "" : "s") + '</span>');
@@ -10756,29 +11323,32 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const live = d.connection.connected && !d.connection.suspended
             ? '<span class="live-pill"><span class="live-dot"></span>Amara is live</span>'
             : '<span class="live-pill off"><span class="live-dot"></span>Not connected</span>';
+          // Round 42. One panel instead of a banner with a face stuck to it.
+          // The eyebrow says what this dashboard is, the name and tagline say
+          // whose it is, the pill says whether Amara can actually answer, and
+          // the picture sits in a ring on the right. The seller's cover photo,
+          // when they have uploaded one, becomes this panel's background.
+          const heroCls = 'hero' + (p.coverUrl ? ' has-cover' : '');
+          const heroStyle = p.coverUrl ? ' style="--cover-img:url(' + encodeURI(p.coverUrl) + ')"' : '';
           return '' +
-            '<div class="brand-card">' +
-              '<div' + coverStyle + '>' +
-                '<button class="photo-btn cover-photo-btn" data-home-action="pick-cover">' + ICON_CAMERA + (p.coverUrl ? "Change cover" : "Add cover") + '</button>' +
-              '</div>' +
-              '<div class="brand-body">' +
-                '<div class="brand-avatar-wrap">' +
-                  '<div class="brand-avatar' + (p.avatarUrl ? " has-photo" : "") + '">' + avatar + '</div>' +
-                  '<button class="photo-btn avatar-photo-btn" data-home-action="pick-avatar" aria-label="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
-                '</div>' +
-                '<div class="brand-head-row">' +
-                  '<div class="brand-text">' +
-                    '<div class="brand-title-line">' +
-                      '<h2 class="brand-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' + live +
-                    '</div>' +
-                    (p.tagline
-                      ? '<div class="brand-tagline">' + escapeHtml(p.tagline) + '</div>'
-                      : '<div class="brand-empty-hint">No tagline yet. <button data-home-action="edit-profile">Add one</button></div>') +
-                    (meta.length ? '<div class="brand-meta">' + meta.join("") + '</div>' : '') +
-                    (p.about ? '<div class="brand-about">' + escapeHtml(p.about) + '</div>' : '') +
-                  '</div>' +
+            '<div class="' + heroCls + '"' + heroStyle + '>' +
+              '<button class="hero-cover-btn" data-home-action="pick-cover">' + ICON_CAMERA + (p.coverUrl ? "Change cover" : "Add cover") + '</button>' +
+              '<div class="hero-text">' +
+                '<div class="hero-eyebrow">' + (document.getElementById("tabBookings") ? "Bookings assistant" : "WhatsApp sales assistant") + '</div>' +
+                '<h2 class="hero-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' +
+                (p.tagline
+                  ? '<div class="hero-tag">' + escapeHtml(p.tagline) + '</div>'
+                  : '<div class="hero-tag">No tagline yet. <button data-home-action="edit-profile">Add one</button></div>') +
+                '<div class="hero-row">' + live +
                   '<button class="btn-quiet brand-edit-btn" data-home-action="edit-profile">Edit profile</button>' +
                 '</div>' +
+                (meta.length ? '<div class="hero-meta">' + meta.join("") + '</div>' : '') +
+              '</div>' +
+              '<div class="hero-figure">' +
+                '<div class="hero-ring">' +
+                  '<div class="hero-avatar' + (p.avatarUrl ? " has-photo" : "") + '">' + avatar + '</div>' +
+                '</div>' +
+                '<button class="photo-btn" data-home-action="pick-avatar" aria-label="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
               '</div>' +
             '</div>';
         }
@@ -10819,12 +11389,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const pct = Math.round((doneCount / steps.length) * 100);
           return '' +
             '<div class="setup-card">' +
-              '<div class="setup-top">' +
-                '<div>' +
-                  '<div class="setup-title">Finish setting up your shop</div>' +
-                  '<div class="setup-sub">Your customers only ever meet Amara on WhatsApp, so this is for your own dashboard. Skip it and add these whenever you like.</div>' +
-                '</div>' +
+              '<div class="home-sec-head">' +
+                '<span class="home-eyebrow">Setup checklist</span>' +
+                '<span class="sec-count">' + doneCount + ' of ' + steps.length + '</span>' +
               '</div>' +
+              '<div class="setup-sub">Only you see these. Your customers meet Amara on WhatsApp, not here.</div>' +
               '<div class="setup-progress">' +
                 '<div class="setup-bar"><div class="setup-bar-fill" style="width:' + pct + '%"></div></div>' +
                 '<div class="setup-progress-text">' + doneCount + ' of ' + steps.length + '</div>' +
@@ -10855,35 +11424,44 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
 
         function homeWaitingCard(d) {
+          // Round 46. One panel holding the records, the label and count out
+          // on the canvas above it, and a note along the bottom saying what
+          // happens next. A thread a person has already taken is marked in
+          // accent rather than given a grey timestamp.
           const rows = d.waiting.map((w) => {
             const c = { phone: w.phone, wa_name: w.wa_name };
             return '' +
-              '<div class="waiting-row" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">' +
-                '<div class="waiting-avatar" style="background:' + avatarColorFor(w.phone) + '">' + escapeHtml(avatarTextFor(c)) + '</div>' +
-                '<div class="waiting-main">' +
-                  '<div class="waiting-top"><span class="waiting-name">' + escapeHtml(displayNameFor(c)) + '</span>' +
+              '<div class="q-row" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">' +
+                '<span class="q-av" style="background:' + avatarColorFor(w.phone) + '">' + escapeHtml(avatarTextFor(c)) + '</span>' +
+                '<div class="q-main">' +
+                  '<div class="q-top"><span class="q-name">' + escapeHtml(displayNameFor(c)) + '</span>' +
                     (w.paused
-                      ? '<span class="waiting-flag">YOURS</span>'
-                      : '<span class="waiting-when">' + escapeHtml(timeAgo(w.last_contact)) + '</span>') +
+                      ? '<span class="q-wait mine">' + ICON_CLOCK + 'You have it</span>'
+                      : '<span class="q-wait">' + ICON_CLOCK + escapeHtml(timeAgo(w.last_contact)) + '</span>') +
                   '</div>' +
-                  '<div class="waiting-preview">' + escapeHtml(w.preview || "No message text") + '</div>' +
+                  '<div class="q-line">' + escapeHtml(w.preview || "no message text") + '</div>' +
                 '</div>' +
-                '<span class="waiting-chev">' + ICON_CHEVRON + '</span>' +
+                '<button class="q-btn" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">Reply</button>' +
               '</div>';
           }).join("");
           const more = d.waitingTotal > d.waiting.length
             ? '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-conversations">See all ' + d.waitingTotal + ' in Conversations</button></div>'
             : "";
+          // Round 44. "Needs you" is the honest header: these are the threads
+          // where the customer has spoken and nobody has answered. The count
+          // states its own unit rather than sitting as a bare number.
+          const n = d.waitingTotal || 0;
           return '' +
             '<div class="home-card">' +
-              '<div class="home-card-head">' +
-                '<div><h3>Waiting on a reply</h3>' +
-                  '<div class="home-card-sub">Threads where the customer spoke last.</div></div>' +
-                (d.waitingTotal ? '<span class="home-count-chip">' + d.waitingTotal + '</span>' : '<span class="home-count-chip calm">0</span>') +
+              '<div class="home-sec-head">' +
+                '<span class="home-eyebrow">Needs you &mdash; takeover queue</span>' +
+                '<span class="sec-count' + (n ? ' hot' : '') + '">' + n + ' waiting</span>' +
               '</div>' +
-              (d.waiting.length
-                ? '<div class="waiting-list">' + rows + '</div>' + more
-                : '<div class="home-empty"><div class="home-empty-icon">' + ICON_TICK_CIRCLE + '</div>Nobody is waiting. Every conversation has had the last word from you or from Amara.</div>') +
+              '<div class="list-panel">' +
+                (d.waiting.length
+                  ? rows + '<div class="list-panel-note">' + ICON_TICK + 'Replying here pauses Amara on that thread until you hand it back.</div>'
+                  : '<div class="list-empty">' + ICON_TICK_CIRCLE + 'All clear. Every conversation has had the last word from you or from Amara.</div>') +
+              '</div>' + more +
             '</div>';
         }
 
@@ -10892,13 +11470,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // context line below is counted from stored records -- there are no
         // invented deltas and no "vs last week" where nothing was recorded.
         function homeTile(cls, icon, value, label, context) {
+          // Round 43. Label first, then the number on its own line. The
+          // number is the only thing on a tile anyone reads at a glance, so it
+          // gets the corner rather than sharing it with an icon chip.
           return '' +
             '<div class="htile ' + cls + '">' +
               '<div class="htile-top">' +
+                '<span class="htile-label">' + label + '</span>' +
                 '<span class="htile-icon">' + icon + '</span>' +
-                '<span class="htile-value">' + value + '</span>' +
               '</div>' +
-              '<div class="htile-label">' + label + '</div>' +
+              '<span class="htile-value">' + value + '</span>' +
               (context ? '<div class="htile-context">' + context + '</div>' : '') +
             '</div>';
         }
@@ -10929,6 +11510,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }
         }
 
+        // Round 44. The six most recent threads, newest first, straight from
+        // stored customer records -- the same last_contact and preview the
+        // conversation list reads. Nothing here is an invented event log: if a
+        // row is showing, a real message is behind it.
+        function homeActivityCard(d) {
+          const items = d.recent || [];
+          const rows = items.map((r) => {
+            const c = { phone: r.phone, wa_name: r.wa_name };
+            const who = escapeHtml(displayNameFor(c));
+            const lead = r.role === "customer" ? "Messaged you" : "Amara replied";
+            return '' +
+              '<div class="act-row ' + (r.role === "customer" ? "customer" : "amara") + '" data-home-action="open-thread" data-phone="' + escapeHtml(r.phone) + '">' +
+                '<span class="act-avatar" style="background:' + avatarColorFor(r.phone) + '">' + escapeHtml(avatarTextFor(c)) +
+                  '<span class="act-mark"></span></span>' +
+                '<div class="act-main">' +
+                  '<div class="act-top"><span class="act-who">' + who + '</span>' +
+                    '<span class="act-when">' + escapeHtml(timeAgo(r.last_contact)) + '</span></div>' +
+                  '<div class="act-line"><b>' + lead + '</b>' + (r.preview ? ' &middot; ' + escapeHtml(r.preview) : '') + '</div>' +
+                '</div>' +
+              '</div>';
+          }).join("");
+          return '' +
+            '<div class="home-card">' +
+              '<div class="home-sec-head">' +
+                '<span class="home-eyebrow">Live activity</span>' +
+                '<span class="home-eyebrow-note">Newest first</span>' +
+              '</div>' +
+              '<div class="act-list">' +
+                (rows || '<div class="list-empty">' + ICON_TICK_CIRCLE + 'Nothing yet. The moment someone messages your WhatsApp number it shows up here.</div>') +
+              '</div>' +
+            '</div>';
+        }
+
         // Seven days of real activity: new conversations counted from each
         // customer's own first_contact, and orders from the same daily totals
         // the Analytics tab reads. Drawn as inline SVG rather than a chart
@@ -10950,19 +11564,28 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               (isNaN(dt) ? "" : " on " + dt.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" }));
             return '' +
               '<div class="wk-col' + (x.date === today ? " is-today" : "") + '" title="' + escapeHtml(label) + '">' +
+                '<div class="wk-n">' + x.newCustomers + '</div>' +
                 '<div class="wk-bar-slot">' +
-                  '<div class="wk-bar" style="height:' + Math.max(h, x.newCustomers > 0 ? 8 : 2) + '%"></div>' +
+                  '<div class="wk-bar" style="height:' + Math.max(h, x.newCustomers > 0 ? 6 : 1.5) + '%"></div>' +
                 '</div>' +
-                '<div class="wk-day">' + escapeHtml(dayLetter) + '</div>' +
               '</div>';
+          }).join("");
+          // Day letters ride in their own row under the baseline rather than
+          // inside each column, so the rule the bars stand on is unbroken.
+          const ticks = week.map((x) => {
+            const dt2 = new Date(x.date + "T00:00:00");
+            const letter = isNaN(dt2) ? "" : dt2.toLocaleDateString(undefined, { weekday: "narrow" });
+            return '<span class="wk-day' + (x.date === today ? " today" : "") + '">' + escapeHtml(letter) + '</span>';
           }).join("");
           return '' +
             '<div class="home-card wk-card">' +
-              '<div class="home-card-head">' +
-                '<div><h3>Last 7 days</h3>' +
-                  '<div class="home-card-sub">New conversations per day.</div></div>' +
+              '<div class="home-sec-head">' +
+                '<span class="home-eyebrow">Last 7 days</span>' +
+                '<span class="home-eyebrow-note">New conversations per day</span>' +
               '</div>' +
+              '<div class="wk-scale"><span>' + totalNew + ' total</span><span>Peak ' + maxNew + '</span></div>' +
               '<div class="wk-chart">' + bars + '</div>' +
+              '<div class="wk-days">' + ticks + '</div>' +
               '<div class="wk-foot">' +
                 '<div class="wk-stat"><b>' + totalNew + '</b><span>new</span></div>' +
                 '<div class="wk-stat"><b>' + totalOrders + '</b><span>paid orders</span></div>' +
@@ -11018,9 +11641,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
           return '' +
             '<div class="home-card cat-card">' +
-              '<div class="home-card-head">' +
-                '<div><h3>Your catalogue</h3>' +
-                  '<div class="home-card-sub">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell.</div></div>' +
+              '<div class="home-sec-head">' +
+                '<span class="home-eyebrow">Your catalogue</span>' +
+                '<span class="home-eyebrow-note">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell</span>' +
                 // The ring moved into the header: it is a status, and a status
                 // belongs beside the title, not in a block of its own.
                 '<div class="ring-badge" title="' + pct + '% of product details filled in">' +
@@ -11063,19 +11686,44 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           } else {
             lastHomeSignature = homeSignature(d);
           }
+          // Round 44. Bands, not a stack. Masthead, hero, then four sections
+          // each opened by a hairline and a mono label. The setup checklist
+          // only occupies a column while it still has something to say; once
+          // it is finished it returns "" and the chart takes the full width,
+          // so the page never carries an empty half.
+          const setup = homeSetupCard(d);
+          const chart = homeWeekCard(d);
+          const band2 = setup
+            ? '<div class="home-split">' + chart + setup + '</div>'
+            : chart;
           host.innerHTML = '' +
             '<div class="home-inner">' +
               homeAlerts(d) +
-              (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
-              homeSetupCard(d) +
-              '<div class="home-section-head">' +
-                '<div class="home-section-label"><span class="pulse-dot"></span>Right now</div>' +
-                '<div class="home-section-note">Updates on its own</div>' +
+              '<div class="home-masthead">' +
+                '<span class="home-eyebrow">Overview &mdash; ' +
+                  (document.getElementById("tabBookings") ? "Bookings assistant" : "WhatsApp sales assistant") + '</span>' +
+                '<span class="home-eyebrow-note">Updates on its own</span>' +
               '</div>' +
-              '<div class="home-stats" id="homeStats"></div>' +
-              '<div class="home-grid">' +
-                homeWaitingCard(d) +
-                '<div class="home-col">' + homeWeekCard(d) + homeCatalogueCard(d) + '</div>' +
+              (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
+              '<hr class="hair">' +
+              '<div class="home-sec">' +
+                '<div class="home-sec-head">' +
+                  '<span class="home-eyebrow"><span class="pulse-dot"></span>Right now</span>' +
+                '</div>' +
+                '<div class="home-stats" id="homeStats"></div>' +
+              '</div>' +
+              '<hr class="hair">' +
+              '<div class="home-sec">' + band2 + '</div>' +
+              '<hr class="hair">' +
+              '<div class="home-sec"><div class="home-split flip">' +
+                homeWaitingCard(d) + homeActivityCard(d) +
+              '</div></div>' +
+              '<hr class="hair">' +
+              '<div class="home-sec">' + homeCatalogueCard(d) + '</div>' +
+              '<hr class="hair">' +
+              '<div class="home-footline">' +
+                '<span>' + escapeHtml(d.profile.businessName || "Your shop") + ' &middot; WhatsApp Business</span>' +
+                '<span>Every figure read from your own records</span>' +
               '</div>' +
               '<div class="catalog-msg" id="homeMsg" style="margin-top:14px;"></div>' +
             '</div>' +
@@ -13013,6 +13661,25 @@ app.get("/api/home", async (req, res) => {
       newThisWeek: week.reduce((sum, d) => sum + d.newCustomers, 0),
       waiting,
       waitingTotal: customers.filter((c) => c.last_message_role === "user").length,
+      // Round 44. The takeover queue is a narrower thing than "waiting": it is
+      // the threads where a person has stepped in AND the customer has spoken
+      // since, so somebody is waiting on a human rather than on Amara.
+      takeoverTotal: customers.filter((c) => c.paused === "yes" && c.last_message_role === "user").length,
+      // The last six things that actually happened, newest first, straight off
+      // each customer record. No event log is invented here -- this is the
+      // same last_contact and last_message_preview the conversation list reads.
+      recent: customers
+        .filter((c) => c.last_contact)
+        .sort((a, b) => new Date(b.last_contact || 0) - new Date(a.last_contact || 0))
+        .slice(0, 6)
+        .map((c) => ({
+          phone: c.phone,
+          wa_name: c.wa_name || "",
+          preview: c.last_message_preview || "",
+          last_contact: c.last_contact || "",
+          role: c.last_message_role === "user" ? "customer" : "amara",
+          paused: c.paused === "yes",
+        })),
       catalogue: {
         total: keys.length,
         missingPhoto: missingPhoto.length,
@@ -13783,7 +14450,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 37";
+const BUILD_ROUND = "Round 48";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
