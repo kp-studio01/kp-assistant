@@ -333,6 +333,11 @@ async function getSellerContext(sellerId) {
     // absent means absent, never a generated stand-in. The *Version fields
     // are upload timestamps, used both as "is there a picture" and as the
     // cache-buster on its URL.
+    // Round 50. contactName and email were on the Redis record but never
+    // made it into the seller context, so the greeting and the account row
+    // at the foot of the rail had nothing real to show.
+    contactName: record?.contactName || "",
+    email: record?.email || "",
     tagline: record?.tagline || "",
     about: record?.about || "",
     location: record?.location || "",
@@ -3716,8 +3721,15 @@ const BRAND_TOKENS_CSS = `
        file and is the house entrance curve. Naming them stops the next near
        miss -- .15s and .18s were being used interchangeably for the same job
        on sibling controls -- and gives one place to tune the whole product. */
-    --ease-out: cubic-bezier(.22, 1, .36, 1);
-    --ease-io: cubic-bezier(.4, 0, .2, 1);
+    /* Round 49. The stock curves, and the ones here before, are too weak to
+       read as intentional. These are the strong variants: ease-out starts
+       hard so a press answers instantly, ease-io accelerates and decelerates
+       like a real object moving across the screen. ease-in is deliberately
+       absent -- it delays the first moment, which is the moment being
+       watched, so it makes everything feel slower at the same duration. */
+    --ease-out: cubic-bezier(.23, 1, .32, 1);
+    --ease-io: cubic-bezier(.77, 0, .175, 1);
+    --ease-drawer: cubic-bezier(.32, .72, 0, 1);
     --dur-press: 160ms;
     --dur-fast: 180ms;
     --dur-base: 220ms;
@@ -6758,6 +6770,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
   // showing rather than a reassuring badge.
   const whatsappConnected = !!(connection && connection.phoneNumberId && connection.whatsappToken);
   const ownerAlertNumber = (connection && connection.ownerPhoneNumber) || "";
+  // Round 50. The account row at the foot of the rail shows the real sign-in
+  // address, the way every dashboard she referenced does. It comes off the
+  // seller record; it is not derived or guessed.
+  const sellerEmail = (connection && connection.email) || "";
   // The admin key (and, when viewing a seller other than seller1, that
   // seller's id) gets embedded into the page's own JS so its fetch calls
   // can authenticate, same trust boundary as the ?key= on the page itself
@@ -6896,6 +6912,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            reserves for "the line to WhatsApp is open". */
         .spa-wrap::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 2px var(--surface-2); }
         [data-theme="dark"] .spa-wrap::after { box-shadow: 0 0 0 2px #100E0C; }
+        .sidebar-profile-avatar.brandmark { background: var(--brand); }
         .sidebar-profile-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; overflow: hidden; box-shadow: none; }
         /* Once a shop has a picture it should be the shop everywhere, not just
            on Home. The accent glow is dropped when a real photo is in place --
@@ -7265,9 +7282,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            longest wait in the product. It is dismissed by the first successful
            load, and unconditionally at 4s so a failed request can never leave
            someone staring at it. */
+        /* Round 49, bug. This whole screen was still indigo -- #1c2450 ground,
+           #818cf8 arc, an indigo-violet mark with an indigo glow. It lives in
+           the dashboard stylesheet, outside the block that was converted when
+           the auth pages were warmed, so it stayed cool while everything
+           around it changed. It is the first thing anyone sees on a cold
+           Render instance, which made it the most visible thing still wrong. */
         .boot { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
-          background: radial-gradient(130% 100% at 50% 38%, #1c2450 0%, #0a0e22 64%);
-          transition: opacity .6s cubic-bezier(.4,0,.2,1), visibility .6s, transform .6s cubic-bezier(.4,0,.2,1); }
+          background: radial-gradient(130% 100% at 50% 38%, #2A1B12 0%, #120D09 64%);
+          transition: opacity .44s var(--ease-out), visibility .44s, transform .44s var(--ease-out); }
         .boot.done { opacity: 0; visibility: hidden; transform: scale(1.03); }
         /* Same handoff as the sign-in cover: the dashboard is held at its
            first frame until the cover starts lifting. */
@@ -7280,8 +7303,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* One continuous sweep rather than a spinner: the arc grows and
            shrinks as it turns, so it reads as progress even though the real
            duration is unknowable. */
-        .boot-arc { stroke: #818cf8; stroke-dasharray: 26 96;
-          animation: bootSweep 1.5s cubic-bezier(.5,0,.5,1) infinite; transform-origin: 50% 50%; }
+        /* 1.5s was a slow sweep, and a slow sweep makes a load feel longer
+           than it is. Same arc, 1.05s: identical wait, noticeably quicker. */
+        .boot-arc { stroke: #E0714B; stroke-dasharray: 26 96;
+          animation: bootSweep 1.05s cubic-bezier(.5,0,.5,1) infinite; transform-origin: 50% 50%; }
         @keyframes bootSweep {
           0%   { stroke-dasharray: 12 110; stroke-dashoffset: 0; }
           50%  { stroke-dasharray: 68 54;  stroke-dashoffset: -28; }
@@ -7289,15 +7314,36 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
         .boot-mark span { position: relative; width: 46px; height: 46px; border-radius: 14px; display: flex;
           align-items: center; justify-content: center; font-family: var(--font-heading); font-weight: 700;
-          font-size: 21px; color: #fff; background: linear-gradient(140deg, #6366f1, #4338ca);
-          box-shadow: 0 12px 34px rgba(79,70,229,.5);
-          animation: bootPop .8s cubic-bezier(.22,1,.36,1) both; }
+          font-size: 21px; color: #fff; background: linear-gradient(140deg, #C9552F, #9E3D21);
+          box-shadow: 0 12px 34px rgba(188,75,42,.42);
+          animation: bootPop .6s var(--ease-out) both; }
         /* Every other scale in this product lives between .96 and .99. A .7
            pop is a different product's vocabulary, and this one fires on every
            dashboard load. */
         @keyframes bootPop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
         .boot-name { margin-top: 20px; font-family: var(--font-heading); font-size: 17px; font-weight: 620;
           letter-spacing: -.02em; color: #fff; animation: riseUp .7s cubic-bezier(.22,1,.36,1) .18s both; }
+        /* Round 49. Shadows across the dashboard were still cast in slate --
+           rgba(15,23,42,...) -- which on a brown page reads as a cold grey
+           halo rather than a shadow. One override, declared last so it wins
+           over every earlier rule, retints every one of them warm. */
+        .list-avatar, .thread-avatar, .more-menu-dropdown, .bubble, button.takeover-btn,
+        .catalog-card:hover, .swatch, .icon-btn.small-icon-btn:hover, .emoji-picker-dropdown,
+        .brand-avatar.has-photo, .ptile:hover .ptile-img { --slate-shadow: rgba(42,33,26,0.14); }
+        .list-avatar { box-shadow: 0 1px 2px rgba(42,33,26,0.15) !important; }
+        .thread-avatar { box-shadow: 0 1px 3px rgba(42,33,26,0.18) !important; }
+        .more-menu-dropdown { box-shadow: 0 8px 20px rgba(42,33,26,0.16) !important; }
+        .bubble { box-shadow: 0 1px 1px rgba(42,33,26,0.05), 0 1px 3px rgba(42,33,26,0.07) !important; }
+        button.takeover-btn { box-shadow: 0 2px 5px rgba(42,33,26,0.12) !important; }
+        .catalog-card:hover { box-shadow: 0 4px 14px rgba(42,33,26,0.09) !important; }
+        .swatch { box-shadow: inset 0 0 0 1px rgba(42,33,26,0.14) !important; }
+        .icon-btn.small-icon-btn:hover { box-shadow: 0 1px 3px rgba(42,33,26,0.13) !important; }
+        .emoji-picker-dropdown { box-shadow: 0 10px 26px rgba(42,33,26,0.18) !important; }
+        .brand-avatar.has-photo { box-shadow: 0 8px 22px rgba(42,33,26,0.20) !important; }
+        .ptile:hover .ptile-img { box-shadow: 0 10px 24px rgba(42,33,26,0.16) !important; }
+        /* A highlight mark was painting slate ink on the warn colour. */
+        .bubble mark { color: #2A211A !important; }
+
         .boot-step { margin-top: 7px; font-size: 12.5px; color: rgba(255,255,255,.52);
           animation: riseUp .7s cubic-bezier(.22,1,.36,1) .3s both; transition: opacity .3s ease; }
         @keyframes riseUp { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
@@ -7891,10 +7937,29 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hero.has-cover { background-image: var(--cover-img); background-size: cover; background-position: center; }
         /* The scrim exists so the seller's own photograph cannot make their own
            name unreadable, whatever they upload. */
+        /* Two scrims, not one. The diagonal wash keeps the whole panel
+           readable; the second is a short vertical lift under the bottom
+           edge, which is exactly where the meta row sits and exactly where a
+           busy photograph tends to be brightest. */
         .hero.has-cover::before { content: ""; position: absolute; inset: 0;
-          background: linear-gradient(100deg, rgba(20,15,11,0.80) 0%, rgba(20,15,11,0.58) 52%, rgba(20,15,11,0.30) 100%); }
-        .hero.has-cover > * { position: relative; z-index: 1; }
-        .hero.has-cover .hero-eyebrow, .hero.has-cover .hero-tag, .hero.has-cover .hero-meta { color: rgba(255,255,255,0.72); }
+          background:
+            linear-gradient(to top, rgba(18,13,10,0.72) 0%, rgba(18,13,10,0) 46%),
+            linear-gradient(100deg, rgba(18,13,10,0.86) 0%, rgba(18,13,10,0.62) 54%, rgba(18,13,10,0.34) 100%); }
+        /* Round 49, bug. This was a rule on .hero.has-cover > * , which set
+           position: relative on EVERY direct child -- including the cover
+           button, whose own absolute positioning it silently overrode. With a
+           cover photo in place the button stopped being pinned to the corner
+           and landed in the middle of the text. Only the content column and
+           the portrait need lifting above the scrim. */
+        .hero.has-cover > .hero-text, .hero.has-cover > .hero-figure { position: relative; z-index: 1; }
+        .hero.has-cover .hero-eyebrow, .hero.has-cover .hero-tag, .hero.has-cover .hero-meta { color: rgba(255,255,255,0.80); }
+        /* BUG: Edit profile is a quiet button -- dark ink, light fill. Over a
+           photograph it was dark ink on dark photograph. */
+        .hero.has-cover .brand-edit-btn { background: rgba(255,255,255,0.14); color: #fff;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+        .hero.has-cover .brand-edit-btn:hover { background: rgba(255,255,255,0.24); color: #fff; }
+        .hero.has-cover .live-pill { background: rgba(255,255,255,0.14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22); }
+        .hero.has-cover .hero-tag button { color: #F4C4AA; }
         .hero.has-cover .hero-name { color: #fff; }
         .hero.has-cover .hero-ring { background: rgba(255,255,255,0.14); }
 
@@ -8105,7 +8170,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .ring-badge .track { fill: none; stroke: var(--surface-3); stroke-width: 4.5; }
         .ring-badge .fill { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .ring-badge b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 12.5px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
-        .ring-badge b i { font-style: normal; font-size: 10px; margin-left: 0.5px; color: var(--muted-2); }
+        .ring-badge b i { font-style: normal; font-size: 11px; margin-left: 0.5px; color: var(--muted-2); }
 
         .ptile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; margin-top: 18px; }
         .ptile { min-width: 0; cursor: pointer; }
@@ -8758,6 +8823,172 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
 
 
+
+
+        /* ==================================================================
+           Round 50 -- the navigation chassis.
+           ================================================================== */
+
+        /* --- the font that read as 1990s ------------------------------------
+           Mono was doing two jobs: figures, where it belongs, and every small
+           uppercase label, where it does not. A monospace face set in wide
+           caps reads as a terminal, and that is the "90s" she kept catching.
+           Every reference she has sent sets those labels in the SANS -- MAIN,
+           SALES CHANNELS, ACTIVE PLAN, PAYMENT METHOD are all sans, semibold,
+           lightly tracked. Mono is now reserved for one thing: numbers that
+           have to line up. */
+        .home-eyebrow, .home-eyebrow-note, .htile-label, .sidebar-profile-role,
+        .sidebar-vendor, .live-indicator, .wk-day, .wk-stat span, .act-when,
+        .q-wait, .waiting-when, .waiting-flag, .sec-count, .wk-scale,
+        #settingsView .catalog-card > h2, .rail-group-label {
+          font-family: var(--font-sans);
+          letter-spacing: 0.055em;
+          font-weight: 600;
+        }
+        .home-eyebrow, #settingsView .catalog-card > h2 { font-size: 11.5px; color: var(--muted); }
+        .home-eyebrow-note, .htile-label { font-size: 11px; }
+        /* Figures keep the mono, and keep tabular so columns line up. */
+        .htile-value, .wk-n, .wk-stat b, .home-count-chip, .kpi-value,
+        .cat-line b, .conversion-stat, .hero-name { font-feature-settings: "tnum" 1; }
+        .wk-n, .home-count-chip, .q-wait, .act-when { font-family: var(--font-mono); letter-spacing: 0.02em; }
+
+        /* --- breadcrumb ------------------------------------------------------
+           The topbar said "Live Dashboard" on every screen in the product,
+           which tells you nothing about where you are. It is a trail now. */
+        .crumbs { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .crumb-root { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--muted-2); letter-spacing: -0.01em; white-space: nowrap; }
+        .crumb-sep { color: var(--muted-2); opacity: .6; flex-shrink: 0; }
+        .crumb-sep svg { width: 13px; height: 13px; display: block; }
+        .crumb-here { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* --- rail groups and submenus --------------------------------------- */
+        .rail-group-label { padding: 16px 22px 7px; font-size: 10.5px; text-transform: uppercase; color: var(--muted-2); }
+        .subtabs { display: flex; flex-direction: column; gap: 1px; padding: 2px 12px 4px 34px; overflow: hidden; }
+        .subtabs button { display: flex; align-items: center; width: 100%; text-align: left; background: transparent; border: 0;
+          color: var(--muted-2); padding: 0 10px; height: 30px; border-radius: 7px; font-family: inherit; font-size: 12.5px;
+          font-weight: 500; cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .subtabs button:hover { background: var(--surface-3); color: var(--text); }
+        .subtabs button:active { transform: scale(0.98); }
+        .subtabs button.on { color: var(--text); font-weight: 600; background: var(--surface); box-shadow: 0 1px 2px rgba(42,33,26,0.05), inset 0 1px 0 rgba(255,255,255,0.7); }
+        [data-theme="dark"] .subtabs button:hover { background: rgba(255,255,255,0.04); }
+        [data-theme="dark"] .subtabs button.on { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+        /* The group collapses by height rather than display, so it can move. */
+        .subtabs { max-height: 0; opacity: 0; transition: max-height var(--dur-slow) var(--ease-io), opacity var(--dur-fast) ease, padding var(--dur-slow) var(--ease-io); padding-top: 0; padding-bottom: 0; }
+        .subtabs.open { max-height: 160px; opacity: 1; padding-top: 2px; padding-bottom: 4px; }
+        nav.tabs button .caret { margin-left: auto; width: 14px; height: 14px; flex-shrink: 0; color: var(--muted-2); transition: transform var(--dur-base) var(--ease-out); }
+        nav.tabs button.open .caret { transform: rotate(90deg); }
+
+        /* A channel that is not built yet says so, and cannot be pressed. */
+        nav.tabs button.soon { cursor: default; color: var(--muted-2); }
+        nav.tabs button.soon:hover { background: transparent; color: var(--muted-2); }
+        .soon-tag { margin-left: auto; font-family: var(--font-sans); font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-2); background: var(--surface-3); padding: 2px 6px; border-radius: 5px; }
+        .live-tag { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); flex-shrink: 0; }
+
+        /* --- the account row at the foot of the rail -------------------------
+           The reference dashboards all put a real person here: name on top,
+           the address underneath, both truncating. The shop's name moved out
+           of the top of the rail, where Stafly now signs its own product. */
+        .rail-account { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; margin: 2px 0 0; cursor: pointer; transition: background var(--dur-fast) ease; }
+        .rail-account:hover { background: var(--surface-3); }
+        [data-theme="dark"] .rail-account:hover { background: rgba(255,255,255,0.04); }
+        .rail-account-name { font-family: var(--font-heading); font-size: 12.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rail-account-mail { font-size: 11px; color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+        .rail-chev { margin-left: auto; width: 14px; height: 14px; color: var(--muted-2); flex-shrink: 0; }
+
+        /* --- welcome line ---------------------------------------------------- */
+        .home-hello { font-family: var(--font-heading); font-size: 22px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin: 0 0 3px; }
+        .home-hello span { color: var(--muted-2); }
+
+        @media (max-width: 700px) {
+          .crumb-root, .crumb-sep { display: none; }
+          .crumb-here { font-size: 15px; }
+          .home-hello { font-size: 19px; }
+        }
+        /* ==================================================================
+           Round 49 -- the pass on how it FEELS.
+           ================================================================== */
+
+        /* The active nav row was outlined: a 1px ring all the way round, which
+           on a rail this quiet reads as a box drawn on top of the list rather
+           than a row that has come forward. A raised thing is not outlined, it
+           is lit from above and casts below. */
+        .nav-pill { box-shadow: 0 1px 2px rgba(42,33,26,0.05), 0 5px 12px -8px rgba(42,33,26,0.22), inset 0 1px 0 rgba(255,255,255,0.75); }
+        [data-theme="dark"] .nav-pill { box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.05); }
+        nav.tabs.pill-on button.active-tab { box-shadow: none; background: transparent; }
+
+        /* Press feedback on everything pressable. A control that does not move
+           under the finger reads as not having heard you. */
+        .q-btn:active, .hero-cover-btn:active, .brand-edit-btn:active,
+        .setup-step:not(.done):active, .seg-control button:active { transform: scale(0.97); }
+        .q-btn, .hero-cover-btn, .brand-edit-btn, .seg-control button { transition: background var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+
+        /* Rows are hovered tens of times a minute, so they get colour only --
+           no movement. Movement at that frequency reads as twitchy. */
+        @media (hover: hover) and (pointer: fine) {
+          .q-row, .act-row { transition: background var(--dur-fast) ease; }
+        }
+
+        /* The profile card and its edit form are the same object in two
+           states. A hard swap reads as two objects; a short blur across the
+           change bridges them into one. */
+        .hero, .brand-card { transition: filter var(--dur-base) ease, opacity var(--dur-base) ease; }
+        .home-swapping .hero, .home-swapping .brand-card { filter: blur(3px); opacity: 0.55; }
+
+        /* --- the week chart when nothing has happened ---------------------
+           Seven flat dashes and a row of zeroes is not an empty state, it is a
+           broken-looking chart. When there is genuinely nothing yet, say so. */
+        .wk-blank { display: flex; align-items: center; gap: 14px; padding: 22px 0 18px; }
+        .wk-blank-art { flex-shrink: 0; width: 76px; height: 46px; opacity: 0.55; }
+        .wk-blank-art rect { fill: var(--border-strong); }
+        .wk-blank-art .lead { fill: var(--accent); opacity: 0.5; }
+        .wk-blank-text { font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 40ch; }
+        .wk-blank-text b { color: var(--text); font-weight: 600; }
+
+        /* --- the completion ring -------------------------------------------
+           It draws itself on first paint. The value was always true; watching
+           it arrive is what makes it read as a measurement rather than a
+           decoration sitting in the corner. */
+        .ring-badge .fill { transition: stroke-dashoffset 900ms var(--ease-io); }
+
+        /* --- settings -------------------------------------------------------
+           Settings was the last page still titling its cards with a plain h2.
+           Same treatment as Analytics, done in CSS so no markup has to move:
+           the heading becomes the mono caps label the rest of the product
+           uses, and each row gets room to breathe instead of being packed. */
+        #settingsView .catalog-card { padding: 22px 24px 20px; margin-bottom: 22px; border: 0; }
+        #settingsView .catalog-card > h2 {
+          font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+          text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+          margin: 0 0 4px; line-height: 1.4; }
+        #settingsView .setting-row { padding: 16px 0; gap: 24px; }
+        #settingsView .setting-row:first-of-type { padding-top: 14px; }
+        #settingsView .setting-row:last-child { padding-bottom: 2px; }
+        #settingsView .setting-name { font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em; }
+        #settingsView .setting-desc { font-size: 12.5px; margin-top: 4px; max-width: 54ch; }
+        @media (max-width: 760px) {
+          #settingsView .catalog-card { padding: 18px 16px 16px; margin-bottom: 16px; }
+          #settingsView .setting-row { padding: 14px 0; gap: 14px; }
+        }
+
+        /* --- catalogue ------------------------------------------------------ */
+        .cat-line { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+        .cat-line b { font-family: var(--font-heading); font-size: 27px; font-weight: 600; letter-spacing: -0.03em; color: var(--text); }
+        .cat-line span { font-size: 12.5px; color: var(--muted); }
+
+        /* Home arrives in one movement with a short stagger. 40ms between
+           bands: long enough to read as deliberate, short enough that the
+           whole page is settled inside a third of a second. */
+        .home-enter > .home-masthead,
+        .home-enter > .hero,
+        .home-enter > .home-sec { animation: homeRise 420ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+        .home-enter > .hero { animation-delay: 50ms; }
+        @keyframes homeRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .home-enter > .home-masthead, .home-enter > .hero, .home-enter > .home-sec { animation: none !important; }
+          .ring-badge .fill { transition: none !important; }
+          .home-swapping .hero, .home-swapping .brand-card { filter: none !important; }
+        }
         /* ==================================================================
            Round 48 -- Analytics keeps the brand type and gets its edges back.
            ================================================================== */
@@ -8831,11 +9062,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
     <div class="app-shell">
       <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
       <aside class="sidebar" id="sidebar">
+        <!-- Round 50. The shop's name was at the top of the rail and Stafly
+             signed the bottom. Miji asked for the reverse, and she is right:
+             the top-left of a product is where the PRODUCT names itself, and
+             the person using it goes at the foot with their own account, which
+             is what every reference she sent does. -->
         <div class="sidebar-brand">
-          <span class="spa-wrap"><span class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span></span>
+          <span class="spa-wrap"><span class="sidebar-profile-avatar brandmark">S</span></span>
           <div style="min-width:0;">
-            <div class="sidebar-profile-name">${escapeHtmlServer(businessName || "Your business")}</div>
-            <div class="sidebar-profile-role">${isBookable ? "Bookings" : "WhatsApp sales"}</div>
+            <div class="sidebar-profile-name">Stafly<span style="color:var(--accent);">.AI</span></div>
+            <div class="sidebar-profile-role">${isBookable ? "Bookings assistant" : "WhatsApp sales"}</div>
           </div>
         </div>
         <nav class="tabs">
@@ -8848,22 +9084,47 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Catalog</button>`
           }
           <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-6"/><path d="M12 21V3"/><path d="M19 21V9"/></svg></span>Analytics</button>
-          <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></span>Settings</button>
+          <button id="tabCustomers" onclick="window.location.href='/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>Plain table view</button>
         </nav>
+
+        <!-- Round 50. Channels, named honestly. WhatsApp carries the live dot
+             because Amara really is answering there. Instagram and Facebook
+             are marked SOON and cannot be pressed -- a menu item that opens a
+             page pretending to be a channel is worse than no menu item. -->
+        <div class="rail-group-label">Channels</div>
+        <nav class="tabs">
+          <button id="tabWhatsApp" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>WhatsApp<span class="live-tag" title="Connected"></span></button>
+          <button class="soon" type="button" disabled><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></span>Instagram<span class="soon-tag">Soon</span></button>
+          <button class="soon" type="button" disabled><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></span>Facebook<span class="soon-tag">Soon</span></button>
+        </nav>
+
         <div class="sidebar-footer">
           <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
-
-          <a class="sidebar-footer-link" href="/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Plain table view</a>
-          ${key ? `<a class="sidebar-footer-link" href="/admin?key=${key}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>All sellers</a>` : ""}
+          <nav class="tabs" style="padding:0 0 2px;">
+            <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></span>Settings</button>
+            <button id="tabSupport" onclick="switchTab('support')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>Help &amp; support</button>
+            ${key ? `<button onclick="window.location.href='/admin?key=${key}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg></span>All sellers</button>` : ""}
+          </nav>
           <div class="sidebar-divider"></div>
-          <div class="sidebar-vendor">Stafly<b>.AI</b></div>
+          <div class="rail-account" onclick="switchTab('settings')" title="Your account">
+            <span class="spa-wrap"><span class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span></span>
+            <div style="min-width:0;">
+              <div class="rail-account-name">${escapeHtmlServer(businessName || "Your business")}</div>
+              <div class="rail-account-mail">${escapeHtmlServer(sellerEmail || "")}</div>
+            </div>
+            <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+          </div>
         </div>
       </aside>
       <div class="main-column">
       <header class="topbar">
         <div class="topbar-left">
           <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-          <h1>Live Dashboard</h1>
+          <div class="crumbs">
+            <span class="crumb-root">Stafly</span>
+            <span class="crumb-sep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>
+            <h1 class="crumb-here" id="crumbHere">Dashboard</h1>
+          </div>
           ${businessName ? `<span class="topbar-biz" title="${escapeHtmlServer(businessName)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg><span>${escapeHtmlServer(businessName)}</span></span>` : ""}
         </div>
         <div class="topbar-right">
@@ -9125,7 +9386,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <button class="catalog-btn" onclick="addAvailabilityWindow()">Add window</button>
           </div>
           <div class="catalog-msg" id="availabilityMsg"></div>
-          <div style="margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px;">
+          <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Block a specific date (holiday, personal day) without touching the weekly schedule.</div>
             <table class="catalog-table" style="margin-bottom:14px;">
               <thead><tr><th>Blocked date</th><th></th></tr></thead>
@@ -9151,6 +9412,59 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             </div>
           </div>
           <div id="bookingsList"></div>
+        </div>
+      </div>
+      <!-- Round 50. A real page, not a placeholder: what Amara can and
+           cannot do, the two things that actually break, and how to reach a
+           person. Every line here is true of the product as built. -->
+      <div class="catalog-view" id="supportView" style="display:none;">
+        <div class="an-masthead">
+          <span class="home-eyebrow">Help &amp; support</span>
+        </div>
+        <div class="catalog-card">
+          <div class="an-head2">
+            <span class="home-eyebrow">What Amara does</span>
+            <span class="an-note">So you know where the line is</span>
+          </div>
+          <div class="setting-row"><div class="setting-text">
+            <div class="setting-name">She answers from your catalogue</div>
+            <div class="setting-desc">Prices, stock and delivery fees come from what you have entered here. She does not invent a price, and if something is not listed she says she will check rather than guessing.</div>
+          </div></div>
+          <div class="setting-row"><div class="setting-text">
+            <div class="setting-name">She steps back when you step in</div>
+            <div class="setting-desc">The moment you reply in a thread yourself, Amara pauses on that conversation until you hand it back. Nothing you say gets talked over.</div>
+          </div></div>
+          <div class="setting-row"><div class="setting-text">
+            <div class="setting-name">She cannot take payment</div>
+            <div class="setting-desc">She can quote a total and share your bank details if you have added them. The customer pays you directly and you mark the order paid.</div>
+          </div></div>
+        </div>
+        <div class="catalog-card">
+          <div class="an-head2">
+            <span class="home-eyebrow">If something stops working</span>
+            <span class="an-note">The two things that actually break</span>
+          </div>
+          <div class="setting-row"><div class="setting-text">
+            <div class="setting-name">Amara has gone quiet</div>
+            <div class="setting-desc">Open Settings and check WhatsApp connection. If it does not say Connected, your number has been unlinked and nothing will move until it is relinked.</div>
+          </div>
+          <button class="btn-quiet" onclick="switchTab('settings')">Open Settings</button></div>
+          <div class="setting-row"><div class="setting-text">
+            <div class="setting-name">She quoted the wrong price</div>
+            <div class="setting-desc">She reads the catalogue as it stands right now. Fix the product and the next answer is correct; there is nothing cached.</div>
+          </div>
+          <button class="btn-quiet" onclick="switchTab('catalog')">Open catalogue</button></div>
+        </div>
+        <div class="catalog-card">
+          <div class="an-head2">
+            <span class="home-eyebrow">Reach a person</span>
+            <span class="an-note">We answer on WhatsApp, same as your customers</span>
+          </div>
+          <div class="setting-row"><div class="setting-text">
+            <div class="setting-name">Message Stafly support</div>
+            <div class="setting-desc">Tell us your business name and what happened. If Amara said something wrong, a screenshot of the thread is the fastest way to get it fixed.</div>
+          </div>
+          <a class="catalog-btn" href="mailto:support@stafly.ai" style="text-decoration:none;">Email support</a></div>
         </div>
       </div>
       <div class="catalog-view" id="settingsView" style="display:none;">
@@ -10434,10 +10748,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // overshoots by about a tenth -- enough that it reads as a physical
         // thing settling, not enough to look bouncy on a control pressed all
         // day. If this never runs, the CSS still paints the active row.
-        let navPillEl = null;
+        // Round 50. There are three rails now -- the main menu, Channels, and
+        // Settings/Support in the footer -- and the active row can be in any
+        // of them. One pill per rail, and the ones whose rail has no active
+        // row simply are not there.
         function moveNavPill(animate) {
-          const nav = document.querySelector("nav.tabs");
+          document.querySelectorAll("nav.tabs").forEach((n) => {
+            if (!n.querySelector("button.active-tab")) {
+              const stale = n.querySelector(".nav-pill");
+              if (stale) { stale.remove(); n.classList.remove("pill-on"); }
+            }
+          });
+          const nav = (document.querySelector("nav.tabs button.active-tab") || {}).parentElement;
           if (!nav) return;
+          let navPillEl = nav.querySelector(".nav-pill");
           const act = nav.querySelector("button.active-tab");
           if (!act) return;
           if (!navPillEl) {
@@ -10446,6 +10770,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             nav.insertBefore(navPillEl, nav.firstChild);
             nav.classList.add("pill-on");
           }
+          if (!nav.style.position) nav.style.position = "relative";
           const y = act.offsetTop;
           const h = act.offsetHeight;
           if (!h) return;
@@ -10469,10 +10794,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // row count differs between a goods seller and a bookable one, so the
         // pill is placed by observing the nav rather than by guessing a moment.
         (function watchNavPill() {
-          const nav = document.querySelector("nav.tabs");
-          if (!nav) return;
+          const navs = document.querySelectorAll("nav.tabs");
+          if (!navs.length) return;
           if (typeof ResizeObserver === "function") {
-            new ResizeObserver(() => moveNavPill(false)).observe(nav);
+            const ro = new ResizeObserver(() => moveNavPill(false));
+            navs.forEach((n) => ro.observe(n));
           }
           moveNavPill(false);
           window.addEventListener("resize", () => moveNavPill(false));
@@ -10484,7 +10810,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // seller never gets tabCatalog. Guarded with optional chaining
           // so this one function works for either businessType without
           // needing its own fork.
-          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView" };
+          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView" };
           let entering = null;
           for (const t in views) {
             const el = document.getElementById(views[t]);
@@ -10496,12 +10822,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               el.style.display = "none";
             }
           }
-          const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings" };
+          const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings", support: "tabSupport" };
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
           }
           moveNavPill(true);
+          // Round 50. "Live Dashboard" sat at the top of every screen in the
+          // product, which tells you nothing about where you are. The trail
+          // names the page you actually clicked.
+          const CRUMB = { home: "Dashboard", conversations: "Conversations", catalog: "Catalogue",
+            services: "Services", bookings: "Bookings", analytics: "Analytics",
+            settings: "Settings", support: "Help & support" };
+          const crumb = document.getElementById("crumbHere");
+          if (crumb) crumb.textContent = CRUMB[tab] || "Dashboard";
+          try { document.title = (CRUMB[tab] || "Dashboard") + " \u00b7 Stafly.AI"; } catch (e) {}
           // Coming back to Conversations from the menu should land on the
           // LIST, not silently reopen whichever thread was last read -- on a
           // phone that made it look like the menu item did nothing.
@@ -11066,7 +11401,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // The chart has to follow the chosen accent. Hardcoded, it stayed
           // indigo while every other accent-coloured thing on the page turned
           // teal or rose -- the same mistake the button shadows had.
-          const accentHex = (getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#4f46e5").trim();
+          const accentHex = (getComputedStyle(document.documentElement).getPropertyValue("--accent") || "#BC4B2A").trim();
           const rgbOf = (hex) => {
             const h = hex.replace("#", "");
             if (h.length !== 6) return "79, 70, 229";
@@ -11113,7 +11448,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               plugins: {
                 legend: { display: false },
                 tooltip: {
-                  backgroundColor: "#1e293b",
+                  backgroundColor: "#2A211A",
                   padding: 10,
                   cornerRadius: 8,
                   titleFont: { family: "Geist Variable", weight: "600" },
@@ -11278,6 +11613,45 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         let homeData = null;
         let editingProfile = false;
 
+        // Lagos time of day, from the browser clock -- not a stored value and
+        // not a guess about anything.
+        function greetingWord() {
+          const h = new Date().getHours();
+          if (h < 12) return "Good morning";
+          if (h < 17) return "Good afternoon";
+          return "Good evening";
+        }
+        // Their own name if they have given one, otherwise the shop's. Never
+        // a first name pulled out of an email address -- "kolawolepeter200"
+        // is not what anyone wants to be called.
+        function firstNameOf(p) {
+          const n = (p && p.contactName ? p.contactName : "").trim();
+          if (n) return n.split(/\s+/)[0];
+          return (p && p.businessName) ? p.businessName : "there";
+        }
+
+        // Round 49. The profile panel and its edit form are the same object in
+        // two states, but swapping innerHTML made them read as two different
+        // objects trading places. A short blur across the change bridges them:
+        // the eye stops seeing two rectangles overlapping and sees one thing
+        // changing. 120ms out, rebuild, then back -- fast enough that it reads
+        // as a transition rather than a wait.
+        function swapProfile(toEdit) {
+          const host = document.getElementById("homeView");
+          if (!host || prefersReducedMotion() || !host.animate) {
+            editingProfile = toEdit;
+            return void renderHome(true);
+          }
+          host.classList.add("home-swapping");
+          setTimeout(() => {
+            editingProfile = toEdit;
+            renderHome(true);
+            requestAnimationFrame(() => host.classList.remove("home-swapping"));
+            const first = host.querySelector("#pfName");
+            if (toEdit && first) setTimeout(() => first.focus(), 180);
+          }, 130);
+        }
+
         const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
         const ICON_TICK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><polyline points="8 12.2 11 15.2 16 9.5"/></svg>';
         const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -11361,6 +11735,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="profile-form">' +
                 '<div class="profile-field"><label for="pfName">Business name</label>' +
                   '<input id="pfName" maxlength="60" value="' + escapeHtml(p.businessName || "") + '"></div>' +
+                '<div class="profile-field"><label for="pfContact">Your name</label>' +
+                  '<input id="pfContact" maxlength="40" placeholder="e.g. Peter" value="' + escapeHtml(p.contactName || "") + '"></div>' +
                 '<div class="profile-field"><label for="pfTagline">Tagline</label>' +
                   '<input id="pfTagline" maxlength="90" placeholder="e.g. Ready-to-wear Ankara, made in Lagos" value="' + escapeHtml(p.tagline || "") + '"></div>' +
                 '<div class="profile-field"><label for="pfLocation">Location</label>' +
@@ -11484,6 +11860,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '</div>';
         }
 
+        // Round 49. A ring rendered straight at its final offset has nothing
+        // to animate between, so it just appears. Paint it empty, let one
+        // frame commit, then set the real value -- the CSS transition on
+        // stroke-dashoffset does the rest, on the compositor, no library.
+        function drawRings(scope) {
+          const rings = (scope || document).querySelectorAll(".ring-badge .fill[data-to]");
+          if (!rings.length) return;
+          const apply = () => rings.forEach((c) => {
+            c.style.strokeDashoffset = c.getAttribute("data-to");
+            c.removeAttribute("data-to");
+          });
+          if (prefersReducedMotion()) return void apply();
+          requestAnimationFrame(() => requestAnimationFrame(apply));
+        }
+
         let homeStatsAnimated = false;
         function renderHomeStats(d) {
           const host = document.getElementById("homeStats");
@@ -11551,6 +11942,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function homeWeekCard(d) {
           const week = d.week || [];
           if (!week.length) return "";
+          const anyActivity = week.some((x) => x.newCustomers > 0);
           const maxNew = Math.max(1, ...week.map((x) => x.newCustomers));
           const totalNew = week.reduce((a, x) => a + x.newCustomers, 0);
           const totalOrders = week.reduce((a, x) => a + x.orders, 0);
@@ -11583,9 +11975,23 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<span class="home-eyebrow">Last 7 days</span>' +
                 '<span class="home-eyebrow-note">New conversations per day</span>' +
               '</div>' +
-              '<div class="wk-scale"><span>' + totalNew + ' total</span><span>Peak ' + maxNew + '</span></div>' +
-              '<div class="wk-chart">' + bars + '</div>' +
-              '<div class="wk-days">' + ticks + '</div>' +
+              (anyActivity
+                ? '<div class="wk-scale"><span>' + totalNew + ' total</span><span>Peak ' + maxNew + '</span></div>' +
+                  '<div class="wk-chart">' + bars + '</div>' +
+                  '<div class="wk-days">' + ticks + '</div>'
+                : '<div class="wk-blank">' +
+                    '<svg class="wk-blank-art" viewBox="0 0 76 46" aria-hidden="true">' +
+                      '<rect x="0"  y="34" width="8" height="12" rx="2"/>' +
+                      '<rect x="11" y="28" width="8" height="18" rx="2"/>' +
+                      '<rect x="22" y="18" width="8" height="28" rx="2"/>' +
+                      '<rect x="33" y="24" width="8" height="22" rx="2"/>' +
+                      '<rect x="44" y="12" width="8" height="34" rx="2"/>' +
+                      '<rect x="55" y="20" width="8" height="26" rx="2"/>' +
+                      '<rect class="lead" x="66" y="4" width="8" height="42" rx="2"/>' +
+                    '</svg>' +
+                    '<div class="wk-blank-text"><b>No new conversations in the last seven days.</b> ' +
+                      'This fills in on its own as people message your WhatsApp number.</div>' +
+                  '</div>') +
               '<div class="wk-foot">' +
                 '<div class="wk-stat"><b>' + totalNew + '</b><span>new</span></div>' +
                 '<div class="wk-stat"><b>' + totalOrders + '</b><span>paid orders</span></div>' +
@@ -11599,8 +12005,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (c.total === 0) {
             return '' +
               '<div class="home-card">' +
-                '<div class="home-card-head"><div><h3>Your catalogue</h3>' +
-                  '<div class="home-card-sub">What Amara can quote and sell for you.</div></div></div>' +
+                '<div class="home-sec-head">' +
+                  '<span class="home-eyebrow">Your catalogue</span>' +
+                  '<span class="home-eyebrow-note">Nothing listed yet</span>' +
+                '</div>' +
                 '<div class="home-empty"><div class="home-empty-icon">' + ICON_BOX + '</div>' +
                   'No products yet. Until you add one, Amara can answer questions but can’t quote a price.</div>' +
                 '<div class="setup-actions"><button class="catalog-btn" data-home-action="go-catalog">Add your first product</button></div>' +
@@ -11643,15 +12051,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '<div class="home-card cat-card">' +
               '<div class="home-sec-head">' +
                 '<span class="home-eyebrow">Your catalogue</span>' +
-                '<span class="home-eyebrow-note">' + c.total + ' product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell</span>' +
+                '<span class="home-eyebrow-note">Details filled in</span>' +
                 // The ring moved into the header: it is a status, and a status
                 // belongs beside the title, not in a block of its own.
                 '<div class="ring-badge" title="' + pct + '% of product details filled in">' +
                   '<svg viewBox="0 0 44 44"><circle class="track" cx="22" cy="22" r="' + R + '"></circle>' +
-                  '<circle class="fill" cx="22" cy="22" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
+                  '<circle class="fill" cx="22" cy="22" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + CIRC.toFixed(1) + '" data-to="' + (CIRC * (1 - pct / 100)).toFixed(1) + '"></circle></svg>' +
                   '<b>' + pct + '<i>%</i></b>' +
                 '</div>' +
               '</div>' +
+              '<div class="cat-line"><b>' + c.total + '</b><span>product' + (c.total === 1 ? "" : "s") + ' Amara can quote and sell</span></div>' +
               (products ? '<div class="ptile-row">' + products + '</div>' : '') +
               gapLine +
               '<div class="setup-actions"><button class="btn-quiet" data-home-action="go-catalog">Open catalogue</button></div>' +
@@ -11696,30 +12105,45 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const band2 = setup
             ? '<div class="home-split">' + chart + setup + '</div>'
             : chart;
+          // Round 49. The stagger is CSS now, driven by a --d written onto
+          // each band. nth-of-type was tried first and is wrong here: the
+          // bands are separated by hr elements and the alert row appears and
+          // disappears, so the index a selector would count is not the index
+          // on screen. An explicit delay per band cannot drift.
+          // home-enter is only set on a first paint, so a poll that finds
+          // changed data updates the page instead of re-dealing it.
           host.innerHTML = '' +
-            '<div class="home-inner">' +
+            '<div class="home-inner' + (fresh ? ' home-enter' : '') + '">' +
               homeAlerts(d) +
-              '<div class="home-masthead">' +
-                '<span class="home-eyebrow">Overview &mdash; ' +
-                  (document.getElementById("tabBookings") ? "Bookings assistant" : "WhatsApp sales assistant") + '</span>' +
+              // Round 50. A greeting, using the name the seller actually
+              // entered. There is no invented first name here: if they have
+              // not told us who they are it falls back to the shop, and the
+              // profile form now asks for it.
+              '<div class="home-masthead" style="--d:0ms">' +
+                '<div style="min-width:0;">' +
+                  '<h2 class="home-hello">' + greetingWord() + ', ' +
+                    escapeHtml(firstNameOf(d.profile)) + '<span>.</span></h2>' +
+                  '<span class="home-eyebrow">Overview &mdash; ' +
+                    (document.getElementById("tabBookings") ? "Bookings assistant" : "WhatsApp sales assistant") + '</span>' +
+                '</div>' +
                 '<span class="home-eyebrow-note">Updates on its own</span>' +
               '</div>' +
               (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
               '<hr class="hair">' +
-              '<div class="home-sec">' +
+              '<div class="home-sec" style="--d:100ms">' +
                 '<div class="home-sec-head">' +
                   '<span class="home-eyebrow"><span class="pulse-dot"></span>Right now</span>' +
                 '</div>' +
                 '<div class="home-stats" id="homeStats"></div>' +
               '</div>' +
               '<hr class="hair">' +
-              '<div class="home-sec">' + band2 + '</div>' +
+              '<div class="home-sec" style="--d:140ms">' + band2 + '</div>' +
               '<hr class="hair">' +
-              '<div class="home-sec"><div class="home-split flip">' +
+              '<div class="home-sec" style="--d:180ms"><div class="home-split flip">' +
                 homeWaitingCard(d) + homeActivityCard(d) +
               '</div></div>' +
               '<hr class="hair">' +
-              '<div class="home-sec">' + homeCatalogueCard(d) + '</div>' +
+              '<div class="home-sec" style="--d:220ms">' + homeCatalogueCard(d) + '</div>' +
               '<hr class="hair">' +
               '<div class="home-footline">' +
                 '<span>' + escapeHtml(d.profile.businessName || "Your shop") + ' &middot; WhatsApp Business</span>' +
@@ -11732,8 +12156,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // else, so if it has already run we paint them immediately rather
           // than leaving a gap until the next tick.
           renderHomeStats(d);
+          drawRings(host);
           syncBrandAvatar(d.profile.avatarUrl, d.profile.businessName);
-          if (fresh) staggerHomeIn(host);
+          // staggerHomeIn is gone: it still reached for .brand-card,
+          // .home-section-head and .home-grid, none of which have existed
+          // since Home became bands. It was animating nothing, and two
+          // staggers over one page would have fought each other anyway.
           const input = document.getElementById("brandPhotoInput");
           if (input) input.addEventListener("change", onBrandPhotoPicked);
         }
@@ -11820,11 +12248,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             pendingPhotoKind = action === "pick-cover" ? "cover" : "avatar";
             document.getElementById("brandPhotoInput")?.click();
           } else if (action === "edit-profile") {
-            editingProfile = true;
-            renderHome(true);
+            swapProfile(true);
           } else if (action === "cancel-profile") {
-            editingProfile = false;
-            renderHome(true);
+            swapProfile(false);
           } else if (action === "save-profile") {
             saveProfile();
           } else if (action === "dismiss-setup") {
@@ -11846,6 +12272,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const status = document.getElementById("profileStatus");
           const body = {
             businessName: document.getElementById("pfName").value,
+            contactName: (document.getElementById("pfContact") || {}).value || "",
             tagline: document.getElementById("pfTagline").value,
             location: document.getElementById("pfLocation").value,
             about: document.getElementById("pfAbout").value,
@@ -11874,7 +12301,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // so it is what pushes it out to the sidebar and topbar.
         function syncBrandAvatar(url, name) {
           const initial = (name || "S").trim().charAt(0).toUpperCase();
-          [document.querySelector(".sidebar-profile-avatar"), document.querySelector(".topbar-avatar")].forEach((el) => {
+          // Round 50, bug. This grabbed the FIRST .sidebar-profile-avatar in
+          // the rail, which used to be the shop's and is now Stafly's own
+          // mark at the top -- so the shop's initial was being painted over
+          // the product's logo. The shop lives in the account row now.
+          [document.querySelector(".rail-account .sidebar-profile-avatar"), document.querySelector(".topbar-avatar")].forEach((el) => {
             if (!el) return;
             if (url) {
               if (el.querySelector("img")) {
@@ -11896,7 +12327,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         function syncBusinessName(name) {
           if (!name) return;
-          const el = document.querySelector(".sidebar-profile-name");
+          const el = document.querySelector(".rail-account-name");
           if (el) el.textContent = name;
           const chip = document.querySelector(".topbar-biz span");
           if (chip) chip.textContent = name;
@@ -13066,7 +13497,7 @@ app.get("/icon.svg", (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.send(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' +
-      '<rect width="512" height="512" rx="112" fill="#4f46e5"/>' +
+      '<rect width="512" height="512" rx="112" fill="#BC4B2A"/>' +
       '<text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" ' +
       'font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="300" font-weight="700" fill="#ffffff">S</text>' +
     '</svg>'
@@ -13082,6 +13513,7 @@ app.get("/dashboard", async (req, res) => {
     phoneNumberId: seller.phoneNumberId,
     whatsappToken: seller.whatsappToken,
     ownerPhoneNumber: seller.ownerPhoneNumber,
+    email: seller.email,
   }));
 });
 
@@ -13422,11 +13854,12 @@ app.delete("/api/catalog/bank-details-2", async (req, res) => {
 // its two pictures. Everything here is the seller's own text -- nothing is
 // generated, guessed or filled in on their behalf.
 
-const PROFILE_LIMITS = { businessName: 60, tagline: 90, about: 400, location: 60 };
+const PROFILE_LIMITS = { businessName: 60, contactName: 40, tagline: 90, about: 400, location: 60 };
 
 function publicProfile(seller) {
   return {
     businessName: seller.businessName || "",
+    contactName: seller.contactName || "",
     tagline: seller.tagline || "",
     about: seller.about || "",
     location: seller.location || "",
@@ -13457,7 +13890,7 @@ app.post("/api/profile", async (req, res) => {
     if (!name) return res.status(400).json({ error: "Business name can't be empty." });
     fields.businessName = name;
   }
-  for (const key of ["tagline", "about", "location"]) {
+  for (const key of ["contactName", "tagline", "about", "location"]) {
     if (body[key] !== undefined) fields[key] = String(body[key]).trim().slice(0, PROFILE_LIMITS[key]);
   }
   if (Object.keys(fields).length === 0) return res.status(400).json({ error: "Nothing to update." });
@@ -14450,7 +14883,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 48";
+const BUILD_ROUND = "Round 50";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
