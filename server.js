@@ -8835,6 +8835,35 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
 
         /* ==================================================================
+           Round 55 -- the photo card, and the Products submenu.
+           ================================================================== */
+        /* A 16/11 frame, the proportion the reference uses, so the picture is
+           shown at a size the seller can actually judge rather than guessed at
+           from a filename. */
+        .pshot-frame { position: relative; width: 100%; aspect-ratio: 16 / 11; border-radius: 12px; overflow: hidden;
+          background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--border); }
+        .pshot-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pshot-acts { display: flex; gap: 8px; margin-top: 12px; }
+        .pshot-acts .btn-quiet { flex: 1; justify-content: center; }
+        .btn-quiet.danger { color: var(--danger); }
+        .btn-quiet.danger:hover { background: var(--danger-bg); color: var(--danger); }
+        /* Pasting a URL is the rarer path; it folds away rather than sitting
+           open beside the thing most people will use. */
+        .pshot-url { margin-top: 14px; }
+        .pshot-url summary { cursor: pointer; font-size: 12px; color: var(--muted-2); list-style: none; padding: 4px 0; transition: color var(--dur-fast) ease; }
+        .pshot-url summary::-webkit-details-marker { display: none; }
+        .pshot-url summary::before { content: "+ "; font-weight: 600; }
+        .pshot-url[open] summary::before { content: "- "; }
+        .pshot-url summary:hover { color: var(--accent); }
+
+        /* The Products submenu Miji has asked for more than once. Two entries,
+           because two is how many real destinations there are: the catalogue
+           itself, and the delivery fees that price what leaves it. */
+        .subtabs { display: flex; flex-direction: column; gap: 1px; padding: 0 12px 0 34px; overflow: hidden;
+          max-height: 0; opacity: 0; transition: max-height var(--dur-slow) var(--ease-io), opacity var(--dur-fast) ease, padding var(--dur-slow) var(--ease-io); }
+        .subtabs.open { max-height: 120px; opacity: 1; padding-top: 3px; padding-bottom: 5px; }
+
+        /* ==================================================================
            Round 54 -- the product editor is a page.
            ================================================================== */
         /* Its own header: title left with the way back under it, actions
@@ -9267,7 +9296,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             isBookable
               ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg></span>Services</button>
           <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span>Bookings</button>`
-              : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Catalog</button>`
+              : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Products<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
+          <div class="subtabs" id="subProducts">
+            <button id="subCatalog" onclick="switchTab('catalog')">Catalogue</button>
+            <button id="subDelivery" onclick="goDelivery()">Delivery fees</button>
+          </div>`
           }
           <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-6"/><path d="M12 21V3"/><path d="M19 21V9"/></svg></span>Analytics</button>
           <button id="tabCustomers" onclick="window.location.href='/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>Plain table view</button>
@@ -9391,6 +9424,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               Editing "<b id="productEditingName"></b>" &middot; <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new one instead</a>
             </div>
             <input type="hidden" id="pKey">
+            <input type="hidden" id="pRemoveImage" value="">
 
             <div class="pform">
               <div class="pform-main">
@@ -9444,6 +9478,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 <div class="pform-sec">
                   <div class="an-head2"><span class="home-eyebrow">Product photo</span>
                     <span class="an-note">The exact image Amara sends</span></div>
+                  <!-- Round 55, bug. Opening a product that already had a photo
+                       called clearPhotoPick(), which hides the preview and puts
+                       the empty dashed box back -- so the seller was shown a
+                       blank uploader for a product that has had a picture on it
+                       all along. The photo on record now shows, full width, and
+                       the uploader only appears when there is none or when you
+                       have asked to replace it. -->
+                  <div class="pshot" id="pShot" style="display:none;">
+                    <div class="pshot-frame"><img id="pShotImg" alt="Current product photo"></div>
+                    <div class="pshot-acts">
+                      <button type="button" class="btn-quiet btn-tiny" onclick="replaceShot()">Replace photo</button>
+                      <button type="button" class="btn-quiet btn-tiny danger" onclick="removeShot()">Remove</button>
+                    </div>
+                  </div>
                   <div class="dropzone" id="photoDrop" tabindex="0" role="button" aria-label="Choose or drop a product photo"
                        onclick="document.getElementById('pPhotoFile').click()"
                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('pPhotoFile').click();}">
@@ -9458,10 +9506,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                       <div class="dropzone-meta"><span id="dropFileName"></span><button type="button" class="btn-quiet btn-tiny" onclick="event.stopPropagation();clearPhotoPick()">Remove</button></div>
                     </div>
                   </div>
-                  <div class="field field-full" style="margin-top:14px;">
-                    <label for="pImageUrl">...or paste a photo URL</label>
-                    <input id="pImageUrl" placeholder="https://...">
-                  </div>
+                  <details class="pshot-url">
+                    <summary>Use a photo that is already online</summary>
+                    <div class="field field-full" style="margin-top:10px;">
+                      <label for="pImageUrl" class="sr-lab">Photo URL</label>
+                      <input id="pImageUrl" placeholder="https://...">
+                    </div>
+                  </details>
                 </div>
 
                 <div class="pform-sec" id="pPerf" style="display:none;">
@@ -11052,6 +11103,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           window.addEventListener("resize", () => moveNavPill(false));
         })();
 
+        // Delivery fees lives on the catalogue page, so this is one
+        // destination reached two ways rather than a second page pretending
+        // to exist.
+        function goDelivery() {
+          window.__deliveryTarget = true;
+          switchTab("catalog");
+          setTimeout(() => {
+            const cards = document.querySelectorAll("#catalogView .catalog-card");
+            const target = cards[cards.length - 1];
+            if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+            const sd = document.getElementById("subDelivery");
+            const sc = document.getElementById("subCatalog");
+            if (sd) sd.classList.add("on");
+            if (sc) sc.classList.remove("on");
+            window.__deliveryTarget = false;
+          }, 320);
+        }
+
         function switchTab(tab) {
           // Not every element below exists on every seller's dashboard --
           // a goods seller never gets tabServices/tabBookings, a bookable
@@ -11076,6 +11145,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             if (el) el.className = t === tab ? "active-tab" : "";
           }
           moveNavPill(true);
+          // Round 55. The submenu opens with its parent and closes with it.
+          // Two entries, because two is how many real destinations there are.
+          const sub = document.getElementById("subProducts");
+          if (sub) {
+            const on = tab === "catalog";
+            sub.classList.toggle("open", on);
+            const parent = document.getElementById("tabCatalog");
+            if (parent) parent.classList.toggle("open", on);
+            const sc = document.getElementById("subCatalog");
+            if (sc) sc.classList.toggle("on", on && !window.__deliveryTarget);
+          }
           // Round 50. "Live Dashboard" sat at the top of every screen in the
           // product, which tells you nothing about where you are. The trail
           // names the page you actually clicked.
@@ -12910,6 +12990,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           document.getElementById("pImageUrl").value =
             (p.imageUrl && p.imageUrl.indexOf("/images/") === -1 && p.imageUrl.indexOf("/catalog-photo/") === -1) ? p.imageUrl : "";
           clearPhotoPick();
+          showShot(p.imageUrl || "");
           const catEl2 = document.getElementById("pCategory");
           if (catEl2) catEl2.value = p.category || "";
           document.getElementById("productEditingName").textContent = p.name;
@@ -12929,6 +13010,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const catEl = document.getElementById("pCategory");
           if (catEl) catEl.value = "";
           clearPhotoPick();
+          showShot("");
           document.getElementById("productEditingNote").style.display = "none";
           const title = document.getElementById("productPanelTitle");
           if (title) title.textContent = "New product";
@@ -12961,6 +13043,42 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           };
           reader.readAsDataURL(file);
         }
+        // Round 55. The photo already on the product, shown at the size a
+        // person can actually judge it at. The uploader steps aside while it
+        // is there; Replace brings it back.
+        function showShot(url) {
+          const box = document.getElementById("pShot");
+          const img = document.getElementById("pShotImg");
+          const dz = document.getElementById("photoDrop");
+          const flag = document.getElementById("pRemoveImage");
+          if (flag) flag.value = "";
+          if (!box || !img || !dz) return;
+          if (url) {
+            img.src = url;
+            box.style.display = "block";
+            dz.style.display = "none";
+          } else {
+            img.removeAttribute("src");
+            box.style.display = "none";
+            dz.style.display = "";
+          }
+        }
+        function replaceShot() {
+          const box = document.getElementById("pShot");
+          const dz = document.getElementById("photoDrop");
+          if (box) box.style.display = "none";
+          if (dz) dz.style.display = "";
+          const f = document.getElementById("pPhotoFile");
+          if (f) f.click();
+        }
+        function removeShot() {
+          showShot("");
+          const url = document.getElementById("pImageUrl");
+          if (url) url.value = "";
+          const flag = document.getElementById("pRemoveImage");
+          if (flag) flag.value = "1";
+        }
+
         function clearPhotoPick() {
           const input = document.getElementById("pPhotoFile");
           if (input) input.value = "";
@@ -13159,6 +13277,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           formData.append("description", document.getElementById("pDescription").value);
           formData.append("imageUrl", document.getElementById("pImageUrl").value);
           formData.append("category", (document.getElementById("pCategory") || {}).value || "");
+          formData.append("removeImage", (document.getElementById("pRemoveImage") || {}).value || "");
           if (photoFile) formData.append("photo", photoFile);
           try {
             const res = await fetch("/api/catalog/product?" + ADMIN_QS, {
@@ -14521,7 +14640,7 @@ app.post("/api/catalog/product", (req, res, next) => {
 }, async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
-  const { key, name, price, imageUrl, description, category } = req.body || {};
+  const { key, name, price, imageUrl, description, category, removeImage } = req.body || {};
 
   // Same "code is the guarantee" rule as everywhere else money-adjacent
   // in this file: validate for real here, don't just trust whatever the
@@ -14564,6 +14683,18 @@ app.post("/api/catalog/product", (req, res, next) => {
   if (!seller.catalog.PRODUCT_CATEGORIES) seller.catalog.PRODUCT_CATEGORIES = {};
   seller.catalog.PRODUCT_CATEGORIES[cleanKey] = cleanCategory;
 
+  // Round 55. Taking a photo off a product had no path at all -- the save
+  // route could set an image and never clear one. A Remove button with
+  // nothing behind it would be worse than no button, so this is the path.
+  if (removeImage === "1" && !req.file && !cleanImageUrl) {
+    delete seller.catalog.PRODUCT_IMAGES[cleanKey];
+    delete sellerPhotoCache[`${seller.sellerId}:${cleanKey}`];
+    try {
+      await redisCommand(["DEL", nsKey(seller.sellerId, `catalog:photo:${cleanKey}`)]);
+    } catch (err) {
+      console.error("catalog photo remove: failed to delete from Redis:", err.message);
+    }
+  }
   if (req.file) {
     // A real photo was uploaded: store it in Redis (base64) next to the
     // rest of this seller's catalog, cache it in memory for fast serving,
@@ -15252,7 +15383,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 54";
+const BUILD_ROUND = "Round 55";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
