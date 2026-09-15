@@ -8833,6 +8833,28 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
 
 
+
+        /* ==================================================================
+           Round 53 -- the product editor.
+           ================================================================== */
+        .pform { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 22px; align-items: start; }
+        .pform-sec { background: var(--surface); border-radius: 14px; padding: 20px 22px; box-shadow: var(--shadow-sm); }
+        .pform-sec .an-head2 { margin-bottom: 16px; }
+        .pform-sec .field-grid { margin: 0; }
+        .pform-side .dropzone { min-height: 168px; }
+        /* The photo label is already the section heading two lines above it. */
+        .sr-lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+        /* The panel is a page now, not a tray wedged under the grid. */
+        #productPanel.inline-panel { background: transparent; border: 0; padding: 0; margin-top: 22px; }
+        #productPanel .inline-panel-head { margin-bottom: 16px; }
+        #productPanel .inline-panel-actions { margin-top: 20px; }
+        @media (max-width: 980px) {
+          .pform { grid-template-columns: minmax(0,1fr); gap: 16px; }
+          .pform-side .dropzone { min-height: 140px; }
+        }
+        @media (max-width: 700px) {
+          .pform-sec { padding: 16px 16px 18px; }
+        }
         /* ==================================================================
            Round 52 -- the chart, built to the rules rather than by eye.
            Seven grey sticks with a number printed over every one of them is a
@@ -8914,12 +8936,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            quiet, and sit at the end of the row where the eye can skip them. */
         .home-eyebrow, .htile-label, .sidebar-profile-role, .sidebar-vendor,
         .live-indicator, .wk-day, .wk-stat span, .waiting-flag, .wk-scale,
-        #settingsView .catalog-card > h2, .rail-group-label {
+        #settingsView .catalog-card > h2, #catalogView .catalog-card > h2, .rail-group-label {
           font-family: var(--font-sans);
           letter-spacing: 0.055em;
           font-weight: 600;
         }
-        .home-eyebrow, #settingsView .catalog-card > h2 { font-size: 11.5px; color: var(--muted); }
+        .home-eyebrow, #settingsView .catalog-card > h2, #catalogView .catalog-card > h2 { font-size: 11.5px; color: var(--muted); }
         .htile-label { font-size: 11px; }
         .home-eyebrow-note, .an-note {
           font-family: var(--font-sans); font-size: 12px; font-weight: 400;
@@ -9069,7 +9091,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the heading becomes the mono caps label the rest of the product
            uses, and each row gets room to breathe instead of being packed. */
         #settingsView .catalog-card { padding: 22px 24px 20px; margin-bottom: 22px; border: 0; }
-        #settingsView .catalog-card > h2 {
+        #catalogView .catalog-card > h2, #settingsView .catalog-card > h2 {
           font-family: var(--font-mono); font-size: 11px; font-weight: 500;
           text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
           margin: 0 0 4px; line-height: 1.4; }
@@ -9267,9 +9289,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       <div class="catalog-view" id="catalogView" style="display:none;">
         <div class="catalog-card">
           <div class="card-head card-head-products">
-            <div>
-              <h2>Products</h2>
-              <div class="card-sub">What Amara can quote, describe and sell on your behalf.</div>
+            <div class="an-head2">
+              <span class="home-eyebrow">Products</span>
+              <span class="an-note">What Amara can quote, describe and sell on your behalf</span>
             </div>
             <span class="catalog-msg" id="catalogStatus" style="margin-right:10px;"></span>
             <button class="catalog-btn" id="addProductBtn" onclick="openProductForm()">
@@ -9305,6 +9327,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               Editing "<b id="productEditingName"></b>" &middot; <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new product instead</a>
             </div>
             <input type="hidden" id="pKey">
+            <!-- Round 53. One cramped column became two: the facts on the
+                 left, the picture on the right. That is the shape of every
+                 product editor worth copying, and it matches how the job is
+                 actually done -- you type what the thing is, then you show it. -->
+            <div class="pform">
+            <div class="pform-main">
+            <div class="pform-sec">
+            <div class="an-head2"><span class="home-eyebrow">Basic information</span>
+              <span class="an-note">What Amara reads out when a customer asks</span></div>
             <div class="field-grid">
               <div class="field">
                 <label>Name</label>
@@ -9325,8 +9356,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 <div class="field-hint">Materials, sizes, colours &mdash; anything Amara needs to answer questions accurately.</div>
                 <textarea id="pDescription" rows="2" placeholder="e.g. 100% cotton, true to size, available in S-XL, machine washable"></textarea>
               </div>
+            </div>
+            </div>
+            </div>
+            <div class="pform-side">
+            <div class="pform-sec">
+            <div class="an-head2"><span class="home-eyebrow">Product photo</span>
+              <span class="an-note">The exact image Amara sends</span></div>
+            <div class="field-grid">
               <div class="field field-full">
-                <label>Photo</label>
+                <label class="sr-lab">Photo</label>
                 <div class="field-hint">This is the exact image Amara sends a customer who asks to see it. Drag one in, or click to choose. Max 1.5MB.</div>
                 <div class="dropzone" id="photoDrop" tabindex="0" role="button" aria-label="Choose or drop a product photo"
                      onclick="document.getElementById('pPhotoFile').click()"
@@ -9348,6 +9387,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 <div class="field-hint">Use this if the image already lives online somewhere.</div>
                 <input id="pImageUrl" placeholder="https://...">
               </div>
+            </div>
+            </div>
+            </div>
             </div>
             <div class="inline-panel-actions">
               <button class="catalog-btn" onclick="saveProduct()">Save product</button>
@@ -15071,7 +15113,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 52";
+const BUILD_ROUND = "Round 53";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
