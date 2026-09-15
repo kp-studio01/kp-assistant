@@ -6947,7 +6947,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the compositor, so it costs nothing on a mid-range phone.
            The CSS fallback below still paints the active row if that script
            never runs, so the rail is never left without an indicator. */
-        .nav-pill { position: absolute; left: 12px; right: 12px; top: 0; height: 36px; border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgba(34,26,20,0.05); pointer-events: none; z-index: 0; }
+        /* Round 51. No hardcoded insets: left/top/width/height are written
+           from the active button, so one pill is correct in every rail. */
+        .nav-pill { position: absolute; left: 0; top: 0; width: 0; height: 36px; border-radius: 8px; background: var(--surface); pointer-events: none; z-index: 0; transition: opacity var(--dur-fast) ease; }
         [data-theme="dark"] .nav-pill { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
         nav.tabs.pill-on button.active-tab { background: transparent; box-shadow: none; }
         [data-theme="dark"] nav.tabs.pill-on button.active-tab { background: transparent; box-shadow: none; }
@@ -7974,7 +7976,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hero-tag { font-size: 14px; line-height: 1.5; color: var(--muted); margin-top: 9px; max-width: 46ch; }
         .hero-tag button { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .hero-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-        .hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 16px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-2); }
+        .hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; margin-top: 16px; font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted-2); }
         .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
         .hero-meta svg { width: 12px; height: 12px; flex-shrink: 0; }
 
@@ -8795,8 +8797,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .list-panel > * + * { box-shadow: inset 0 1px 0 var(--border-light); }
         .list-panel-note { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface-2); font-size: 11.5px; line-height: 1.45; color: var(--muted); }
         .list-panel-note svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--muted-2); }
-        .sec-count { background: none; padding: 0; color: var(--muted-2); font-weight: 500; }
-        .sec-count.hot { color: var(--accent); }
+        /* "…takeover queue0 waiting" -- the count was butting straight into
+           the end of the label. It is its own chip now, with its own space. */
+        .sec-count { font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+          text-transform: none; color: var(--muted); background: var(--surface-2);
+          padding: 3px 8px; border-radius: 6px; margin-left: 10px; white-space: nowrap; font-feature-settings: "tnum" 1; }
+        .sec-count.hot { color: var(--accent); background: var(--accent-light); }
+        .home-sec-head .home-eyebrow-note { margin-left: auto; padding-left: 16px; }
 
         /* rows */
         .q-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; transition: background var(--dur-fast) ease; }
@@ -8837,16 +8844,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            SALES CHANNELS, ACTIVE PLAN, PAYMENT METHOD are all sans, semibold,
            lightly tracked. Mono is now reserved for one thing: numbers that
            have to line up. */
-        .home-eyebrow, .home-eyebrow-note, .htile-label, .sidebar-profile-role,
-        .sidebar-vendor, .live-indicator, .wk-day, .wk-stat span, .act-when,
-        .q-wait, .waiting-when, .waiting-flag, .sec-count, .wk-scale,
+        /* Round 51. Uppercase is for LABELS -- two or three words that name a
+           section. It was also being used on the notes beside them, so
+           "New conversations per day" and "Newest first" were set in tracked
+           caps like headings, and a page full of shouted sentences is what
+           "the tags can be done properly" meant. Notes are sentence case now,
+           quiet, and sit at the end of the row where the eye can skip them. */
+        .home-eyebrow, .htile-label, .sidebar-profile-role, .sidebar-vendor,
+        .live-indicator, .wk-day, .wk-stat span, .waiting-flag, .wk-scale,
         #settingsView .catalog-card > h2, .rail-group-label {
           font-family: var(--font-sans);
           letter-spacing: 0.055em;
           font-weight: 600;
         }
         .home-eyebrow, #settingsView .catalog-card > h2 { font-size: 11.5px; color: var(--muted); }
-        .home-eyebrow-note, .htile-label { font-size: 11px; }
+        .htile-label { font-size: 11px; }
+        .home-eyebrow-note, .an-note {
+          font-family: var(--font-sans); font-size: 12px; font-weight: 400;
+          letter-spacing: 0; text-transform: none; color: var(--muted-2); }
         /* Figures keep the mono, and keep tabular so columns line up. */
         .htile-value, .wk-n, .wk-stat b, .home-count-chip, .kpi-value,
         .cat-line b, .conversion-stat, .hero-name { font-feature-settings: "tnum" 1; }
@@ -8950,6 +8965,23 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            decoration sitting in the corner. */
         .ring-badge .fill { transition: stroke-dashoffset 900ms var(--ease-io); }
 
+
+        /* Round 51. Three spot drawings, built from the same rounded
+           rectangles the interface itself is made of, so the page has
+           something to look at without importing a different visual language.
+           Flat shapes, brand tones, no stock illustration. */
+        .sup-head { display: flex; align-items: flex-start; gap: 18px; }
+        .sup-head .an-head2 { flex: 1; min-width: 0; margin-bottom: 0; }
+        .sup-art { width: 92px; height: 69px; flex-shrink: 0; margin-top: -6px; }
+        .sup-art .a { fill: var(--surface-2); }
+        .sup-art .b { fill: var(--border-strong); }
+        .sup-art .c { fill: var(--accent); }
+        .sup-art .d { fill: rgba(255,255,255,0.62); }
+        .sup-art .e { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .sup-art .f { fill: var(--ok-fg); }
+        .sup-art .g { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        #supportView .setting-row { align-items: center; }
+        #supportView .catalog-card { padding-top: 24px; }
         /* --- settings -------------------------------------------------------
            Settings was the last page still titling its cards with a plain h2.
            Same treatment as Analytics, done in CSS so no markup has to move:
@@ -9422,10 +9454,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <span class="home-eyebrow">Help &amp; support</span>
         </div>
         <div class="catalog-card">
-          <div class="an-head2">
+          <div class="sup-head"><div class="an-head2">
             <span class="home-eyebrow">What Amara does</span>
             <span class="an-note">So you know where the line is</span>
-          </div>
+          </div><svg class="sup-art" viewBox="0 0 64 48" aria-hidden="true"><rect class="a" x="2" y="6" width="34" height="24" rx="6"/><rect class="b" x="12" y="14" width="18" height="3" rx="1.5"/><rect class="b" x="12" y="21" width="12" height="3" rx="1.5"/><rect class="c" x="30" y="20" width="32" height="22" rx="6"/><rect class="d" x="38" y="27" width="16" height="3" rx="1.5"/><rect class="d" x="38" y="34" width="10" height="3" rx="1.5"/></svg></div>
           <div class="setting-row"><div class="setting-text">
             <div class="setting-name">She answers from your catalogue</div>
             <div class="setting-desc">Prices, stock and delivery fees come from what you have entered here. She does not invent a price, and if something is not listed she says she will check rather than guessing.</div>
@@ -9440,10 +9472,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           </div></div>
         </div>
         <div class="catalog-card">
-          <div class="an-head2">
+          <div class="sup-head"><div class="an-head2">
             <span class="home-eyebrow">If something stops working</span>
             <span class="an-note">The two things that actually break</span>
-          </div>
+          </div><svg class="sup-art" viewBox="0 0 64 48" aria-hidden="true"><rect class="a" x="4" y="8" width="56" height="32" rx="7"/><path class="e" d="M18 30l8-10 7 8 5-6 8 8"/><circle class="f" cx="48" cy="14" r="5"/></svg></div>
           <div class="setting-row"><div class="setting-text">
             <div class="setting-name">Amara has gone quiet</div>
             <div class="setting-desc">Open Settings and check WhatsApp connection. If it does not say Connected, your number has been unlinked and nothing will move until it is relinked.</div>
@@ -9456,10 +9488,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <button class="btn-quiet" onclick="switchTab('catalog')">Open catalogue</button></div>
         </div>
         <div class="catalog-card">
-          <div class="an-head2">
+          <div class="sup-head"><div class="an-head2">
             <span class="home-eyebrow">Reach a person</span>
-            <span class="an-note">We answer on WhatsApp, same as your customers</span>
-          </div>
+            <span class="an-note">We answer by email, usually the same day</span>
+          </div><svg class="sup-art" viewBox="0 0 64 48" aria-hidden="true"><rect class="a" x="4" y="8" width="40" height="28" rx="7"/><path class="e" d="M12 18l12 8 12-8"/><circle class="f" cx="50" cy="32" r="8"/><path class="g" d="M46.5 32l2.5 2.5 5-5.5"/></svg></div>
           <div class="setting-row"><div class="setting-text">
             <div class="setting-name">Message Stafly support</div>
             <div class="setting-desc">Tell us your business name and what happened. If Amara said something wrong, a screenshot of the thread is the fastest way to get it fixed.</div>
@@ -10752,44 +10784,60 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Settings/Support in the footer -- and the active row can be in any
         // of them. One pill per rail, and the ones whose rail has no active
         // row simply are not there.
+        // Round 51. Rewritten twice over. The pill used to hardcode
+        // left:12px/right:12px, which is the MAIN rail's padding -- so in the
+        // footer rail, which has none, it sat 12px right of its row and 24px
+        // narrower than it. Nothing about a pill should be guessed from a
+        // stylesheet: it takes its box from the active button itself, so it is
+        // correct in any rail with any padding.
+        //
+        // And there is one pill for the whole sidebar, not one per rail. It
+        // moves BETWEEN rails, which is what makes going from Dashboard down
+        // to Settings read as one object travelling rather than something
+        // vanishing here and appearing there. FLIP: measure where it is, move
+        // it, then animate the difference away.
+        let navPillEl = null;
         function moveNavPill(animate) {
-          document.querySelectorAll("nav.tabs").forEach((n) => {
-            if (!n.querySelector("button.active-tab")) {
-              const stale = n.querySelector(".nav-pill");
-              if (stale) { stale.remove(); n.classList.remove("pill-on"); }
-            }
-          });
-          const nav = (document.querySelector("nav.tabs button.active-tab") || {}).parentElement;
-          if (!nav) return;
-          let navPillEl = nav.querySelector(".nav-pill");
-          const act = nav.querySelector("button.active-tab");
-          if (!act) return;
+          const act = document.querySelector("nav.tabs button.active-tab");
+          document.querySelectorAll("nav.tabs").forEach((n) => n.classList.toggle("pill-on", !!act && n.contains(act)));
+          if (!act) { if (navPillEl) navPillEl.style.opacity = "0"; return; }
+          const nav = act.parentElement;
           if (!navPillEl) {
             navPillEl = document.createElement("span");
             navPillEl.className = "nav-pill";
-            nav.insertBefore(navPillEl, nav.firstChild);
-            nav.classList.add("pill-on");
           }
-          if (!nav.style.position) nav.style.position = "relative";
-          const y = act.offsetTop;
-          const h = act.offsetHeight;
-          if (!h) return;
-          const prev = navPillEl.pillY;
-          navPillEl.pillY = y;
-          navPillEl.style.height = h + "px";
-          navPillEl.style.transform = "translateY(" + y + "px)";
+          // First: where the pill is on screen right now, before anything moves.
+          const first = navPillEl.isConnected ? navPillEl.getBoundingClientRect() : null;
+
+          if (navPillEl.parentElement !== nav) nav.insertBefore(navPillEl, nav.firstChild);
+          else if (nav.firstChild !== navPillEl) nav.insertBefore(navPillEl, nav.firstChild);
+
+          // Last: the active button's own box, in the nav's coordinates.
+          navPillEl.style.transform = "none";
+          navPillEl.style.left = act.offsetLeft + "px";
+          navPillEl.style.width = act.offsetWidth + "px";
+          navPillEl.style.height = act.offsetHeight + "px";
+          navPillEl.style.top = act.offsetTop + "px";
+          navPillEl.style.opacity = "1";
+          if (!act.offsetHeight) return;
+
           const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-          if (!animate || prev === undefined || prev === y || reduce) return;
-          if (!navPillEl.animate) return;
+          if (!animate || !first || reduce || !navPillEl.animate) return;
+
+          // Invert + play. Width is animated too, because the rails are not
+          // the same width and a pill that jumps size mid-travel is the tell.
+          const last = navPillEl.getBoundingClientRect();
+          const dx = first.left - last.left, dy = first.top - last.top;
+          if (!dx && !dy && Math.abs(first.width - last.width) < 1) return;
           navPillEl.animate(
-            [{ transform: "translateY(" + prev + "px)" }, { transform: "translateY(" + y + "px)" }],
-            // Round 40. Was 340ms with a tenth of overshoot, which outlasted
-            // the view's own 240ms entrance -- so a tab switch read as two
-            // separate movements, the page settling and then the rail catching
-            // up. 280ms with a much smaller overshoot lands them together.
-            { duration: 280, easing: "cubic-bezier(.3, 1.05, .4, 1)" }
+            [
+              { transform: "translate(" + dx + "px," + dy + "px)", width: first.width + "px", height: first.height + "px" },
+              { transform: "none", width: last.width + "px", height: last.height + "px" },
+            ],
+            { duration: 320, easing: "cubic-bezier(.3, 1.05, .4, 1)" }
           );
         }
+
         // The rail only has real geometry once the shell has laid out, and the
         // row count differs between a goods seller and a bookable one, so the
         // pill is placed by observing the nav rather than by guessing a moment.
@@ -11615,6 +11663,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         // Lagos time of day, from the browser clock -- not a stored value and
         // not a guess about anything.
+        // The date, which the greeting implies and nothing else on the page
+        // states in full.
+        function todayLine() {
+          try {
+            return new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+          } catch (e) { return ""; }
+        }
         function greetingWord() {
           const h = new Date().getHours();
           if (h < 12) return "Good morning";
@@ -11624,10 +11679,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Their own name if they have given one, otherwise the shop's. Never
         // a first name pulled out of an email address -- "kolawolepeter200"
         // is not what anyone wants to be called.
+        // Round 51. The fallback used to be the business name, which gave
+        // "Good morning, ALIKA FOUNDATION." -- a greeting shouting a company
+        // at someone. If they have not told us their name, we do not invent
+        // one and we do not substitute the shop: the greeting simply ends.
         function firstNameOf(p) {
           const n = (p && p.contactName ? p.contactName : "").trim();
-          if (n) return n.split(/\s+/)[0];
-          return (p && p.businessName) ? p.businessName : "there";
+          return n ? n.split(/\s+/)[0] : "";
         }
 
         // Round 49. The profile panel and its edit form are the same object in
@@ -11685,13 +11743,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const initial = escapeHtml((p.businessName || "S").trim().charAt(0).toUpperCase());
           const avatar = p.avatarUrl ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">' : initial;
           const meta = [];
-          if (p.location) meta.push('<span>' + ICON_PIN + escapeHtml(p.location) + '</span>');
           meta.push('<span>' + ICON_BOX + d.catalogue.total + ' product' + (d.catalogue.total === 1 ? "" : "s") + '</span>');
           meta.push('<span>' + ICON_USERS + d.stats.totalCustomers + ' customer' + (d.stats.totalCustomers === 1 ? "" : "s") + '</span>');
-          if (p.createdAt) {
-            const dt = new Date(p.createdAt);
-            if (!isNaN(dt)) meta.push('<span>' + ICON_CAL + 'Since ' + dt.toLocaleDateString(undefined, { month: "short", year: "numeric" }) + '</span>');
-          }
           // The pill states a fact from the connection check, nothing more:
           // Amara literally cannot reply without both credentials.
           const live = d.connection.connected && !d.connection.suspended
@@ -11707,8 +11760,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="' + heroCls + '"' + heroStyle + '>' +
               '<button class="hero-cover-btn" data-home-action="pick-cover">' + ICON_CAMERA + (p.coverUrl ? "Change cover" : "Add cover") + '</button>' +
+              // Round 51. This panel carried five rows of text and the line
+              // directly above it already said "WhatsApp sales assistant" --
+              // so the same words appeared twice inside 40 pixels. The eyebrow
+              // is gone, and the meta row keeps only the two figures that are
+              // dashboard facts. Location and the join date are profile
+              // details; they live in Edit profile, where they belong.
               '<div class="hero-text">' +
-                '<div class="hero-eyebrow">' + (document.getElementById("tabBookings") ? "Bookings assistant" : "WhatsApp sales assistant") + '</div>' +
                 '<h2 class="hero-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' +
                 (p.tagline
                   ? '<div class="hero-tag">' + escapeHtml(p.tagline) + '</div>'
@@ -11830,8 +11888,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="home-card">' +
               '<div class="home-sec-head">' +
-                '<span class="home-eyebrow">Needs you &mdash; takeover queue</span>' +
-                '<span class="sec-count' + (n ? ' hot' : '') + '">' + n + ' waiting</span>' +
+                '<span class="home-eyebrow">Needs you</span>' +
+                '<span class="sec-count' + (n ? ' hot' : '') + '">' + n + '</span>' +
+                '<span class="home-eyebrow-note">' + (n === 1 ? 'Waiting on a reply' : 'Waiting on a reply') + '</span>' +
               '</div>' +
               '<div class="list-panel">' +
                 (d.waiting.length
@@ -11973,7 +12032,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '<div class="home-card wk-card">' +
               '<div class="home-sec-head">' +
                 '<span class="home-eyebrow">Last 7 days</span>' +
-                '<span class="home-eyebrow-note">New conversations per day</span>' +
+                '<span class="home-eyebrow-note">New conversations a day</span>' +
               '</div>' +
               (anyActivity
                 ? '<div class="wk-scale"><span>' + totalNew + ' total</span><span>Peak ' + maxNew + '</span></div>' +
@@ -12121,10 +12180,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // profile form now asks for it.
               '<div class="home-masthead" style="--d:0ms">' +
                 '<div style="min-width:0;">' +
-                  '<h2 class="home-hello">' + greetingWord() + ', ' +
-                    escapeHtml(firstNameOf(d.profile)) + '<span>.</span></h2>' +
-                  '<span class="home-eyebrow">Overview &mdash; ' +
-                    (document.getElementById("tabBookings") ? "Bookings assistant" : "WhatsApp sales assistant") + '</span>' +
+                  '<h2 class="home-hello">' + greetingWord() +
+                    (firstNameOf(d.profile) ? ', ' + escapeHtml(firstNameOf(d.profile)) : '') +
+                    '<span>.</span></h2>' +
+                  '<span class="home-eyebrow-note">' + todayLine() + '</span>' +
                 '</div>' +
                 '<span class="home-eyebrow-note">Updates on its own</span>' +
               '</div>' +
@@ -14883,7 +14942,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 50";
+const BUILD_ROUND = "Round 51";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
