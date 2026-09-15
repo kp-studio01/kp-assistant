@@ -8832,6 +8832,68 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
 
 
+
+        /* ==================================================================
+           Round 52 -- the chart, built to the rules rather than by eye.
+           Seven grey sticks with a number printed over every one of them is a
+           documented anti-pattern twice over: a value on every point, and no
+           axis to read any value against. What it needed was anatomy.
+           ================================================================== */
+        .wk-hero { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+        .wk-hero b { font-family: var(--font-heading); font-size: 34px; font-weight: 600; letter-spacing: -0.035em; color: var(--text); line-height: 1; font-feature-settings: "tnum" 1; }
+        .wk-hero-unit { font-size: 12.5px; color: var(--muted); }
+        .wk-delta { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-sans); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; font-feature-settings: "tnum" 1; }
+        .wk-delta.up { color: var(--ok-fg); background: var(--ok-bg); }
+        .wk-delta.down { color: var(--accent); background: var(--accent-light); }
+        .wk-delta.flat { color: var(--muted-2); background: var(--surface-2); }
+        .wk-delta svg { width: 11px; height: 11px; }
+
+        /* The plot: a recessive grid you read values against, and the bars in
+           front of it. Axis labels sit outside the plot, so no bar can ever
+           land underneath one. */
+        .wk-plot { position: relative; margin-top: 18px; padding-left: 26px; }
+        .wk-gridlines { position: absolute; inset: 0 0 0 26px; pointer-events: none; }
+        .wk-gridlines i { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: .62; }
+        .wk-gridlines i.base { opacity: 1; background: var(--border-strong); }
+        .wk-ylab { position: absolute; left: 0; transform: translateY(-50%); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted-2); font-feature-settings: "tnum" 1; }
+        .wk-chart { position: relative; height: 150px; align-items: stretch; gap: 10px; border-bottom: 0; margin-top: 0; }
+        .wk-col { position: relative; justify-content: flex-end; gap: 0; cursor: default; }
+        .wk-bar-slot { flex: 1; align-items: flex-end; }
+        .wk-bar { background: var(--border-strong); border-radius: 4px 4px 0 0; opacity: 1; transition: background var(--dur-base) ease; }
+        .wk-col.is-today .wk-bar { background: var(--accent); }
+        .wk-col:hover .wk-bar { background: var(--accent-dark); }
+        /* Selective labels only: the peak and today. A number over every bar
+           is noise, and the grid is there to read the rest against. */
+        .wk-n { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text); font-feature-settings: "tnum" 1; opacity: 0; transition: opacity var(--dur-fast) ease; pointer-events: none; margin-bottom: 0; }
+        .wk-n.show { opacity: 1; }
+        .wk-col:hover .wk-n { opacity: 1; }
+
+        /* Hover layer. A chart drawn in HTML is interactive by nature; not
+           answering a pointer is a choice, and the wrong one. */
+        .wk-tip { position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%) translateY(3px) scale(.97);
+          background: var(--navy); color: #fff; border-radius: 9px; padding: 7px 11px; white-space: nowrap; z-index: 5;
+          opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+          box-shadow: 0 6px 18px rgba(42,33,26,0.28); }
+        [data-theme="dark"] .wk-tip { background: var(--surface-3); }
+        .wk-col:hover .wk-tip { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        .wk-col:first-child .wk-tip { left: 0; transform: translateX(0) translateY(3px) scale(.97); }
+        .wk-col:first-child:hover .wk-tip { transform: translateX(0) translateY(0) scale(1); }
+        .wk-col:last-child .wk-tip { left: auto; right: 0; transform: translateX(0) translateY(3px) scale(.97); }
+        .wk-col:last-child:hover .wk-tip { transform: translateX(0) translateY(0) scale(1); }
+        .wk-tip b { display: block; font-family: var(--font-heading); font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+        .wk-tip span { display: block; font-size: 11px; opacity: .72; margin-top: 1px; }
+        .wk-days { padding-left: 26px; }
+
+        @media (hover: none), (pointer: coarse) {
+          .wk-tip { display: none; }
+          .wk-n { opacity: 1; }
+        }
+        @media (max-width: 700px) {
+          .wk-hero b { font-size: 27px; }
+          .wk-chart { height: 118px; gap: 6px; }
+          .wk-plot, .wk-days { padding-left: 22px; }
+          .wk-gridlines { inset: 0 0 0 22px; }
+        }
         /* ==================================================================
            Round 50 -- the navigation chassis.
            ================================================================== */
@@ -8966,20 +9028,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .ring-badge .fill { transition: stroke-dashoffset 900ms var(--ease-io); }
 
 
-        /* Round 51. Three spot drawings, built from the same rounded
-           rectangles the interface itself is made of, so the page has
-           something to look at without importing a different visual language.
-           Flat shapes, brand tones, no stock illustration. */
-        .sup-head { display: flex; align-items: flex-start; gap: 18px; }
+        /* Round 52. The last set were three rounded rectangles each -- icons
+           with ambition, not illustrations. These are drawn as scenes: a
+           grounding shadow, a paper plane behind, an object in the middle,
+           and one detail in front that carries the point. Same palette, same
+           corner radii as the interface, so they belong to this product
+           rather than arriving from a stock library. */
+        /* These went missing when the old art was swapped out, so the
+           drawings dropped underneath their headings instead of sitting
+           beside them. */
+        .sup-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
         .sup-head .an-head2 { flex: 1; min-width: 0; margin-bottom: 0; }
-        .sup-art { width: 92px; height: 69px; flex-shrink: 0; margin-top: -6px; }
-        .sup-art .a { fill: var(--surface-2); }
-        .sup-art .b { fill: var(--border-strong); }
-        .sup-art .c { fill: var(--accent); }
-        .sup-art .d { fill: rgba(255,255,255,0.62); }
-        .sup-art .e { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-        .sup-art .f { fill: var(--ok-fg); }
-        .sup-art .g { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .sup-art { width: 148px; height: 112px; flex-shrink: 0; margin: -10px -4px -12px 0; }
+        .sup-art .glow { fill: var(--accent); opacity: .07; }
+        .sup-art .paper { fill: var(--surface-2); }
+        .sup-art .edge { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+        .sup-art .bar { fill: var(--border-strong); }
+        .sup-art .bar.dim { opacity: .5; }
+        .sup-art .dot-live { fill: var(--ok-fg); }
+        .sup-art .bub-in { fill: var(--border); }
+        .sup-art .bub-out { fill: var(--accent); }
+        .sup-art .card-bg { fill: var(--accent); }
+        .sup-art .card-img { fill: rgba(255,255,255,.34); }
+        .sup-art .card-line, .sup-art .card-price { fill: rgba(255,255,255,.62); }
+        .sup-art .link { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; opacity: .55; stroke-dasharray: 3 3.5; }
+        .sup-art .snap { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+        .sup-art .alert { fill: var(--accent); }
+        .sup-art .alert-mark { stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }
+        .sup-art .alert-dot { fill: #fff; }
+        .sup-art .flap { fill: none; stroke: var(--border-strong); stroke-width: 1.5; stroke-linejoin: round; }
+        .sup-art .tick { fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+        .sup-art .trail { stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; opacity: .3; }
+        [data-theme="dark"] .sup-art .glow { opacity: .13; }
+        @media (max-width: 760px) { .sup-art { display: none; } }
         #supportView .setting-row { align-items: center; }
         #supportView .catalog-card { padding-top: 24px; }
         /* --- settings -------------------------------------------------------
@@ -9457,7 +9538,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <div class="sup-head"><div class="an-head2">
             <span class="home-eyebrow">What Amara does</span>
             <span class="an-note">So you know where the line is</span>
-          </div><svg class="sup-art" viewBox="0 0 64 48" aria-hidden="true"><rect class="a" x="2" y="6" width="34" height="24" rx="6"/><rect class="b" x="12" y="14" width="18" height="3" rx="1.5"/><rect class="b" x="12" y="21" width="12" height="3" rx="1.5"/><rect class="c" x="30" y="20" width="32" height="22" rx="6"/><rect class="d" x="38" y="27" width="16" height="3" rx="1.5"/><rect class="d" x="38" y="34" width="10" height="3" rx="1.5"/></svg></div>
+          </div><svg class="sup-art" viewBox="0 0 148 112" aria-hidden="true"><ellipse class="glow" cx="74" cy="92" rx="58" ry="12"/><rect class="paper" x="16" y="10" width="72" height="92" rx="12"/><rect class="edge" x="16" y="10" width="72" height="92" rx="12"/><rect class="bar" x="28" y="22" width="30" height="5" rx="2.5"/><circle class="dot-live" cx="79" cy="24.5" r="3.5"/><rect class="bub-in" x="26" y="36" width="44" height="17" rx="7"/><rect class="bub-out" x="36" y="58" width="44" height="17" rx="7"/><rect class="bub-in" x="26" y="80" width="30" height="13" rx="6"/><g class="card"><rect class="card-bg" x="86" y="40" width="50" height="50" rx="11"/><rect class="card-img" x="94" y="48" width="34" height="20" rx="6"/><rect class="card-line" x="94" y="73" width="22" height="4" rx="2"/><rect class="card-price" x="94" y="81" width="14" height="4" rx="2"/></g><path class="link" d="M70 50h9a5 5 0 0 1 5 5v6"/></svg></div>
           <div class="setting-row"><div class="setting-text">
             <div class="setting-name">She answers from your catalogue</div>
             <div class="setting-desc">Prices, stock and delivery fees come from what you have entered here. She does not invent a price, and if something is not listed she says she will check rather than guessing.</div>
@@ -9475,7 +9556,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <div class="sup-head"><div class="an-head2">
             <span class="home-eyebrow">If something stops working</span>
             <span class="an-note">The two things that actually break</span>
-          </div><svg class="sup-art" viewBox="0 0 64 48" aria-hidden="true"><rect class="a" x="4" y="8" width="56" height="32" rx="7"/><path class="e" d="M18 30l8-10 7 8 5-6 8 8"/><circle class="f" cx="48" cy="14" r="5"/></svg></div>
+          </div><svg class="sup-art" viewBox="0 0 148 112" aria-hidden="true"><ellipse class="glow" cx="74" cy="94" rx="54" ry="11"/><rect class="paper" x="10" y="26" width="58" height="42" rx="12"/><rect class="edge" x="10" y="26" width="58" height="42" rx="12"/><rect class="bar" x="22" y="38" width="26" height="5" rx="2.5"/><rect class="bar dim" x="22" y="50" width="16" height="5" rx="2.5"/><rect class="paper" x="80" y="26" width="58" height="42" rx="12"/><rect class="edge" x="80" y="26" width="58" height="42" rx="12"/><rect class="bar dim" x="92" y="38" width="26" height="5" rx="2.5"/><rect class="bar dim" x="92" y="50" width="16" height="5" rx="2.5"/><path class="snap" d="M68 41l6 6-6 6"/><path class="snap" d="M80 41l-6 6 6 6"/><circle class="alert" cx="74" cy="88" r="11"/><path class="alert-mark" d="M74 82.5v6"/><circle class="alert-dot" cx="74" cy="93" r="1.6"/></svg></div>
           <div class="setting-row"><div class="setting-text">
             <div class="setting-name">Amara has gone quiet</div>
             <div class="setting-desc">Open Settings and check WhatsApp connection. If it does not say Connected, your number has been unlinked and nothing will move until it is relinked.</div>
@@ -9491,7 +9572,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <div class="sup-head"><div class="an-head2">
             <span class="home-eyebrow">Reach a person</span>
             <span class="an-note">We answer by email, usually the same day</span>
-          </div><svg class="sup-art" viewBox="0 0 64 48" aria-hidden="true"><rect class="a" x="4" y="8" width="40" height="28" rx="7"/><path class="e" d="M12 18l12 8 12-8"/><circle class="f" cx="50" cy="32" r="8"/><path class="g" d="M46.5 32l2.5 2.5 5-5.5"/></svg></div>
+          </div><svg class="sup-art" viewBox="0 0 148 112" aria-hidden="true"><ellipse class="glow" cx="74" cy="94" rx="54" ry="11"/><rect class="paper" x="22" y="24" width="88" height="62" rx="12"/><rect class="edge" x="22" y="24" width="88" height="62" rx="12"/><path class="flap" d="M22 36l44 30 44-30"/><rect class="bar" x="36" y="68" width="30" height="5" rx="2.5"/><g class="card"><circle class="card-bg" cx="114" cy="30" r="18"/><path class="tick" d="M106.5 30l5 5 10-11"/></g><path class="trail" d="M14 58h12M8 70h18M20 46h6"/></svg></div>
           <div class="setting-row"><div class="setting-text">
             <div class="setting-name">Message Stafly support</div>
             <div class="setting-desc">Tell us your business name and what happened. If Amara said something wrong, a screenshot of the thread is the fastest way to get it fixed.</div>
@@ -12002,32 +12083,64 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const week = d.week || [];
           if (!week.length) return "";
           const anyActivity = week.some((x) => x.newCustomers > 0);
-          const maxNew = Math.max(1, ...week.map((x) => x.newCustomers));
           const totalNew = week.reduce((a, x) => a + x.newCustomers, 0);
           const totalOrders = week.reduce((a, x) => a + x.orders, 0);
           const totalRev = week.reduce((a, x) => a + x.revenue, 0);
+          const prior = d.weekPrior || [];
+          const priorNew = prior.reduce((a, x) => a + x.newCustomers, 0);
+          const hasPrior = prior.length > 0;
           const today = new Date().toISOString().slice(0, 10);
-          const bars = week.map((x) => {
-            const h = Math.round((x.newCustomers / maxNew) * 100);
+
+          // Round 52. A y-axis that rounds up to a readable step, so the top
+          // gridline is a number a person would say out loud rather than
+          // whatever the tallest bar happened to be.
+          const peak = Math.max(1, ...week.map((x) => x.newCustomers));
+          const step = peak <= 4 ? 1 : peak <= 10 ? 2 : peak <= 25 ? 5 : Math.ceil(peak / 5 / 10) * 10;
+          // The top of the axis is forced even so the middle gridline is a
+          // whole number. Conversations are counted, not measured: an axis
+          // offering to mark "0.5 conversations" is reading as a scale for
+          // something it is not.
+          let top = Math.max(2, Math.ceil(peak / step) * step);
+          if (top % 2) top += step;
+          const mid = top / 2;
+          const peakIdx = week.findIndex((x) => x.newCustomers === peak);
+
+          const bars = week.map((x, i) => {
+            const h = (x.newCustomers / top) * 100;
             const dt = new Date(x.date + "T00:00:00");
-            const dayLetter = isNaN(dt) ? "" : dt.toLocaleDateString(undefined, { weekday: "narrow" });
-            const label = x.newCustomers + (x.newCustomers === 1 ? " new conversation" : " new conversations") +
-              (isNaN(dt) ? "" : " on " + dt.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" }));
+            const full = isNaN(dt) ? x.date : dt.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+            const isToday = x.date === today;
+            // Only two labels are ever printed: the peak and today. Every
+            // other value is read off the grid, or hovered for.
+            const showN = (i === peakIdx && x.newCustomers > 0) || isToday;
             return '' +
-              '<div class="wk-col' + (x.date === today ? " is-today" : "") + '" title="' + escapeHtml(label) + '">' +
-                '<div class="wk-n">' + x.newCustomers + '</div>' +
+              '<div class="wk-col' + (isToday ? " is-today" : "") + '">' +
+                '<div class="wk-tip"><b>' + x.newCustomers + (x.newCustomers === 1 ? " conversation" : " conversations") + '</b>' +
+                  '<span>' + escapeHtml(full) + '</span></div>' +
                 '<div class="wk-bar-slot">' +
-                  '<div class="wk-bar" style="height:' + Math.max(h, x.newCustomers > 0 ? 6 : 1.5) + '%"></div>' +
+                  '<div class="wk-bar" style="height:' + Math.max(h, x.newCustomers > 0 ? 3 : 0.8) + '%"></div>' +
                 '</div>' +
+                '<div class="wk-n' + (showN ? " show" : "") + '" style="bottom:calc(' + Math.max(h, 3) + '% + 6px)">' + x.newCustomers + '</div>' +
               '</div>';
           }).join("");
-          // Day letters ride in their own row under the baseline rather than
-          // inside each column, so the rule the bars stand on is unbroken.
+
           const ticks = week.map((x) => {
-            const dt2 = new Date(x.date + "T00:00:00");
-            const letter = isNaN(dt2) ? "" : dt2.toLocaleDateString(undefined, { weekday: "narrow" });
+            const dt = new Date(x.date + "T00:00:00");
+            const letter = isNaN(dt) ? "" : dt.toLocaleDateString(undefined, { weekday: "narrow" });
             return '<span class="wk-day' + (x.date === today ? " today" : "") + '">' + escapeHtml(letter) + '</span>';
           }).join("");
+
+          // The delta is a fact or it is absent. With no earlier week on
+          // record it says so rather than inventing a baseline of zero.
+          const diff = totalNew - priorNew;
+          const ARROW_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
+          const ARROW_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
+          const delta = !hasPrior
+            ? '<span class="wk-delta flat">no earlier week on record</span>'
+            : diff > 0 ? '<span class="wk-delta up">' + ARROW_UP + '+' + diff + ' vs last week</span>'
+            : diff < 0 ? '<span class="wk-delta down">' + ARROW_DN + diff + ' vs last week</span>'
+            : '<span class="wk-delta flat">same as last week</span>';
+
           return '' +
             '<div class="home-card wk-card">' +
               '<div class="home-sec-head">' +
@@ -12035,8 +12148,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<span class="home-eyebrow-note">New conversations a day</span>' +
               '</div>' +
               (anyActivity
-                ? '<div class="wk-scale"><span>' + totalNew + ' total</span><span>Peak ' + maxNew + '</span></div>' +
-                  '<div class="wk-chart">' + bars + '</div>' +
+                ? '<div class="wk-hero"><b>' + totalNew + '</b>' +
+                    '<span class="wk-hero-unit">new conversation' + (totalNew === 1 ? '' : 's') + '</span>' + delta +
+                  '</div>' +
+                  '<div class="wk-plot">' +
+                    '<div class="wk-gridlines">' +
+                      '<i style="top:0"></i><i style="top:50%"></i><i class="base" style="bottom:0"></i>' +
+                    '</div>' +
+                    '<span class="wk-ylab" style="top:0">' + top + '</span>' +
+                    '<span class="wk-ylab" style="top:50%">' + mid + '</span>' +
+                    '<span class="wk-ylab" style="top:100%">0</span>' +
+                    '<div class="wk-chart">' + bars + '</div>' +
+                  '</div>' +
                   '<div class="wk-days">' + ticks + '</div>'
                 : '<div class="wk-blank">' +
                     '<svg class="wk-blank-art" viewBox="0 0 76 46" aria-hidden="true">' +
@@ -14099,8 +14222,12 @@ app.get("/api/home", async (req, res) => {
     // so it is a real count of first-time conversations, not a stored metric
     // that could drift. Revenue and orders come from the same daily keys the
     // Analytics tab reads. Nothing here is projected or smoothed.
+    // Round 52. Fourteen days, not seven. The chart still draws the last
+    // seven; the seven before them exist so the headline can be stated
+    // against a real comparison instead of standing on its own. Nothing is
+    // projected -- if the earlier week has no data the comparison says so.
     const days = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       days.push(d.toISOString().slice(0, 10));
@@ -14149,8 +14276,10 @@ app.get("/api/home", async (req, res) => {
     res.json({
       profile: publicProfile(seller),
       stats,
-      week,
-      newThisWeek: week.reduce((sum, d) => sum + d.newCustomers, 0),
+      week: week.slice(7),
+      newThisWeek: week.slice(7).reduce((sum, d) => sum + d.newCustomers, 0),
+      // The seven days before the seven on the chart, so a delta is a fact.
+      weekPrior: week.slice(0, 7),
       waiting,
       waitingTotal: customers.filter((c) => c.last_message_role === "user").length,
       // Round 44. The takeover queue is a narrower thing than "waiting": it is
@@ -14942,7 +15071,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 51";
+const BUILD_ROUND = "Round 52";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
