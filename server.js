@@ -9464,6 +9464,71 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
         .home-eyebrow, .an-eyebrow, .htile-label { font-weight: 650; }
         table.catalog-table td.num { font-size: 13.5px; font-weight: 550; letter-spacing: 0; }
+
+        /* ================================================================
+           Round 61. Adding a product was a page swap: the catalogue vanished,
+           a different screen arrived, and when you saved you were put back
+           where you started with no sense of having come from anywhere. That
+           is a redirect wearing a form's clothes.
+
+           It is a panel over the list now. The catalogue stays on screen and
+           dimmed behind it, so the thing you are adding to never leaves. The
+           curve and the duration are the ones the v2 reference uses for its
+           own drawer -- .32,.72,0,1 over 320ms, which decelerates hard at the
+           end and is why a panel feels like it was placed rather than thrown.
+           ================================================================ */
+        .drawer-scrim {
+          position: fixed; inset: 0; background: rgba(34,29,24,0.42);
+          opacity: 0; pointer-events: none; z-index: 60;
+          transition: opacity var(--dur-base) var(--ease-out);
+        }
+        [data-theme="dark"] .drawer-scrim { background: rgba(0,0,0,0.58); }
+        .drawer-scrim.on { opacity: 1; pointer-events: auto; }
+        @supports (backdrop-filter: blur(2px)) { .drawer-scrim.on { backdrop-filter: blur(2px); } }
+
+        .catalog-view#productView {
+          position: fixed; top: 0; right: 0; bottom: 0; left: auto;
+          width: min(660px, 100vw); max-width: none; margin: 0;
+          display: flex; flex-direction: column;
+          background: var(--surface-2);
+          border-left: 1px solid var(--border);
+          box-shadow: -24px 0 56px -24px rgba(42,33,26,0.32);
+          transform: translateX(101%);
+          transition: transform var(--dur-slow) var(--ease-drawer);
+          z-index: 61; padding: 0; overflow: hidden;
+          visibility: hidden;
+        }
+        .catalog-view#productView.on { transform: none; visibility: visible; }
+        [data-theme="dark"] .catalog-view#productView { box-shadow: -24px 0 56px -24px rgba(0,0,0,0.6); }
+        @media (prefers-reduced-motion: reduce) {
+          .catalog-view#productView { transition: none; }
+        }
+        #productView .peditor { margin: 0; display: flex; flex-direction: column; min-height: 0; flex: 1; }
+        /* The header does not scroll away, so Save is reachable from anywhere
+           in the form rather than only from the bottom of it. */
+        #productView .peditor-bar {
+          flex: none; margin: 0; padding: 16px 22px; background: var(--surface-2);
+          border-bottom: 1px solid var(--border); align-items: center;
+        }
+        #productView .peditor-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 22px 28px; overscroll-behavior: contain; }
+        /* One column. 660px minus the gutters is not two columns, and pretending
+           otherwise is how a form ends up with 290px fields. */
+        #productView .pform { grid-template-columns: minmax(0,1fr); gap: 16px; }
+        #productView .pform-sec { padding: 18px 20px 20px; border-radius: 14px; }
+        #productView .pform-side .dropzone { min-height: 150px; }
+        @media (max-width: 480px) {
+          /* The hint and the List button were colliding in the toolbar. The
+             hint is the one that can go: the marks still work. */
+          #productView .rte-note { display: none; }
+          #productView .peditor-actions { width: 100%; justify-content: flex-end; }
+        }
+        @media (max-width: 700px) {
+          .catalog-view#productView { width: 100vw; border-left: 0; }
+          #productView .peditor-bar { padding: 13px 15px; }
+          #productView .peditor-body { padding: 15px 15px 24px; }
+        }
+        /* The page behind a panel should not scroll under it. */
+        body.drawer-open .main-column { overflow: hidden; }
       </style>
     </head>
     <body>
@@ -9645,6 +9710,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <input type="hidden" id="pKey">
             <input type="hidden" id="pRemoveImage" value="">
 
+            <!-- Round 61. The form scrolls; the header holding Save does not. -->
+            <div class="peditor-body">
             <div class="pform">
               <div class="pform-main">
 
@@ -9759,8 +9826,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
               </div>
             </div>
+            </div>
           </div>
       </div>
+      <div class="drawer-scrim" id="productScrim"></div>
 
       <!-- Round 59. This page was a bare h2, a paragraph and a raw table in an
            800px column, sitting in half a screen of empty. It is built like
@@ -11385,12 +11454,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // seller never gets tabCatalog. Guarded with optional chaining
           // so this one function works for either businessType without
           // needing its own fork.
-          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView", product: "productView", delivery: "deliveryView" };
+          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView", delivery: "deliveryView" };
+          // Round 61. The product editor is not in that map any more. It is a
+          // panel over the catalogue, so the catalogue is what stays on screen
+          // underneath it -- the list you are adding to never leaves.
+          const asDrawer = tab === "product";
+          const shown = asDrawer ? "catalog" : tab;
           let entering = null;
           for (const t in views) {
             const el = document.getElementById(views[t]);
             if (!el) continue;
-            if (t === tab) {
+            if (t === shown) {
               el.style.display = t === "conversations" ? "flex" : "block";
               entering = el;
             } else {
@@ -11401,6 +11475,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
+          }
+          const drawer = document.getElementById("productView");
+          const scrim = document.getElementById("productScrim");
+          if (drawer) {
+            drawer.style.display = "flex";
+            drawer.classList.toggle("on", asDrawer);
+            drawer.setAttribute("aria-hidden", asDrawer ? "false" : "true");
+            if (scrim) scrim.classList.toggle("on", asDrawer);
+            document.body.classList.toggle("drawer-open", asDrawer);
           }
           moveNavPill(true);
           // Round 55. The submenu opens with its parent and closes with it.
@@ -13505,8 +13588,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const panel = document.getElementById("productPanel");
           if (!panel) return;
           panel.style.display = "block";
-          if (!document.getElementById("productView") ||
-              getComputedStyle(document.getElementById("productView")).display === "none") switchTab("product");
+          // Round 61. This used to test productView's display to decide
+          // whether to switch. The drawer is always laid out and moved with a
+          // transform instead, so the open state is the class, not display.
+          const dr = document.getElementById("productView");
+          if (!dr || !dr.classList.contains("on")) switchTab("product");
           initDropzone();
           showProductPerf();
           paintHeader();
@@ -13514,8 +13600,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const el = document.getElementById(id);
             if (el && !el.dataset.hdr) { el.dataset.hdr = "1"; el.addEventListener("input", paintHeader); }
           });
-          const view = document.getElementById("productView");
-          if (view) view.scrollTop = 0;
+          const body = document.querySelector("#productView .peditor-body");
+          if (body) body.scrollTop = 0;
           const name = document.getElementById("pName");
           if (name) name.focus();
         }
@@ -13588,6 +13674,51 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           el.focus();
           el.setSelectionRange(s + insert.length, s + insert.length);
         }
+        // Round 61. A panel you cannot dismiss the way panels are dismissed
+        // is a page with a shadow on it. Click the dimmed catalogue, or press
+        // Escape, and it closes -- the same two gestures every drawer in every
+        // tool this seller already uses responds to.
+        (function wireProductDrawer() {
+          const scrim = document.getElementById("productScrim");
+          if (scrim && !scrim.dataset.wired) {
+            scrim.dataset.wired = "1";
+            scrim.addEventListener("click", () => closeProductForm());
+          }
+          document.addEventListener("keydown", (e) => {
+            if (e.key !== "Escape") return;
+            const dr = document.getElementById("productView");
+            if (dr && dr.classList.contains("on")) { e.preventDefault(); closeProductForm(); }
+          });
+        })();
+
+        // Round 61. The catalogue grid already falls back to a placeholder when
+        // a photo will not load; the editor did not, so a product whose image
+        // had gone missing opened with a broken-image glyph in its header and
+        // a line of alt text where the picture should be. Same rule, both
+        // places: if the file is not there, say so quietly.
+        (function wireShotFallback() {
+          const shot = document.getElementById("pShotImg");
+          if (shot && !shot.dataset.wired) {
+            shot.dataset.wired = "1";
+            shot.addEventListener("error", () => {
+              const box = document.getElementById("pShot");
+              if (box) box.style.display = "none";
+              const zone = document.getElementById("photoDrop");
+              if (zone) zone.style.display = "";
+              paintHeader();
+            });
+          }
+          const head = document.querySelector("#pHeadThumb img");
+          if (head && !head.dataset.wired) {
+            head.dataset.wired = "1";
+            head.addEventListener("error", () => {
+              head.removeAttribute("src");
+              const t = document.getElementById("pHeadThumb");
+              if (t) t.classList.remove("has");
+            });
+          }
+        })();
+
         function closeProductForm() {
           switchTab("catalog");
           cancelEditProduct();
@@ -15849,7 +15980,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 60";
+const BUILD_ROUND = "Round 61";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
