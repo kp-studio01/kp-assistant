@@ -10591,12 +10591,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            390px they were taking a fifth of the width off the top of a
            message thread to say nothing about it. */
         @media (max-width: 760px) {
-          body:has(.layout.thread-open) .topbar-date-chip,
-          body:has(.layout.thread-open) .theme-toggle,
-          body:has(.layout.thread-open) .topbar-avatar,
-          body:has(.layout.thread-open) .crumbs,
-          body:has(.layout.thread-open) .topbar-biz { display: none; }
-          body:has(.layout.thread-open) .topbar { padding: 8px 12px; min-height: 0; }
+          body:has(.layout.thread-open) .topbar { display: none; }
           body:has(.layout.thread-open) .msg-compose { padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
           /* :has() is everywhere that matters now, but a browser without it
              should still get a usable thread rather than a broken header, so
@@ -10616,6 +10611,61 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .bubble.assistant .bubble-tick { color: rgba(255,255,255,0.72); }
         .bubble.assistant .bubble-tick.read { color: #8FD8FF; }
         .bubble.user .bubble-tick { color: var(--muted-2); }
+
+        /* ==================================================================
+           Round 74. "YOU HAVE IT".
+
+           It was 11px uppercase at 0.05em tracking in accent orange, sitting
+           on the same line as the customer's name -- so a status label was
+           shouting louder than the person it belonged to. Miji is right that
+           it reads as text screaming rather than as a mark.
+
+           The time beside a name is a timestamp: quiet, sentence case, grey,
+           the way a messaging app writes it. The one case that is a STATE --
+           this thread is yours, not Amara's -- is a small pill, and even then
+           it says "You have it" rather than shouting it.
+           ================================================================== */
+        #homeView .q-wait, .q-wait {
+          font-family: var(--font-sans); font-size: 11.5px; font-weight: 500;
+          text-transform: none; letter-spacing: 0; color: var(--muted-2);
+          padding: 0; background: none; gap: 5px;
+        }
+        #homeView .q-wait.mine, .q-wait.mine {
+          padding: 2px 8px 2px 6px; border-radius: 999px;
+          background: var(--warn-bg); color: var(--warn-fg); font-weight: 600;
+          box-shadow: inset 0 0 0 1px var(--warn-border);
+        }
+        .q-wait svg { width: 12px; height: 12px; opacity: .8; }
+        /* The name leads its own row again. */
+        .q-top { gap: 8px; }
+        .q-name { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; }
+
+        /* The same treatment on the list, where the flag had the same fault. */
+        #homeView .waiting-flag, .waiting-flag {
+          font-family: var(--font-sans); font-size: 11px; font-weight: 600;
+          text-transform: none; letter-spacing: 0;
+        }
+        #homeView .waiting-when, .waiting-when {
+          font-family: var(--font-sans); font-size: 11.5px; font-weight: 500;
+          text-transform: none; letter-spacing: 0; color: var(--muted-2);
+        }
+        /* And in the thread list, where "Needs reply" was doing the same. */
+        .list-badge, .needs-reply-badge {
+          text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px;
+        }
+
+        /* A phone showing a conversation shows one header, not two. */
+        @media (max-width: 760px) {
+          body:has(.layout.thread-open) .main-column { height: 100dvh; }
+          body:has(.layout.thread-open) .thread-header { padding-top: calc(10px + env(safe-area-inset-top)); }
+        }
+
+        /* Line one is the person and when they wrote. Line two is the state,
+           when there is one, and what they said. */
+        .q-line { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .q-prev { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-top .q-wait { margin-left: auto; }
       </style>
     </head>
     <body>
@@ -13609,12 +13659,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="q-row" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">' +
                 '<span class="q-av" style="background:' + avatarColorFor(w.phone) + '">' + escapeHtml(avatarTextFor(c)) + '</span>' +
                 '<div class="q-main">' +
+                  // Round 74. The name, the time and a state pill were all on
+                  // one line inside a 340px column, so the name -- the thing
+                  // you are actually looking for -- was the one that got cut
+                  // to "Ada ...". Line one is the person and when they wrote;
+                  // the state, when there is one, leads line two, which is
+                  // where a messaging app puts it.
                   '<div class="q-top"><span class="q-name">' + escapeHtml(displayNameFor(c)) + '</span>' +
-                    (w.paused
-                      ? '<span class="q-wait mine">' + ICON_CLOCK + 'You have it</span>'
-                      : '<span class="q-wait">' + ICON_CLOCK + escapeHtml(timeAgo(w.last_contact)) + '</span>') +
+                    '<span class="q-wait">' + escapeHtml(timeAgo(w.last_contact)) + '</span>' +
                   '</div>' +
-                  '<div class="q-line">' + escapeHtml(w.preview || "no message text") + '</div>' +
+                  '<div class="q-line">' +
+                    (w.paused ? '<span class="q-wait mine">' + ICON_CLOCK + 'You have it</span>' : "") +
+                    '<span class="q-prev">' + escapeHtml(w.preview || "no message text") + '</span>' +
+                  '</div>' +
                 '</div>' +
                 '<button class="q-btn" data-home-action="open-thread" data-phone="' + escapeHtml(w.phone) + '">Reply</button>' +
               '</div>';
@@ -17646,7 +17703,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 73";
+const BUILD_ROUND = "Round 74";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
