@@ -9529,6 +9529,40 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
         /* The page behind a panel should not scroll under it. */
         body.drawer-open .main-column { overflow: hidden; }
+
+        /* ================================================================
+           Round 62. Three things the dark rail inherited and should not have.
+           ================================================================ */
+        /* The submenu's active row still carried a 70%-white inset top edge --
+           a highlight drawn for a cream rail, now a bright line across a dark
+           one. That is the white Miji could see. */
+        .sidebar .subtabs button.on,
+        [data-theme="dark"] .sidebar .subtabs button.on {
+          background: var(--rail-raise); box-shadow: none; color: var(--rail-text);
+        }
+        .sidebar .subtabs button { color: var(--rail-muted); }
+        .sidebar .subtabs button:hover { background: rgba(255,255,255,0.05); color: var(--rail-text); }
+        /* Same leftover, same fix, on the group parent. */
+        .sidebar nav.tabs button.open, .sidebar nav.tabs button.group-on { background: transparent; box-shadow: none; }
+
+        /* The panel animates a transform, so the compositor should be told
+           once rather than working it out on every open. The scrim's blur was
+           the expensive part: a full-viewport backdrop-filter repainting
+           through a 320ms transform is what made the open feel heavy, and it
+           buys nothing a dim does not already do. */
+        .catalog-view#productView { will-change: transform; contain: layout paint; }
+        .drawer-scrim.on { backdrop-filter: none; }
+
+        /* Round 62. The pill travels into the submenu now, so the submenu is
+           a positioning context and its own active row stops painting the
+           background the pill is already drawing. */
+        .subtabs { position: relative; }
+        .sidebar .subtabs.pill-on button.on { background: transparent; box-shadow: none; }
+
+        /* An unnamed product has no initial to show. The thumb becomes a quiet
+           outline rather than a solid accent square with a question mark in
+           it, which reads as a failure state on a form nobody has filled in. */
+        .peditor-thumb.blank { background: transparent; box-shadow: inset 0 0 0 1.5px var(--border-strong); }
       </style>
     </head>
     <body>
@@ -9650,11 +9684,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <span class="home-eyebrow">Products</span>
               <span class="an-note">What Amara can quote, describe and sell on your behalf</span>
             </div>
-            <span class="catalog-msg" id="catalogStatus" style="margin-right:10px;"></span>
-            <button class="catalog-btn" id="addProductBtn" onclick="openProductForm()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Add product
-            </button>
+            <!-- Round 62. The Add product button lived here and in the menu
+                 one row to the left of it. Two doors to the same room. -->
+            <span class="catalog-msg" id="catalogStatus"></span>
           </div>
           <div class="cat-toolbar">
             <div class="cat-search">
@@ -9725,7 +9757,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                     </div>
                     <div class="field">
                       <label for="pPrice">Price (&#8358;)</label>
-                      <input id="pPrice" type="number" min="1" placeholder="7500">
+                      <input id="pPrice" type="number" min="1" placeholder="e.g. 7500">
                     </div>
                     <div class="field">
                       <label for="pCategory">Category</label>
@@ -11383,8 +11415,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // it, then animate the difference away.
         let navPillEl = null;
         function moveNavPill(animate) {
-          const act = document.querySelector("nav.tabs button.active-tab");
+          const act = document.querySelector("nav.tabs button.active-tab") ||
+                      document.querySelector(".subtabs.open button.on");
           document.querySelectorAll("nav.tabs").forEach((n) => n.classList.toggle("pill-on", !!act && n.contains(act)));
+          document.querySelectorAll(".subtabs").forEach((n) => n.classList.toggle("pill-on", !!act && n.contains(act)));
           if (!act) { if (navPillEl) navPillEl.style.opacity = "0"; return; }
           const nav = act.parentElement;
           if (!navPillEl) {
@@ -11442,8 +11476,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // to exist.
         function newProduct() {
           cancelEditProduct();
-          switchTab("product");
-          setTimeout(() => { const n = document.getElementById("pName"); if (n) n.focus(); }, 260);
+          openProductForm();
         }
 
         const CRUMB_SEP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
@@ -11475,6 +11508,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
+          }
+          // Round 62. Products is a group, and its children carry the mark.
+          // Leaving active-tab on the parent as well lit two rows at once and
+          // gave the travelling pill two candidates, so it landed on the
+          // parent while the child kept its own highlight.
+          const parentTab = document.getElementById("tabCatalog");
+          if (parentTab && (tab === "catalog" || tab === "product" || tab === "delivery")) {
+            parentTab.className = "";
           }
           const drawer = document.getElementById("productView");
           const scrim = document.getElementById("productScrim");
@@ -13602,8 +13643,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           });
           const body = document.querySelector("#productView .peditor-body");
           if (body) body.scrollTop = 0;
+          // Focusing a field inside a panel that is still travelling makes the
+          // browser scroll to it mid-transition, which reads as a stutter. It
+          // waits for the panel to arrive, and never scrolls to get there.
           const name = document.getElementById("pName");
-          if (name) name.focus();
+          if (name) setTimeout(() => name.focus({ preventScroll: true }), 340);
         }
 
         // Only shown when this product has actually sold something. No card
@@ -13626,7 +13670,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const hasShot = !!src && getComputedStyle(document.getElementById("pShot")).display !== "none";
           if (hasShot) { img.src = src; thumb.classList.add("has"); }
           else { img.removeAttribute("src"); thumb.classList.remove("has"); }
-          if (ph) ph.textContent = (name || "?").trim().charAt(0).toUpperCase();
+          const initial = (name || "").trim().charAt(0).toUpperCase();
+          if (ph) ph.textContent = initial;
+          thumb.classList.toggle("blank", !hasShot && !initial);
           const bits = [];
           if (price) bits.push("\u20A6" + price.toLocaleString());
           if (cat) bits.push(cat);
@@ -15980,7 +16026,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 61";
+const BUILD_ROUND = "Round 62";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
