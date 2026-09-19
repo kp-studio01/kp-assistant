@@ -10363,6 +10363,129 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .cf-axis, .cf-plot { height: 150px; }
           .cf { gap: 9px; }
         }
+
+        /* ==================================================================
+           Round 72. One card system, not two.
+
+           The four figures at the top had an icon in a container, a rule and
+           a footing. Every card below them had a title, a sub and a body --
+           a different, plainer thing on the same page, which is why the page
+           stopped feeling designed below the fold. They are the same card
+           now: same head, same icon container, same rule, same way out.
+
+           And the type ramp is four sizes, not nine. 26 / 16 / 13.5 / 11.5,
+           each with one weight. Sizes a step apart read as a mistake; sizes
+           a clear interval apart read as a system.
+           ================================================================== */
+        .hcard-head { align-items: center; gap: 12px; padding: 16px 20px; }
+        .hcard-icon { width: 38px; height: 38px; border-radius: 12px; flex: none;
+          display: grid; place-items: center; background: var(--accent-light); color: var(--accent-dark); }
+        .hcard-icon svg { width: 17px; height: 17px; }
+        .hcard-title { font-size: 16px; font-weight: 650; letter-spacing: -0.02em; }
+        .hcard-sub { font-size: 12.5px; margin-top: 2px; }
+        .hcard-body { padding: 4px 20px 18px; }
+        .hcard-note { font-size: 12.5px; }
+        /* The footing. Same component as the KPI card's, so a card anywhere on
+           this page ends the same way. */
+        .hcard-foot { display: flex; align-items: center; gap: 10px; width: 100%;
+          padding: 12px 20px; border: 0; border-top: 1px solid var(--border-light);
+          background: transparent; font-family: inherit; font-size: 12.5px; color: var(--muted-2);
+          cursor: pointer; text-align: left;
+          transition: color var(--dur-fast) ease, background var(--dur-fast) ease; }
+        .hcard-foot svg { width: 14px; height: 14px; margin-left: auto; flex: none;
+          transition: transform var(--dur-base) var(--ease-out); }
+        @media (hover: hover) and (pointer: fine) {
+          .hcard-foot:hover { color: var(--accent); background: var(--accent-light); }
+          .hcard-foot:hover svg { transform: translateX(3px); }
+        }
+        .hcard-foot:active { background: var(--accent-soft); }
+
+        /* ---- What's selling --------------------------------------------
+           A name, a bar and a number in three columns is a spreadsheet row.
+           This is a ranked list: the position, the product's own photo, what
+           it sold and what that came to -- with the bar as a ground behind
+           the row rather than a third column competing with it. */
+        .sell { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;
+          counter-reset: sell; }
+        .sell-row { position: relative; display: flex; align-items: center; gap: 12px;
+          padding: 9px 12px; border-radius: 12px; overflow: hidden; min-width: 0; }
+        .sell-fill { position: absolute; left: 0; top: 0; bottom: 0; z-index: 0;
+          background: var(--accent-light); border-radius: 12px; }
+        .sell-row > *:not(.sell-fill) { position: relative; z-index: 1; }
+        .sell-rank { width: 16px; flex: none; font-size: 11.5px; font-weight: 650; color: var(--muted-2);
+          font-variant-numeric: tabular-nums; }
+        .sell-thumb { width: 34px; height: 34px; flex: none; border-radius: 10px; overflow: hidden;
+          background: var(--surface-3); display: grid; place-items: center; }
+        .sell-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sell-thumb i { font-style: normal; font-family: var(--font-heading); font-size: 14px;
+          font-weight: 650; color: var(--muted); }
+        .sell-name { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sell-figs { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+        .sell-figs b { font-family: var(--font-heading); font-size: 15px; font-weight: 650;
+          letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .sell-figs em { font-style: normal; font-size: 11px; color: var(--muted-2);
+          font-variant-numeric: tabular-nums; }
+
+        /* ---- Amara right now -------------------------------------------
+           Key on the left, value on the right and a dot in front was a table
+           pretending to be a card. The rows get their own ground and the dot
+           gets a ring, so a state reads at a glance instead of being read. */
+        .alist { gap: 4px; }
+        .arow { padding: 9px 12px; border-radius: 11px; background: var(--surface-2); font-size: 13px; }
+        .adot { width: 8px; height: 8px; box-shadow: 0 0 0 3px var(--surface); }
+        .adot.live { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok-fg) 22%, var(--surface)); }
+        .adot.bad { box-shadow: 0 0 0 3px color-mix(in srgb, var(--dang-fg) 22%, var(--surface)); }
+        .adot.warn { box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn-fg) 24%, var(--surface)); }
+        .av { font-variant-numeric: tabular-nums; }
+
+        /* ---- the sparkline --------------------------------------------
+           It was pinned 40px off the bottom of the card, so its gradient ended
+           in a hard horizontal cut in the middle of nowhere -- the "looks
+           incomplete" Miji spotted. It fills the figure zone now and ends
+           exactly on the rule, which is an edge that was always going to be
+           there. */
+        .kpi .kpi-spark { display: none; }
+        .kpi-primary .kpi-spark { display: block; top: auto; bottom: 41px; height: 34px; }
+        .kpi-primary.has-spark .kpi-figure { padding-bottom: 34px; }
+        @media (max-width: 760px) {
+          .hcard-head { padding: 14px 15px; gap: 10px; }
+          .hcard-icon { width: 34px; height: 34px; border-radius: 11px; }
+          .hcard-icon svg { width: 16px; height: 16px; }
+          .hcard-body { padding: 2px 15px 16px; }
+          .hcard-foot { padding: 11px 15px; }
+          .kpi-primary .kpi-spark { bottom: 39px; height: 28px; }
+          .kpi-primary.has-spark .kpi-figure { padding-bottom: 28px; }
+          .sell-row { gap: 10px; padding: 8px 10px; }
+          .sell-thumb { width: 30px; height: 30px; }
+        }
+
+        /* The three cards that predate hcard use .home-sec-head, so the icon
+           container needs to sit correctly there too -- and their eyebrow
+           already renders as a title by the Round 69 rule. */
+        #homeView .home-sec-head { margin-bottom: 16px; align-items: center; }
+        #homeView .home-sec-head .hcard-icon { flex: none; }
+        #homeView .setup-card .home-sec-head { margin-bottom: 12px; }
+
+        /* "Waiting on a re..." -- the icon took the width the note needed, and
+           a note truncated to nonsense says less than no note. It stands down
+           in the narrow column and comes back when there is room. */
+        @container (max-width: 380px) { #homeView .home-sec-head .home-eyebrow-note { display: none; } }
+        @supports not (container-type: inline-size) {
+          @media (max-width: 1240px) { #homeView .home-stack:last-child .home-sec-head .home-eyebrow-note { display: none; } }
+        }
+        #homeView .home-stack > * { container-type: inline-size; }
+
+        /* On a phone the 7d/14d/30d control was taking the width the title
+           needed, so "Revenue and orders" broke across two lines beside it.
+           The control drops to its own line instead. */
+        @media (max-width: 560px) {
+          .hcard-head { flex-wrap: wrap; }
+          .hcard-headtext { flex: 1 1 100%; }
+          .hcard-aside { flex: 1 0 100%; margin-top: 2px; }
+          .hcard-aside .hseg { width: 100%; }
+          .hcard-aside .hseg-btn { flex: 1; }
+        }
       </style>
     </head>
     <body>
@@ -11432,6 +11555,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
         // Round 68. Icons the new page head and KPI cards need.
+        const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor" stroke="none"/></svg>';
         const ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>';
         const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
         const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
@@ -13292,6 +13416,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="setup-card">' +
               '<div class="home-sec-head">' +
+                '<span class="hcard-icon">' + ICON_TICK + '</span>' +
                 '<span class="home-eyebrow">Setup checklist</span>' +
                 '<span class="sec-count">' + doneCount + ' of ' + steps.length + '</span>' +
               '</div>' +
@@ -13357,6 +13482,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="home-card">' +
               '<div class="home-sec-head">' +
+                '<span class="hcard-icon">' + ICON_ALERT + '</span>' +
                 '<span class="home-eyebrow">Needs you</span>' +
                 '<span class="sec-count' + (n ? ' hot' : '') + '">' + n + '</span>' +
                 '<span class="home-eyebrow-note">' + (n === 1 ? 'Waiting on a reply' : 'Waiting on a reply') + '</span>' +
@@ -13584,6 +13710,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="home-card">' +
               '<div class="home-sec-head">' +
+                '<span class="hcard-icon">' + ICON_CHAT + '</span>' +
                 '<span class="home-eyebrow">Live activity</span>' +
                 '<span class="home-eyebrow-note">Newest first</span>' +
               '</div>' +
@@ -13795,6 +13922,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function hcard(o) {
           return '<section class="hcard' + (o.cls ? " " + o.cls : "") + '">' +
             '<div class="hcard-head">' +
+              (o.icon ? '<span class="hcard-icon">' + o.icon + '</span>' : "") +
               '<div class="hcard-headtext">' +
                 '<h3 class="hcard-title">' + escapeHtml(o.title) + '</h3>' +
                 (o.sub ? '<p class="hcard-sub">' + o.sub + '</p>' : "") +
@@ -13802,6 +13930,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               (o.aside ? '<div class="hcard-aside">' + o.aside + '</div>' : "") +
             '</div>' +
             '<div class="hcard-body">' + o.body + '</div>' +
+            (o.foot
+              ? '<button type="button" class="hcard-foot" data-home-action="' + o.footAction + '">' +
+                  '<span>' + escapeHtml(o.foot) + '</span>' + ICON_ARROW_R + '</button>'
+              : "") +
           '</section>';
         }
 
@@ -13831,7 +13963,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '" data-home-action="range" data-range="' + n + '">' + n + 'd</button>').join("");
           const aside = '<div class="hseg">' + seg + '</div>';
           if (!total && !orders) {
-            return hcard({ title: "Revenue and orders", cls: "hcard-wide", aside: aside,
+            return hcard({ title: "Revenue and orders", cls: "hcard-wide", aside: aside, icon: ICON_TREND,
               sub: "Last " + homeRange + " days",
               body: hEmpty(ICON_TREND, "Nothing banked yet",
                 "The moment a customer pays, the day they paid shows up here.") });
@@ -13891,7 +14023,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="ht-stat"><b>' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average order</span></div>' +
             '</div>';
           return hcard({ title: "Revenue and orders", sub: "Last " + homeRange + " days, from your own records",
-            aside: aside, cls: "hcard-wide", body: body });
+            aside: aside, cls: "hcard-wide", icon: ICON_TREND, body: body,
+            foot: "See the full breakdown in Analytics", footAction: "go-analytics" });
         }
 
         // ---- What's selling ----------------------------------------------
@@ -13899,20 +14032,29 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const rows = ((d.catalogue || {}).topProducts || []).slice(0, 5);
           const aside = '<button type="button" class="btn-quiet btn-tiny" data-home-action="go-catalog">Catalogue</button>';
           if (!rows.length) {
-            return hcard({ title: "What's selling", sub: "Units and revenue, all time", aside: aside,
+            return hcard({ title: "What's selling", sub: "Units and revenue, all time", aside: aside, icon: ICON_BOX,
               body: hEmpty(ICON_BOX, "Nothing sold yet",
                 "Once Amara closes a sale the product shows up here, ranked.") });
           }
           const max = Math.max.apply(null, rows.map((r) => Number(r.sold) || 0).concat([1]));
-          const body = '<div class="hbars">' + rows.map((r) => {
+          const body = '<ol class="sell">' + rows.map((r, i) => {
             const sold = Number(r.sold) || 0;
-            return '<div class="hbar-row">' +
-              '<span class="hbar-name" title="' + escapeHtml(r.name || "") + '">' + escapeHtml(r.name || "") + '</span>' +
-              '<span class="hbar-track"><i style="width:' + Math.max(2, (sold / max) * 100).toFixed(1) + '%"></i></span>' +
-              '<span class="hbar-val">' + sold + '</span>' +
-            '</div>';
-          }).join("") + '</div>';
-          return hcard({ title: "What's selling", sub: "Units sold, all time", aside: aside, body: body });
+            const pct = Math.max(3, (sold / max) * 100);
+            const rev = Number(r.revenue) || 0;
+            const shot = r.image && r.hasOwnPhoto
+              ? '<img src="' + escapeHtml(r.image) + '" alt="" loading="lazy">'
+              : '<i>' + escapeHtml((r.name || "?").trim().charAt(0).toUpperCase()) + '</i>';
+            return '<li class="sell-row">' +
+              '<span class="sell-fill" style="width:' + pct.toFixed(1) + '%"></span>' +
+              '<span class="sell-rank">' + (i + 1) + '</span>' +
+              '<span class="sell-thumb">' + shot + '</span>' +
+              '<span class="sell-name" title="' + escapeHtml(r.name || "") + '">' + escapeHtml(r.name || "") + '</span>' +
+              '<span class="sell-figs"><b>' + sold + '</b>' +
+                (rev ? '<em>\u20A6' + rev.toLocaleString() + '</em>' : '<em>sold</em>') + '</span>' +
+            '</li>';
+          }).join("") + '</ol>';
+          return hcard({ title: "What's selling", sub: "Units sold, all time", aside: aside, icon: ICON_BOX,
+            body: body, foot: "Open the catalogue", footAction: "go-catalog" });
         }
 
         // ---- Rhythm of the week ------------------------------------------
@@ -13922,7 +14064,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const total = vals.reduce((a, b) => a + (Number(b) || 0), 0);
           const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
           if (!total) {
-            return hcard({ title: "Rhythm of the week", sub: "Orders by weekday",
+            return hcard({ title: "Rhythm of the week", sub: "Orders by weekday", icon: ICON_CALENDAR,
               body: hEmpty(ICON_TREND, "No pattern yet",
                 "After a few orders this shows which days your shop is busiest.") });
           }
@@ -13940,7 +14082,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }).join("") + '</div>' +
           '<p class="hcard-note">Busiest day is <b>' + escapeHtml(best) + '</b>, from ' + total +
             ' order' + (total === 1 ? "" : "s") + ' on record.</p>';
-          return hcard({ title: "Rhythm of the week", sub: "Orders by weekday", body: body });
+          return hcard({ title: "Rhythm of the week", sub: "Orders by weekday", icon: ICON_CALENDAR, body: body });
         }
 
         // ---- Chat to order -----------------------------------------------
@@ -13950,7 +14092,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const totalC = Number(conv.totalCustomers) || 0;
           const paid = Number(conv.paidCustomers) || 0;
           if (!totalC) {
-            return hcard({ title: "Chat to order", sub: "Everyone who has ever written in",
+            return hcard({ title: "Chat to order", sub: "Everyone who has ever written in", icon: ICON_USERS,
               body: hEmpty(ICON_USERS, "No conversations yet",
                 "This fills in once people start messaging your WhatsApp number.") });
           }
@@ -13971,7 +14113,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div><i class="sw"></i>Have not<b>' + Math.max(0, totalC - paid) + '</b></div>' +
               '</div>' +
             '</div>';
-          return hcard({ title: "Chat to order", sub: "Everyone who has ever written in", body: body });
+          return hcard({ title: "Chat to order", sub: "Everyone who has ever written in", icon: ICON_USERS, body: body });
         }
 
         // ---- Amara right now ---------------------------------------------
@@ -14000,7 +14142,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               : (gaps.total
                 ? "Your catalogue is complete \u2014 every product has a photo, a category and a price."
                 : "Add a product and Amara can start quoting it.")) + '</p>';
-          return hcard({ title: "Amara right now", sub: "What your assistant is working with", body: body });
+          return hcard({ title: "Amara right now", sub: "What your assistant is working with", icon: ICON_CHAT,
+            body: body, foot: "Change what Amara knows", footAction: "go-catalog" });
         }
 
         // ==================================================================
@@ -16497,10 +16640,15 @@ app.get("/api/home", async (req, res) => {
     // never empty for a shop that hasn't sold yet.
     const soldKeys = (await redisCommand(["SMEMBERS", nsKey(seller.sellerId, "analytics:products_sold")]).catch(() => [])) || [];
     const soldCounts = {};
+    const soldRevenue = {};
     await Promise.all(
       soldKeys.map(async (k) => {
-        const n = await redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:sold`)]).catch(() => null);
+        const [n, r] = await Promise.all([
+          redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:sold`)]).catch(() => null),
+          redisCommand(["GET", nsKey(seller.sellerId, `analytics:product:${k}:revenue`)]).catch(() => null),
+        ]);
         soldCounts[k] = Number(n) || 0;
+        soldRevenue[k] = Number(r) || 0;
       })
     );
     const topProducts = keys
@@ -16511,9 +16659,10 @@ app.get("/api/home", async (req, res) => {
         image: (catalog.PRODUCT_IMAGES || {})[k] || "",
         hasOwnPhoto: String((catalog.PRODUCT_IMAGES || {})[k] || "").startsWith(selfHosted),
         sold: soldCounts[k] || 0,
+        revenue: soldRevenue[k] || 0,
       }))
       .sort((a, b) => b.sold - a.sold)
-      .slice(0, 4);
+      .slice(0, 5);
 
     res.json({
       profile: publicProfile(seller),
@@ -17339,7 +17488,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 71";
+const BUILD_ROUND = "Round 72";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
