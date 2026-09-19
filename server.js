@@ -3718,15 +3718,25 @@ const BRAND_TOKENS_CSS = `
        it. Weight and tracking do the hierarchy, not a second family.
        Geist Mono is reserved for identifiers -- order and booking
        references -- where fixed-width, unambiguous characters are the point. */
-    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
-    /* Headings carry the voice; the interface stays on Geist. Schibsted is a
-       newspaper grotesk -- tighter apertures, flatter terminals, a heavier
-       display weight -- so a title reads as set rather than as the same UI
-       font at a larger size. Instrument Serif italic is the counterweight,
-       used once, on the turn of the login headline. */
-    --font-heading: 'Schibsted Grotesk Variable', 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    /* Round 64. One face, not three. Geist ran the interface, Schibsted ran
+       the headings and Geist Mono ran the figures, and the seam between them
+       is what kept reading as dated -- three faces in one screen looks
+       assembled however good each one is. Schibsted was the one that worked,
+       so it stops being the heading face and becomes the system: headings,
+       labels, body, figures. Weight and size do the work the three faces
+       were doing badly.
+
+       The tail of each stack names the faces that carry the naira sign,
+       because none of the self-hosted ones do -- measured, not assumed. */
+    --font-sans: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    --font-heading: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    /* Instrument Serif italic is the one counterweight, used once, on the
+       turn of the login headline. */
     --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-    --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, 'Segoe UI Symbol', 'Noto Sans Mono', 'DejaVu Sans Mono', monospace;
+    /* Kept as a token so figures can be given their own face again without a
+       rewrite, but pointed at the system face. Tabular numerals, not
+       fixed-width letterforms, are what line a column up. */
+    --font-mono: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     /* Motion, tokenised. These are the values already in use, not new ones:
        cubic-bezier(.22,1,.36,1) appears fifty times hand-typed across this
        file and is the house entrance curve. Naming them stops the next near
@@ -3760,8 +3770,8 @@ const BRAND_TOKENS_CSS = `
     --brand-light: #FBF0EB;
     --accent: #BC4B2A;
     --accent-dark: #9E3D21;
-    --accent-light: #FBF0EB;
-    --accent-soft: #F4DED5;
+    --accent-light: #FCF2EE;
+    --accent-soft: #F6E0D6;
     /* Every neutral below used to be a Tailwind slate value -- #f8fafc,
        #e2e8f0, #64748b, #1e293b -- which is the default palette of every
        generated dashboard on the internet. Same lightness, hue moved off
@@ -3771,17 +3781,24 @@ const BRAND_TOKENS_CSS = `
        in its own right. Every neutral has been pulled toward the clay end
        and dropped a step in lightness, so the page has ground under it and a
        card genuinely lifts off the page instead of blending into it. */
-    --bg: #EAE2D6;
-    --surface: #F8F4EC;
-    --surface-2: #E3DACB;
-    --surface-3: #D9CEBB;
-    --chat-bg: #E5DCCD;
-    --border: #D5C9B6;
-    --border-light: #E3DACB;
-    --border-strong: #BBAB92;
-    --muted: #6E6255;
-    --muted-2: #95887A;
-    --text: #2A211A;
+    /* Round 64. The brown ground went. It was a real identity, but it was
+       carrying the warmth that the accent should be carrying, and everything
+       on top of it -- cards, borders, muted text -- had to be warm too, which
+       is how the whole screen ended up one tone with no separation in it.
+       The ground is a cool-neutral stone now and cards are white, so a card
+       lifts off the page on its own. Clay is still the brand; it is just the
+       only warm thing on screen, which is what makes it read. */
+    --bg: #F2F1EE;
+    --surface: #FFFFFF;
+    --surface-2: #EDECE8;
+    --surface-3: #E4E2DD;
+    --chat-bg: #EDECE8;
+    --border: #E2E0DA;
+    --border-light: #EDECE8;
+    --border-strong: #C6C3BB;
+    --muted: #63605A;
+    --muted-2: #78756F;
+    --text: #1C1B19;
     --danger: #dc2626;
     --danger-bg: #fef2f2;
     --success: #15803d;
@@ -3805,9 +3822,9 @@ const BRAND_TOKENS_CSS = `
        brown page. They are brown-black now, and --shadow-sm carries a second,
        wider term: it is what holds a card off the page since the cards no
        longer have borders to do it. */
-    --shadow-sm: 0 1px 2px rgba(42,33,26,0.06), 0 6px 16px -10px rgba(42,33,26,0.14);
-    --shadow-md: 0 1px 3px rgba(42,33,26,0.10), 0 10px 24px -14px rgba(42,33,26,0.18);
-    --shadow-lg: 0 10px 30px rgba(42,33,26,0.16);
+    --shadow-sm: 0 1px 2px rgba(28,27,25,0.06), 0 6px 16px -10px rgba(28,27,25,0.14);
+    --shadow-md: 0 1px 3px rgba(28,27,25,0.10), 0 10px 24px -14px rgba(28,27,25,0.18);
+    --shadow-lg: 0 10px 30px rgba(28,27,25,0.16);
     /* Tinted glow under accent-coloured controls. Set from the chosen
        accent at runtime (see applyAccent) so a teal button never keeps
        an indigo halo. */
@@ -3831,17 +3848,19 @@ const BRAND_TOKENS_CSS = `
     --accent-dark: #C4552F;
     --accent-light: #2C1B14;
     --accent-soft: #3A241A;
-    --bg: #12100D;
-    --surface: #1B1814;
-    --surface-2: #221E19;
-    --surface-3: #2B2620;
-    --chat-bg: #141210;
-    --border: #322C25;
-    --border-light: #29241E;
-    --border-strong: #463E34;
-    --muted: #A39A8E;
-    --muted-2: #7A7268;
-    --text: #F2EDE4;
+    /* Round 64. Neutralised alongside light. A warm dark under a neutral
+       light is two products, not two themes. */
+    --bg: #131312;
+    --surface: #1B1B19;
+    --surface-2: #232220;
+    --surface-3: #2C2B28;
+    --chat-bg: #151514;
+    --border: #302F2C;
+    --border-light: #282725;
+    --border-strong: #454340;
+    --muted: #9D9A94;
+    --muted-2: #8B8883;
+    --text: #F1F0ED;
     --danger: #f87171;
     --danger-bg: #2a1315;
     --success: #4ade80;
@@ -7342,18 +7361,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            over every earlier rule, retints every one of them warm. */
         .list-avatar, .thread-avatar, .more-menu-dropdown, .bubble, button.takeover-btn,
         .catalog-card:hover, .swatch, .icon-btn.small-icon-btn:hover, .emoji-picker-dropdown,
-        .brand-avatar.has-photo, .ptile:hover .ptile-img { --slate-shadow: rgba(42,33,26,0.14); }
-        .list-avatar { box-shadow: 0 1px 2px rgba(42,33,26,0.15) !important; }
-        .thread-avatar { box-shadow: 0 1px 3px rgba(42,33,26,0.18) !important; }
-        .more-menu-dropdown { box-shadow: 0 8px 20px rgba(42,33,26,0.16) !important; }
-        .bubble { box-shadow: 0 1px 1px rgba(42,33,26,0.05), 0 1px 3px rgba(42,33,26,0.07) !important; }
-        button.takeover-btn { box-shadow: 0 2px 5px rgba(42,33,26,0.12) !important; }
-        .catalog-card:hover { box-shadow: 0 4px 14px rgba(42,33,26,0.09) !important; }
-        .swatch { box-shadow: inset 0 0 0 1px rgba(42,33,26,0.14) !important; }
-        .icon-btn.small-icon-btn:hover { box-shadow: 0 1px 3px rgba(42,33,26,0.13) !important; }
-        .emoji-picker-dropdown { box-shadow: 0 10px 26px rgba(42,33,26,0.18) !important; }
-        .brand-avatar.has-photo { box-shadow: 0 8px 22px rgba(42,33,26,0.20) !important; }
-        .ptile:hover .ptile-img { box-shadow: 0 10px 24px rgba(42,33,26,0.16) !important; }
+        .brand-avatar.has-photo, .ptile:hover .ptile-img { --slate-shadow: rgba(28,27,25,0.14); }
+        .list-avatar { box-shadow: 0 1px 2px rgba(28,27,25,0.15) !important; }
+        .thread-avatar { box-shadow: 0 1px 3px rgba(28,27,25,0.18) !important; }
+        .more-menu-dropdown { box-shadow: 0 8px 20px rgba(28,27,25,0.16) !important; }
+        .bubble { box-shadow: 0 1px 1px rgba(28,27,25,0.05), 0 1px 3px rgba(28,27,25,0.07) !important; }
+        button.takeover-btn { box-shadow: 0 2px 5px rgba(28,27,25,0.12) !important; }
+        .catalog-card:hover { box-shadow: 0 4px 14px rgba(28,27,25,0.09) !important; }
+        .swatch { box-shadow: inset 0 0 0 1px rgba(28,27,25,0.14) !important; }
+        .icon-btn.small-icon-btn:hover { box-shadow: 0 1px 3px rgba(28,27,25,0.13) !important; }
+        .emoji-picker-dropdown { box-shadow: 0 10px 26px rgba(28,27,25,0.18) !important; }
+        .brand-avatar.has-photo { box-shadow: 0 8px 22px rgba(28,27,25,0.20) !important; }
+        .ptile:hover .ptile-img { box-shadow: 0 10px 24px rgba(28,27,25,0.16) !important; }
         /* A highlight mark was painting slate ink on the warn colour. */
         .bubble mark { color: #2A211A !important; }
 
@@ -7943,11 +7962,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            wide photograph was ever doing any work. */
         .hero { position: relative; overflow: hidden; border-radius: 22px; margin-bottom: 20px;
           padding: 30px 32px 28px; display: flex; align-items: center; gap: 30px;
+          /* Round 64. On the cream ground this was a warm wash on a warm card
+             and the two blended. On white, the same wash is the one dirty
+             patch on the page. The card is white like every other card, the
+             warmth drops to a suggestion in the corner, and the avatar carries
+             the accent -- which is the whole point of a neutral ground. */
           background-color: var(--surface);
           background-image:
-            radial-gradient(135% 210% at 6% 112%, var(--accent-soft) 0%, transparent 52%),
-            linear-gradient(116deg, var(--surface) 0%, var(--surface-2) 62%, var(--surface-3) 100%);
+            radial-gradient(120% 190% at 3% 118%, rgba(188,75,42,0.065) 0%, transparent 46%),
+            linear-gradient(116deg, var(--surface) 0%, var(--surface) 58%, var(--surface-2) 100%);
           box-shadow: var(--shadow-sm); }
+        [data-theme="dark"] .hero {
+          background-image:
+            radial-gradient(120% 190% at 3% 118%, rgba(224,113,75,0.10) 0%, transparent 46%),
+            linear-gradient(116deg, var(--surface) 0%, var(--surface) 58%, var(--surface-2) 100%); }
         .hero.has-cover { background-image: var(--cover-img); background-size: cover; background-position: center; }
         /* The scrim exists so the seller's own photograph cannot make their own
            name unreadable, whatever they upload. */
@@ -7996,7 +8024,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* A ring of light rather than a border: the picture sits in it instead
            of being cut out of the page by a hard edge. */
         .hero-ring { position: relative; width: 128px; height: 128px; border-radius: 50%; padding: 9px; background: var(--accent-soft); }
-        .hero-avatar { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: linear-gradient(145deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 42px; font-weight: 600; letter-spacing: -0.03em; box-shadow: 0 8px 22px rgba(42,33,26,0.22); }
+        .hero-avatar { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: linear-gradient(145deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 42px; font-weight: 600; letter-spacing: -0.03em; box-shadow: 0 8px 22px rgba(28,27,25,0.22); }
         .hero-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .hero-avatar.has-photo { background: var(--surface-3); }
         .hero-figure .photo-btn { right: 2px; bottom: 6px; padding: 8px; border-radius: 50%; }
@@ -8006,7 +8034,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 0; border-radius: 999px; cursor: pointer;
           font-family: inherit; font-size: 12px; font-weight: 600;
           background: rgba(255,255,255,0.58); color: var(--text);
-          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 2px 10px rgba(42,33,26,0.10);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 2px 10px rgba(28,27,25,0.10);
           -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
           transition: background .15s ease, transform .12s ease; }
         .hero-cover-btn svg { width: 14px; height: 14px; }
@@ -8059,7 +8087,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .brand-avatar-wrap { position: relative; width: 96px; margin-top: -48px; margin-bottom: 15px; }
         /* The ring is the card's own background, so the avatar reads as
            mounted on the card rather than pasted over the cover. */
-        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(42,33,26,0.20); }
+        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(28,27,25,0.20); }
         /* With a real photograph in it, an accent-coloured glow reads as a
            rendering fault rather than depth. A neutral drop shadow is what a
            photo actually wants. */
@@ -8885,7 +8913,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* 1. The cards barely separated from the canvas. In the reference the
               canvas is grey and the cards are white -- two clear steps apart.
               Here they were one step, so nothing read as an object. */
-        .peditor .pform-sec { background: var(--surface); box-shadow: 0 1px 2px rgba(42,33,26,0.05), 0 10px 24px -18px rgba(42,33,26,0.22), inset 0 0 0 1px var(--border-light); }
+        .peditor .pform-sec { background: var(--surface); box-shadow: 0 1px 2px rgba(28,27,25,0.05), 0 10px 24px -18px rgba(28,27,25,0.22), inset 0 0 0 1px var(--border-light); }
 
         /* 2. The inputs were the same tone as the card they sat on, so a field
               looked like a line of text rather than something to type in. */
@@ -9086,7 +9114,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-tip { position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%) translateY(3px) scale(.97);
           background: var(--navy); color: #fff; border-radius: 9px; padding: 7px 11px; white-space: nowrap; z-index: 5;
           opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
-          box-shadow: 0 6px 18px rgba(42,33,26,0.28); }
+          box-shadow: 0 6px 18px rgba(28,27,25,0.28); }
         [data-theme="dark"] .wk-tip { background: var(--surface-3); }
         .wk-col:hover .wk-tip { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
         .wk-col:first-child .wk-tip { left: 0; transform: translateX(0) translateY(3px) scale(.97); }
@@ -9159,7 +9187,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           font-weight: 500; cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         .subtabs button:hover { background: var(--surface-3); color: var(--text); }
         .subtabs button:active { transform: scale(0.98); }
-        .subtabs button.on { color: var(--text); font-weight: 600; background: var(--surface); box-shadow: 0 1px 2px rgba(42,33,26,0.05), inset 0 1px 0 rgba(255,255,255,0.7); }
+        .subtabs button.on { color: var(--text); font-weight: 600; background: var(--surface); box-shadow: 0 1px 2px rgba(28,27,25,0.05), inset 0 1px 0 rgba(255,255,255,0.7); }
         [data-theme="dark"] .subtabs button:hover { background: rgba(255,255,255,0.04); }
         [data-theme="dark"] .subtabs button.on { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
         /* The group collapses by height rather than display, so it can move. */
@@ -9202,7 +9230,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            on a rail this quiet reads as a box drawn on top of the list rather
            than a row that has come forward. A raised thing is not outlined, it
            is lit from above and casts below. */
-        .nav-pill { box-shadow: 0 1px 2px rgba(42,33,26,0.05), 0 5px 12px -8px rgba(42,33,26,0.22), inset 0 1px 0 rgba(255,255,255,0.75); }
+        .nav-pill { box-shadow: 0 1px 2px rgba(28,27,25,0.05), 0 5px 12px -8px rgba(28,27,25,0.22), inset 0 1px 0 rgba(255,255,255,0.75); }
         [data-theme="dark"] .nav-pill { box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.05); }
         nav.tabs.pill-on button.active-tab { box-shadow: none; background: transparent; }
 
@@ -9382,10 +9410,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            drift out of step with the rest of the sheet again.
            ================================================================ */
         :root {
-          --rail-bg: #221D18;
+          --rail-bg: #1A1917;
           --rail-text: #F3EDE4;
-          --rail-muted: #B2A599;
-          --rail-muted-2: #8C8175;
+          --rail-muted: #B0ADA7;
+          --rail-muted-2: #8F8C86;
           --rail-line: rgba(255,255,255,0.09);
           --rail-raise: rgba(255,255,255,0.08);
           --rail-press: rgba(255,255,255,0.13);
@@ -9397,8 +9425,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              different coat. It goes below the page, not beside it. */
           --rail-bg: #0A0806;
           --rail-text: #F4EEE5;
-          --rail-muted: #A79885;
-          --rail-muted-2: #7D7161;
+          --rail-muted: #A8A5A0;
+          --rail-muted-2: #8B8883;
           --rail-line: rgba(255,255,255,0.07);
           --rail-raise: rgba(255,255,255,0.06);
           --rail-press: rgba(255,255,255,0.10);
@@ -9449,7 +9477,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the sans, and figures line up through tabular numerals instead of
            through fixed-width letterforms.
            ================================================================ */
-        body, body * { --font-mono: var(--font-sans); }
+        /* Round 64. Round 60's body-wide --font-mono override is gone: the
+           token itself is the system face now. */
+        body { letter-spacing: -0.006em; }
         .htile-value, .product-price, .cat-line b, .perf-row b, .wk-stat b,
         .an-figure, .kpi-value, .seller-rev, .ptile-price, .home-count-chip,
         table.catalog-table td.num, .nav-badge, .sec-count, .wk-n, .wk-ylab, .q-wait {
@@ -9492,7 +9522,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           display: flex; flex-direction: column;
           background: var(--surface-2);
           border-left: 1px solid var(--border);
-          box-shadow: -24px 0 56px -24px rgba(42,33,26,0.32);
+          box-shadow: -24px 0 56px -24px rgba(28,27,25,0.32);
           transform: translateX(101%);
           transition: transform var(--dur-slow) var(--ease-drawer);
           z-index: 61; padding: 0; overflow: hidden;
@@ -9563,6 +9593,84 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            outline rather than a solid accent square with a question mark in
            it, which reads as a failure state on a form nobody has filled in. */
         .peditor-thumb.blank { background: transparent; box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+
+        /* ================================================================
+           Round 63. Grid or list.
+           ================================================================ */
+        .viewswitch { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px;
+          background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); flex-shrink: 0; }
+        .viewswitch button { display: flex; align-items: center; justify-content: center;
+          width: 30px; height: 28px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
+          color: var(--muted-2); font-family: inherit;
+          transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .viewswitch button svg { width: 15px; height: 15px; }
+        .viewswitch button:hover { color: var(--text); }
+        .viewswitch button:active { transform: scale(0.94); }
+        .viewswitch button.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-sm); }
+        [data-theme="dark"] .viewswitch button.on { background: var(--surface-3); }
+
+        /* The list is the same card restyled, not a second card. One markup,
+           one render path, so the two views cannot drift apart. */
+        .product-grid[data-view="list"] { display: flex; flex-direction: column; gap: 8px; }
+        .product-grid[data-view="list"] .product-card {
+          display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: center;
+          gap: 14px; padding: 8px 12px 8px 8px; }
+        .product-grid[data-view="list"] .product-thumb { aspect-ratio: 1; width: 52px; border-radius: 9px; }
+        .product-grid[data-view="list"] .product-thumb .thumb-cat,
+        .product-grid[data-view="list"] .product-thumb .thumb-sold { display: none; }
+        .product-grid[data-view="list"] .product-thumb.no-photo::after { background-size: 20px 20px; }
+        /* A list exists so you can run your eye down one column. The price
+           gets a track of its own and is right-aligned in it, so the figures
+           stack on the comma instead of floating wherever the name ends. */
+        .product-grid[data-view="list"] .product-body {
+          padding: 0; display: grid; grid-template-columns: minmax(0,1fr) 108px 168px;
+          align-items: center; gap: 16px; min-width: 0; }
+        .product-grid[data-view="list"] .product-name { min-width: 0;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .product-grid[data-view="list"] .product-price { margin-top: 0; white-space: nowrap; text-align: right; }
+        .product-grid[data-view="list"] .product-flag { margin: 0; white-space: nowrap; justify-self: start; }
+        @media (max-width: 900px) {
+          .product-grid[data-view="list"] .product-body { grid-template-columns: minmax(0,1fr) auto; }
+          .product-grid[data-view="list"] .product-flag { display: none; }
+        }
+        .product-grid[data-view="list"] .product-actions { padding: 0; border: 0; }
+        @media (max-width: 560px) {
+          .product-grid[data-view="list"] .product-card { grid-template-columns: 44px minmax(0,1fr); }
+          .product-grid[data-view="list"] .product-thumb { width: 44px; }
+          .product-grid[data-view="list"] .product-actions { grid-column: 2; justify-content: flex-start; }
+        }
+
+        /* The photo empty state carries a drawing now, so it needs the room
+           for one. */
+        .dz-art { width: 118px; height: 90px; display: block; margin: 2px auto 10px; }
+        .dropzone-empty .dropzone-title { margin-top: 0; }
+        #productView .pform-side .dropzone { min-height: 0; padding: 20px 18px 22px; }
+        /* An unnamed product shows the same glyph the catalogue uses for a
+           product with no picture, rather than an empty box. */
+        .peditor-thumb.blank::after { content: ""; position: absolute; inset: 0; opacity: .38;
+          background-repeat: no-repeat; background-position: center; background-size: 20px 20px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E6255' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='10' r='1.6'/%3E%3Cpath d='m3.6 17.5 4.9-4.4a2 2 0 0 1 2.7 0l3.4 3.1a2 2 0 0 0 2.7 0l3.1-2.8'/%3E%3C/svg%3E"); }
+        .peditor-thumb { position: relative; }
+
+        /* The empty-state drawing needs to beat .dropzone-empty svg, which is
+           sized for the 28px glyph it replaced. */
+        .dropzone-empty svg.dz-art { width: 118px; height: 90px; }
+        /* Extra-photo slots are secondary to the main uploader and should not
+           outweigh it. */
+        #productView .pgal-slot { aspect-ratio: 1; max-height: 116px; }
+        #productView .pgal { gap: 10px; }
+
+        /* Round 63. Order inside the Photos section. The main uploader is the
+           thing you came here to use, so it sits directly under the heading;
+           the extra slots and the line explaining them follow it rather than
+           standing in front of it. */
+        #productView .pform-side .pform-sec { display: flex; flex-direction: column; }
+        #productView .pform-side .pform-sec > * { order: 5; }
+        #productView .pform-side .an-head2 { order: 0; }
+        #productView #pShot { order: 1; }
+        #productView #photoDrop { order: 2; }
+        #productView #pGal { order: 3; margin-top: 12px; }
+        #productView #pGalNote { order: 4; }
       </style>
     </head>
     <body>
@@ -9692,6 +9800,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <div class="cat-search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input id="productSearch" placeholder="Search products" oninput="renderProductGrid()" autocomplete="off">
+            </div>
+            <!-- Round 63. Grid is right when you are looking at pictures.
+                 A list is right when you are checking prices down a column,
+                 which is the other half of what this page is for. -->
+            <div class="viewswitch" role="group" aria-label="View">
+              <button type="button" id="viewGrid" class="on" onclick="setProductView('grid')" title="Grid view" aria-label="Grid view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
+              </button>
+              <button type="button" id="viewList" onclick="setProductView('list')" title="List view" aria-label="List view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.6" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+              </button>
             </div>
             <div class="cat-sort">
               <label for="productSort">Sort</label>
@@ -9830,10 +9949,23 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                        onclick="document.getElementById('pPhotoFile').click()"
                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('pPhotoFile').click();}">
                     <input id="pPhotoFile" type="file" accept="image/*" hidden onchange="handlePhotoPick(this.files)">
+                    <!-- Round 63. This was a thin outline of a picture frame,
+                         which says "image goes here" and nothing about why. The
+                         photo matters because it is what Amara puts in the
+                         chat, so the empty state draws that: the message, the
+                         picture inside it, the price underneath. -->
                     <div class="dropzone-empty" id="dropEmpty">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-                      <div class="dropzone-title">Drop a photo here</div>
-                      <div class="dropzone-sub">or click to browse &mdash; PNG or JPG, up to 1.5MB</div>
+                      <svg class="dz-art" viewBox="0 0 120 92" fill="none" aria-hidden="true">
+                        <rect x="24" y="8" width="72" height="62" rx="10" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4"/>
+                        <path d="M31 70h12l-6 9z" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="1.4" stroke-linejoin="round"/>
+                        <rect x="32" y="16" width="56" height="34" rx="6" fill="var(--accent-light)" stroke="var(--accent-soft)" stroke-width="1.4"/>
+                        <circle cx="45" cy="28" r="4" fill="var(--accent)" opacity=".45"/>
+                        <path d="M34.5 46.5 47 34.5a4 4 0 0 1 5.6 0l8.2 8a4 4 0 0 0 5.6 0l7.4-7.2 11.2 11" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+                        <rect x="32" y="56" width="30" height="5" rx="2.5" fill="var(--border-strong)" opacity=".55"/>
+                        <rect x="66" y="56" width="16" height="5" rx="2.5" fill="var(--accent)" opacity=".55"/>
+                      </svg>
+                      <div class="dropzone-title">Add the photo Amara sends</div>
+                      <div class="dropzone-sub">Drop it here or click to browse &mdash; PNG or JPG, up to 1.5MB</div>
                     </div>
                     <div class="dropzone-preview" id="dropPreview" style="display:none;">
                       <img id="dropPreviewImg" alt="Selected product photo">
@@ -13211,10 +13343,29 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // The grid is rebuilt from the cache on every search keystroke, sort
         // change and category switch, so all three compose instead of each one
         // resetting the others.
+        // Round 63. Grid or list, remembered per browser. It is a view
+        // preference, not data -- if the browser forgets it, the page opens on
+        // the grid and nothing is lost.
+        let productView = "grid";
+        function setProductView(v) {
+          productView = v === "list" ? "list" : "grid";
+          const grid = document.getElementById("productGrid");
+          if (grid) grid.setAttribute("data-view", productView);
+          const g = document.getElementById("viewGrid"), l = document.getElementById("viewList");
+          if (g) g.classList.toggle("on", productView === "grid");
+          if (l) l.classList.toggle("on", productView === "list");
+          try { localStorage.setItem("stafly.productView", productView); } catch (err) {}
+        }
+        try {
+          const saved = localStorage.getItem("stafly.productView");
+          if (saved === "list" || saved === "grid") productView = saved;
+        } catch (err) {}
+
         function renderProductGrid() {
           const products = window.catalogCache || {};
           const grid = document.getElementById("productGrid");
           if (!grid) return;
+          if (grid.getAttribute("data-view") !== productView) setProductView(productView);
           const q = (document.getElementById("productSearch")?.value || "").trim().toLowerCase();
           const sort = document.getElementById("productSort")?.value || "name";
           const keys = Object.keys(products);
@@ -13532,7 +13683,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const note = document.getElementById("pGalNote");
           const gal = document.getElementById("pGal");
           if (note) note.style.display = key ? "none" : "block";
-          if (gal) gal.classList.toggle("locked", !key);
+          if (gal) {
+            gal.classList.toggle("locked", !key);
+            // Round 63. Locked slots are not worth 260px of a panel. Until the
+            // product exists there is nothing to attach a second photo to, so
+            // the slots wait with the note rather than taking the room the
+            // uploader needs.
+            gal.style.display = key ? "" : "none";
+          }
           [1, 2].forEach((n) => {
             const el = document.getElementById("pGal" + n);
             if (!el) return;
@@ -13628,7 +13786,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function openProductForm() {
           const panel = document.getElementById("productPanel");
           if (!panel) return;
-          panel.style.display = "block";
+          // Round 63. This said "block", which is an inline style and therefore
+          // beat the stylesheet's "flex" on the very element that makes the
+          // panel a column. Without the column, .peditor-body never got a
+          // bounded height, so its overflow had nothing to overflow and the
+          // form could not be scrolled at all.
+          panel.style.display = "flex";
           // Round 61. This used to test productView's display to decide
           // whether to switch. The drawer is always laid out and moved with a
           // transform instead, so the open state is the class, not display.
@@ -16026,7 +16189,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 62";
+const BUILD_ROUND = "Round 64";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
