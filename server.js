@@ -3984,6 +3984,16 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        /* Round 67. Form controls do not inherit type. They never have -- a
+           <button> with no font-family falls back to the browser's own UI
+           font, which on Windows is Arial. So every nav item in the sidebar,
+           every list tab, every switch and every primary button in this app
+           has been Arial since the first line of it was written, through four
+           rounds of changing the font tokens, because none of those tokens
+           were ever reaching a button. This is the old font Miji kept seeing
+           and I kept failing to find: it was on the left-hand rail the whole
+           time, in plain sight, on every screen. */
+        button, input, select, textarea, optgroup { font: inherit; letter-spacing: inherit; }
         html, body { margin: 0; padding: 0; }
         body {
           font-family: var(--font-sans); color: var(--text); background: var(--bg);
@@ -5157,6 +5167,16 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        /* Round 67. Form controls do not inherit type. They never have -- a
+           <button> with no font-family falls back to the browser's own UI
+           font, which on Windows is Arial. So every nav item in the sidebar,
+           every list tab, every switch and every primary button in this app
+           has been Arial since the first line of it was written, through four
+           rounds of changing the font tokens, because none of those tokens
+           were ever reaching a button. This is the old font Miji kept seeing
+           and I kept failing to find: it was on the left-hand rail the whole
+           time, in plain sight, on every screen. */
+        button, input, select, textarea, optgroup { font: inherit; letter-spacing: inherit; }
         html, body { margin: 0; padding: 0; }
         body { font-family: var(--font-sans); color: #29190F; min-height: 100dvh;
           display: flex; align-items: center; justify-content: center; padding: 34px 24px;
@@ -6078,6 +6098,16 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        /* Round 67. Form controls do not inherit type. They never have -- a
+           <button> with no font-family falls back to the browser's own UI
+           font, which on Windows is Arial. So every nav item in the sidebar,
+           every list tab, every switch and every primary button in this app
+           has been Arial since the first line of it was written, through four
+           rounds of changing the font tokens, because none of those tokens
+           were ever reaching a button. This is the old font Miji kept seeing
+           and I kept failing to find: it was on the left-hand rail the whole
+           time, in plain sight, on every screen. */
+        button, input, select, textarea, optgroup { font: inherit; letter-spacing: inherit; }
         html, body { margin: 0; padding: 0; }
         body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
           min-height: 100dvh; -webkit-font-smoothing: antialiased; }
@@ -6848,6 +6878,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       <style>
         ${BRAND_TOKENS_CSS}
         * { box-sizing: border-box; }
+        /* Round 67. Form controls do not inherit type. They never have -- a
+           <button> with no font-family falls back to the browser's own UI
+           font, which on Windows is Arial. So every nav item in the rail,
+           every list tab, every switch and every primary button in this
+           app has been Arial from the first line of it, through four
+           rounds of changing the font tokens, because not one of those
+           tokens was ever reaching a button. This is the old font Miji
+           kept seeing and I kept failing to find: the left-hand rail, in
+           plain sight, on every screen. */
+        button, input, select, textarea, optgroup { font-family: inherit; letter-spacing: inherit; }
         html, body { height: 100%; }
         body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
         /* A real left sidebar now, not just a row of pill buttons in the
@@ -9843,6 +9883,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              name can ever run beneath it. */
           .hero-cover-btn { position: static; order: 2; align-self: flex-start;
             margin-left: auto; flex-shrink: 0; }
+          /* The status pill and Edit profile live inside the text block, so
+             once the avatar and the cover button took their share of the row
+             those two had about 230px between them and wrapped onto separate
+             lines. They are not part of the name -- they are rows of the card.
+             So they reclaim the avatar's column and run the full width, which
+             is the shape a phone uses for a profile: picture and name on one
+             line, everything else stacked beneath at the card's own edge. */
+          .hero { --hero-fig: 78px; }
+          .hero-text > .hero-row,
+          .hero-text > .hero-meta { margin-left: calc(-1 * var(--hero-fig)); }
+          .hero-row { margin-top: 14px; gap: 10px; }
+          .hero-meta { margin-top: 12px; padding-top: 12px; box-shadow: inset 0 1px 0 var(--border-light); }
 
           /* Last 7 days put a 76px drawing beside two lines of text, so the
              chart -- the thing the section is named after -- was the smallest
@@ -9864,6 +9916,70 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .wk-stat + .wk-stat { box-shadow: inset 0 1px 0 var(--border-light); }
           .wk-stat b { font-size: 17px; order: 2; }
           .wk-stat span { order: 1; }
+        }
+
+        /* ==================================================================
+           Round 67. The phone dashboard, organised rather than patched.
+
+           The page was nine sections stacked at identical weight -- banner,
+           greeting, shop, four tiles, chart, checklist, queue, activity,
+           catalogue -- each one a heading in the same size with a note on the
+           right, each one a white box on a grey ground. Nothing was more
+           important than anything else, so the eye had nowhere to start. That
+           is what "not organised" means, and no amount of fixing individual
+           paddings was ever going to touch it.
+
+           The fix is grouping, not spacing. Four floating boxes become one
+           card divided into four; the onboarding card stops competing with
+           the numbers; and the section headings get a size relationship so
+           the page has a first thing to look at.
+           ================================================================== */
+        @media (max-width: 760px) {
+          /* One card, four figures, hairlines between them -- instead of four
+             separate white rectangles that read as four separate subjects. */
+          .home-stats {
+            grid-template-columns: 1fr 1fr; gap: 0;
+            background: var(--surface); border-radius: 18px;
+            box-shadow: var(--shadow-sm); overflow: hidden;
+          }
+          .htile { background: transparent; border-radius: 0; box-shadow: none;
+            padding: 15px 15px 14px; transition: none; }
+          .htile:nth-child(odd) { box-shadow: inset -1px 0 0 var(--border-light); }
+          .htile:nth-child(n+3) { box-shadow: inset 0 1px 0 var(--border-light); }
+          .htile:nth-child(3) { box-shadow: inset 0 1px 0 var(--border-light), inset -1px 0 0 var(--border-light); }
+          .htile:hover, .htile:active { transform: none; }
+          .htile::after { display: none; }
+          .htile-value { font-size: 26px; margin-top: 10px; }
+          .htile-context { font-size: 11.5px; margin-top: 6px; }
+
+          /* A section heading and the note beside it were the same size, so a
+             note read as a second heading. The heading leads; the note is an
+             aside and now looks like one. */
+          .home-sec-head .home-eyebrow, .home-eyebrow { font-size: 11px; }
+          .home-sec-head .an-note, .home-eyebrow-note, .an-note { font-size: 11.5px; opacity: .9; }
+
+          /* Onboarding is not the subject of this page. It reads as a quieter
+             surface than the numbers above it, and its dismiss stops being a
+             full-width button that looks like the card's main action. */
+          /* --surface-2 against --bg is a four-point difference, so "quieter"
+             came out as "no card at all". It keeps its own plane and takes a
+             hairline instead of a shadow. */
+          .setup-card { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); padding: 16px 16px 14px; }
+          /* The tick and its label were sitting at opposite ends of a wide
+             grid cell, so the two columns read as four loose objects. */
+          .setup-steps { grid-template-columns: 1fr; gap: 2px; }
+          .setup-step { padding: 7px 0; }
+          .setup-actions { margin-top: 10px; }
+          .setup-actions .btn-quiet { width: auto; padding: 6px 12px; font-size: 12.5px;
+            background: transparent; box-shadow: none; color: var(--muted); }
+          .setup-steps { gap: 8px 12px; }
+
+          /* The bands below carried the same 22-26px gap as the cards above,
+             so the page had one rhythm all the way down. Groups are spaced
+             further apart than the things inside them. */
+          .home-sec { margin-top: 26px; }
+          .home-sec + .home-sec { margin-top: 26px; }
+          .home-stats { margin-bottom: 0; }
         }
       </style>
     </head>
@@ -12868,8 +12984,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '</div>' +
               '<div class="setup-sub">Only you see these. Your customers meet Amara on WhatsApp, not here.</div>' +
               '<div class="setup-progress">' +
+                // Round 67. The count was here and in the section head above
+                // it -- the same three words twice inside one card.
                 '<div class="setup-bar"><div class="setup-bar-fill" style="width:' + pct + '%"></div></div>' +
-                '<div class="setup-progress-text">' + doneCount + ' of ' + steps.length + '</div>' +
               '</div>' +
               '<div class="setup-steps">' +
                 steps.map((s) =>
@@ -16398,7 +16515,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 66";
+const BUILD_ROUND = "Round 67";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
