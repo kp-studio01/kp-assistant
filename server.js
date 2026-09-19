@@ -10034,6 +10034,160 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              these replace. */
           .home-stats { background: none; box-shadow: none; gap: 10px; border-radius: 0; overflow: visible; }
         }
+
+        /* ==================================================================
+           Round 69. The rest of the Overview, and the heading type.
+
+           "RIGHT NOW" and "LAST 7 DAYS" were 11px uppercase at 0.075em
+           tracking -- a label style used for every section on the page, so
+           every section shouted at the same volume and none of them read as a
+           title. The reference does not do this: it uses a sentence-case
+           title with a quiet sub beneath. So do we now.
+           ================================================================== */
+        .hcard { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-sm);
+          display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+        .hcard-head { display: flex; align-items: flex-start; gap: 14px;
+          padding: 17px 20px 0; }
+        .hcard-headtext { min-width: 0; flex: 1; }
+        .hcard-title { font-family: var(--font-heading); font-size: 15.5px; font-weight: 650;
+          letter-spacing: -0.018em; color: var(--text); margin: 0; }
+        .hcard-sub { font-size: 12.5px; color: var(--muted-2); margin: 3px 0 0; line-height: 1.45; }
+        .hcard-aside { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+        .hcard-body { padding: 16px 20px 19px; flex: 1; min-width: 0; }
+        .hcard-note { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 14px 0 0; }
+        .hcard-note b { font-weight: 650; color: var(--text); }
+
+        .home-grid { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 18px; align-items: start; }
+        .home-stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+        .home-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; min-width: 0; }
+        .home-stats { margin-bottom: 18px; }
+
+        .hseg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px;
+          background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
+        .hseg-btn { border: 0; background: transparent; border-radius: 7px; cursor: pointer;
+          padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--muted-2);
+          font-variant-numeric: tabular-nums;
+          transition: background var(--dur-fast) ease, color var(--dur-fast) ease; }
+        .hseg-btn:hover { color: var(--text); }
+        .hseg-btn.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-sm); }
+
+        .hempty { text-align: center; padding: 26px 8px 22px; }
+        .hempty-mark { display: inline-flex; width: 42px; height: 42px; border-radius: 13px;
+          align-items: center; justify-content: center; background: var(--accent-light); color: var(--accent); }
+        .hempty-mark svg { width: 19px; height: 19px; }
+        .hempty-title { font-size: 13.5px; font-weight: 650; color: var(--text); margin-top: 11px; }
+        .hempty-sub { font-size: 12.5px; color: var(--muted-2); margin-top: 4px; line-height: 1.5; max-width: 34ch;
+          margin-left: auto; margin-right: auto; }
+        .hskel { border-radius: 12px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+          background-size: 200% 100%; animation: hsk 1.3s linear infinite; }
+        @keyframes hsk { to { background-position: -200% 0; } }
+
+        /* Revenue and orders */
+        .ht-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted-2); margin-bottom: 12px; }
+        .ht-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .ht-sw { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+        .ht-sw.rev { background: var(--accent); }
+        .ht-sw.ord { background: var(--surface-3); }
+        .ht-wrap { position: relative; }
+        .ht-svg { width: 100%; height: 150px; display: block; overflow: visible; }
+        .ht-grid { stroke: var(--border-light); stroke-width: 1; vector-effect: non-scaling-stroke; }
+        .ht-bar { fill: var(--surface-3); }
+        .ht-line { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round;
+          stroke-linecap: round; vector-effect: non-scaling-stroke; }
+        .ht-labs { position: relative; height: 16px; margin-top: 7px; }
+        .ht-lab { position: absolute; transform: translateX(-50%); font-size: 10.5px; color: var(--muted-2);
+          white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .ht-foot { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px;
+          margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+        .ht-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .ht-stat b { font-family: var(--font-heading); font-size: 18px; font-weight: 650;
+          letter-spacing: -0.024em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .ht-stat span { font-size: 11.5px; color: var(--muted-2); }
+
+        /* What's selling */
+        .hbars { display: flex; flex-direction: column; gap: 11px; }
+        .hbar-row { display: grid; grid-template-columns: minmax(0,1fr) 120px 34px; align-items: center; gap: 12px; }
+        .hbar-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hbar-track { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+        .hbar-track i { display: block; height: 100%; border-radius: 99px;
+          background: linear-gradient(90deg, var(--accent-dark), var(--accent)); }
+        .hbar-val { font-size: 12.5px; font-weight: 650; color: var(--text); text-align: right;
+          font-variant-numeric: tabular-nums; }
+
+        /* Rhythm of the week */
+        .heat { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 7px; }
+        .heat-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+        .heat-dow { font-size: 11px; font-weight: 600; color: var(--muted-2); }
+        .heat-cell { width: 100%; aspect-ratio: 1; border-radius: 9px;
+          background: color-mix(in srgb, var(--accent) calc(18% + var(--a) * 74%), var(--surface-2)); }
+        .heat-cell.zero { background: var(--surface-2); }
+        .heat-val { font-size: 11.5px; font-weight: 600; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+
+        /* Chat to order */
+        .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+        .donut { width: 118px; height: 118px; flex-shrink: 0; transform: rotate(-90deg); }
+        .donut-track { fill: none; stroke: var(--surface-2); stroke-width: 13; }
+        .donut-fill { fill: none; stroke: var(--accent); stroke-width: 13; stroke-linecap: round;
+          transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
+        .donut-n { transform: rotate(90deg); transform-origin: 64px 64px; text-anchor: middle;
+          font-family: var(--font-heading); font-size: 25px; font-weight: 650; fill: var(--text);
+          letter-spacing: -0.03em; }
+        .donut-c { transform: rotate(90deg); transform-origin: 64px 64px; text-anchor: middle;
+          font-size: 10px; fill: var(--muted-2); }
+        .donut-legend { display: flex; flex-direction: column; gap: 9px; min-width: 120px; flex: 1; }
+        .donut-legend div { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); }
+        .donut-legend b { margin-left: auto; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+        .donut-legend .sw { width: 9px; height: 9px; border-radius: 3px; background: var(--surface-3); flex: none; }
+        .donut-legend .sw.on { background: var(--accent); }
+
+        /* Amara right now */
+        .alist { display: flex; flex-direction: column; gap: 11px; }
+        .arow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .adot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--border-strong); }
+        .adot.live { background: var(--ok-fg); }
+        .adot.bad { background: var(--dang-fg); }
+        .adot.warn { background: var(--warn-fg); }
+        .adot.ok { background: var(--border-strong); }
+        .ak { color: var(--muted); }
+        .av { margin-left: auto; font-weight: 650; color: var(--text); text-align: right; }
+
+        @media (max-width: 1100px) {
+          .home-grid { grid-template-columns: minmax(0,1fr); }
+        }
+        @media (max-width: 760px) {
+          .home-grid, .home-stack, .home-pair { gap: 14px; }
+          .home-pair { grid-template-columns: minmax(0,1fr); }
+          .hcard-head { padding: 15px 16px 0; }
+          .hcard-body { padding: 14px 16px 17px; }
+          .hcard-title { font-size: 15px; }
+          .hbar-row { grid-template-columns: minmax(0,1fr) 84px 30px; gap: 10px; }
+          .ht-svg { height: 130px; }
+          .donut { width: 102px; height: 102px; }
+        }
+
+        /* Round 69. The three cards that predate hcard -- Needs you, Setup
+           checklist, Live activity -- still opened with the 11px uppercase
+           tracked label, so half the page shouted and half of it spoke. They
+           take the same title treatment as everything else rather than being
+           rewritten, and the note beside them becomes the sub it always was. */
+        #homeView .home-sec-head .home-eyebrow,
+        #homeView .card-head .home-eyebrow,
+        #homeView .an-head2 .home-eyebrow {
+          font-family: var(--font-heading); font-size: 15.5px; font-weight: 650;
+          text-transform: none; letter-spacing: -0.018em; color: var(--text);
+        }
+        #homeView .home-sec-head .an-note,
+        #homeView .home-sec-head .home-eyebrow-note,
+        #homeView .card-head .an-note {
+          text-transform: none; letter-spacing: 0; font-weight: 400;
+          font-size: 12.5px; color: var(--muted-2);
+        }
+        /* The pulse dot was sized against 11px type. */
+        #homeView .home-eyebrow .pulse-dot { width: 7px; height: 7px; }
+        /* The footline is the one place a small tracked label still belongs --
+           it is a caption on the whole page, not a heading -- but it was the
+           same weight as the titles above it. */
+        #homeView .home-footline { font-size: 10.5px; letter-spacing: 0.07em; font-weight: 500; opacity: .85; }
       </style>
     </head>
     <body>
@@ -12922,6 +13076,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
         const ICON_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg>';
 
+        // Round 69. Four of the new Home sections read from /api/analytics --
+        // the same endpoint the Analytics page calls. It is fetched once
+        // alongside home and kept, rather than re-requested on every poll.
+        let homeAnalytics = null;
+        async function loadHomeAnalytics() {
+          try {
+            const res = await fetch("/api/analytics?days=30&" + ADMIN_QS);
+            const data = await res.json();
+            if (data && !data.error) { homeAnalytics = data; renderHome(true); }
+          } catch (err) { console.error("home analytics failed", err); }
+        }
+
         async function loadHome() {
           try {
             const res = await fetch("/api/home?" + ADMIN_QS);
@@ -13500,6 +13666,218 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             d.waiting.map((w) => [w.phone, w.last_contact, w.paused, w.preview]),
           ]);
         }
+        // ==================================================================
+        // Round 69. The rest of the Overview, from her v2 file. Every section
+        // below reads a field that /api/home or /api/analytics already
+        // returns: trend, bestSellers, weekday.orders, conversion, customers,
+        // waiting, connection, catalogue. Nothing here is estimated and
+        // nothing is a placeholder waiting for a backend.
+        // ==================================================================
+
+        // A card, in the reference's grammar: a sentence-case title, a quiet
+        // sub beneath it, an optional control on the right. The uppercase
+        // tracked eyebrow is gone -- it was the thing making every section
+        // shout at the same volume.
+        function hcard(o) {
+          return '<section class="hcard' + (o.cls ? " " + o.cls : "") + '">' +
+            '<div class="hcard-head">' +
+              '<div class="hcard-headtext">' +
+                '<h3 class="hcard-title">' + escapeHtml(o.title) + '</h3>' +
+                (o.sub ? '<p class="hcard-sub">' + o.sub + '</p>' : "") +
+              '</div>' +
+              (o.aside ? '<div class="hcard-aside">' + o.aside + '</div>' : "") +
+            '</div>' +
+            '<div class="hcard-body">' + o.body + '</div>' +
+          '</section>';
+        }
+
+        function hEmpty(icon, title, sub) {
+          return '<div class="hempty"><span class="hempty-mark">' + icon + '</span>' +
+            '<div class="hempty-title">' + escapeHtml(title) + '</div>' +
+            '<div class="hempty-sub">' + escapeHtml(sub) + '</div></div>';
+        }
+
+        // ---- Revenue & orders --------------------------------------------
+        // Money as an area, orders as thin bars behind it, on one set of axes
+        // because they are the same event counted two ways.
+        let homeRange = 7;
+        function setHomeRange(n) { homeRange = n; renderHome(true); }
+
+        function homeTrendCard() {
+          const a = homeAnalytics;
+          if (!a) return hcard({ title: "Revenue and orders", sub: "Reading your records\u2026",
+            body: '<div class="hskel" style="height:190px"></div>' });
+          const all = a.trend || [];
+          const series = all.slice(-homeRange);
+          const money = (n) => "\u20A6" + Number(n || 0).toLocaleString();
+          const total = series.reduce((t, d) => t + (Number(d.revenue) || 0), 0);
+          const orders = series.reduce((t, d) => t + (Number(d.orders) || 0), 0);
+          const seg = [7, 14, 30].map((n) =>
+            '<button type="button" class="hseg-btn' + (n === homeRange ? " on" : "") +
+            '" data-home-action="range" data-range="' + n + '">' + n + 'd</button>').join("");
+          const aside = '<div class="hseg">' + seg + '</div>';
+          if (!total && !orders) {
+            return hcard({ title: "Revenue and orders", cls: "hcard-wide", aside: aside,
+              sub: "Last " + homeRange + " days",
+              body: hEmpty(ICON_TREND, "Nothing banked yet",
+                "The moment a customer pays, the day they paid shows up here.") });
+          }
+          const max = Math.max.apply(null, series.map((d) => Number(d.revenue) || 0).concat([1]));
+          const maxOrd = Math.max.apply(null, series.map((d) => Number(d.orders) || 0).concat([1]));
+          const W = 600, H = 150;
+          const step = series.length > 1 ? W / (series.length - 1) : W;
+          const pts = series.map((d, i) => [i * step, H - ((Number(d.revenue) || 0) / max) * (H - 12) - 6]);
+          const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+          const area = line + " L" + W + " " + H + " L0 " + H + " Z";
+          const barW = Math.max(3, Math.min(14, (W / series.length) * 0.32));
+          const bars = series.map((d, i) => {
+            const h = ((Number(d.orders) || 0) / maxOrd) * (H - 24);
+            if (!h) return "";
+            return '<rect x="' + (i * step - barW / 2).toFixed(1) + '" y="' + (H - h).toFixed(1) +
+              '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" class="ht-bar"></rect>';
+          }).join("");
+          const grid = [0.25, 0.5, 0.75].map((f) =>
+            '<line x1="0" x2="' + W + '" y1="' + (H * f).toFixed(1) + '" y2="' + (H * f).toFixed(1) + '" class="ht-grid"/>').join("");
+          const labels = series.map((d, i) => {
+            if (series.length > 10 && i % Math.ceil(series.length / 7) !== 0 && i !== series.length - 1) return "";
+            const dt = new Date(d.date + "T00:00:00");
+            return '<span class="ht-lab" style="left:' + ((i * step) / W * 100).toFixed(2) + '%">' +
+              dt.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + '</span>';
+          }).join("");
+          const body =
+            '<div class="ht-legend">' +
+              '<span><i class="ht-sw rev"></i>Revenue</span>' +
+              '<span><i class="ht-sw ord"></i>Orders</span>' +
+            '</div>' +
+            '<div class="ht-wrap">' +
+              '<svg class="ht-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+                '<defs><linearGradient id="htg" x1="0" y1="0" x2="0" y2="1">' +
+                '<stop offset="0" stop-color="var(--accent)" stop-opacity=".26"/>' +
+                '<stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>' +
+                grid + bars +
+                '<path d="' + area + '" fill="url(#htg)"/>' +
+                '<path d="' + line + '" class="ht-line"/>' +
+              '</svg>' +
+              '<div class="ht-labs">' + labels + '</div>' +
+            '</div>' +
+            '<div class="ht-foot">' +
+              '<div class="ht-stat"><b>' + money(total) + '</b><span>taken</span></div>' +
+              '<div class="ht-stat"><b>' + orders + '</b><span>order' + (orders === 1 ? "" : "s") + '</span></div>' +
+              '<div class="ht-stat"><b>' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average</span></div>' +
+            '</div>';
+          return hcard({ title: "Revenue and orders", sub: "Last " + homeRange + " days, from your own records",
+            aside: aside, cls: "hcard-wide", body: body });
+        }
+
+        // ---- What's selling ----------------------------------------------
+        function homeSellingCard(d) {
+          const rows = ((d.catalogue || {}).topProducts || []).slice(0, 5);
+          const aside = '<button type="button" class="btn-quiet btn-tiny" data-home-action="go-catalog">Catalogue</button>';
+          if (!rows.length) {
+            return hcard({ title: "What's selling", sub: "Units and revenue, all time", aside: aside,
+              body: hEmpty(ICON_BOX, "Nothing sold yet",
+                "Once Amara closes a sale the product shows up here, ranked.") });
+          }
+          const max = Math.max.apply(null, rows.map((r) => Number(r.sold) || 0).concat([1]));
+          const body = '<div class="hbars">' + rows.map((r) => {
+            const sold = Number(r.sold) || 0;
+            return '<div class="hbar-row">' +
+              '<span class="hbar-name" title="' + escapeHtml(r.name || "") + '">' + escapeHtml(r.name || "") + '</span>' +
+              '<span class="hbar-track"><i style="width:' + Math.max(2, (sold / max) * 100).toFixed(1) + '%"></i></span>' +
+              '<span class="hbar-val">' + sold + '</span>' +
+            '</div>';
+          }).join("") + '</div>';
+          return hcard({ title: "What's selling", sub: "Units sold, all time", aside: aside, body: body });
+        }
+
+        // ---- Rhythm of the week ------------------------------------------
+        function homeRhythmCard() {
+          const w = (homeAnalytics && homeAnalytics.weekday) || {};
+          const vals = w.orders || [];
+          const total = vals.reduce((a, b) => a + (Number(b) || 0), 0);
+          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          if (!total) {
+            return hcard({ title: "Rhythm of the week", sub: "Orders by weekday",
+              body: hEmpty(ICON_TREND, "No pattern yet",
+                "After a few orders this shows which days your shop is busiest.") });
+          }
+          const max = Math.max.apply(null, vals.concat([1]));
+          const order = [1, 2, 3, 4, 5, 6, 0];
+          const best = days[vals.indexOf(max)];
+          const body = '<div class="heat">' + order.map((i) => {
+            const v = Number(vals[i]) || 0;
+            const a = v / max;
+            return '<div class="heat-col" title="' + days[i] + ': ' + v + ' order' + (v === 1 ? "" : "s") + '">' +
+              '<span class="heat-dow">' + days[i].slice(0, 1) + '</span>' +
+              '<div class="heat-cell' + (v ? "" : " zero") + '" style="--a:' + a.toFixed(3) + '"></div>' +
+              '<span class="heat-val">' + v + '</span>' +
+            '</div>';
+          }).join("") + '</div>' +
+          '<p class="hcard-note">Busiest day is <b>' + escapeHtml(best) + '</b>, from ' + total +
+            ' order' + (total === 1 ? "" : "s") + ' on record.</p>';
+          return hcard({ title: "Rhythm of the week", sub: "Orders by weekday", body: body });
+        }
+
+        // ---- Chat to order -----------------------------------------------
+        function homeConversionCard() {
+          const a = homeAnalytics || {};
+          const conv = a.conversion || {};
+          const totalC = Number(conv.totalCustomers) || 0;
+          const paid = Number(conv.paidCustomers) || 0;
+          if (!totalC) {
+            return hcard({ title: "Chat to order", sub: "Everyone who has ever written in",
+              body: hEmpty(ICON_USERS, "No conversations yet",
+                "This fills in once people start messaging your WhatsApp number.") });
+          }
+          const pct = Math.round((paid / totalC) * 100);
+          const r = 52, circ = 2 * Math.PI * r;
+          const body =
+            '<div class="donut-wrap">' +
+              '<svg class="donut" viewBox="0 0 128 128" aria-hidden="true">' +
+                '<circle cx="64" cy="64" r="' + r + '" class="donut-track"/>' +
+                '<circle cx="64" cy="64" r="' + r + '" class="donut-fill" ' +
+                  'stroke-dasharray="' + circ.toFixed(1) + '" ' +
+                  'stroke-dashoffset="' + (circ * (1 - pct / 100)).toFixed(1) + '"/>' +
+                '<text x="64" y="60" class="donut-n">' + pct + '%</text>' +
+                '<text x="64" y="80" class="donut-c">of chats paid</text>' +
+              '</svg>' +
+              '<div class="donut-legend">' +
+                '<div><i class="sw on"></i>Have paid<b>' + paid + '</b></div>' +
+                '<div><i class="sw"></i>Have not<b>' + Math.max(0, totalC - paid) + '</b></div>' +
+              '</div>' +
+            '</div>';
+          return hcard({ title: "Chat to order", sub: "Everyone who has ever written in", body: body });
+        }
+
+        // ---- Amara right now ---------------------------------------------
+        function homeAmaraCard(d) {
+          const conn = d.connection || {};
+          const paused = (d.stats || {}).pausedNow || 0;
+          const gaps = d.catalogue || {};
+          const rows = [
+            { k: "Connection", v: conn.suspended ? "Suspended" : (conn.connected ? "Live" : "Not connected"),
+              tone: conn.suspended ? "bad" : (conn.connected ? "live" : "bad") },
+            { k: "Alerts to", v: conn.alertsTo ? conn.alertsTo : "Not set", tone: conn.alertsTo ? "ok" : "warn" },
+            { k: "Holding for you", v: paused + " conversation" + (paused === 1 ? "" : "s"), tone: paused ? "warn" : "ok" },
+            { k: "Products Amara knows", v: (gaps.total || 0) + " item" + (gaps.total === 1 ? "" : "s"), tone: "ok" },
+          ];
+          const gapList = [];
+          if (gaps.missingPhoto) gapList.push(gaps.missingPhoto + " without a photo");
+          if (gaps.missingCategory) gapList.push(gaps.missingCategory + " without a category");
+          if (gaps.missingPrice) gapList.push(gaps.missingPrice + " without a price");
+          const body = '<div class="alist">' + rows.map((r) =>
+            '<div class="arow"><i class="adot ' + r.tone + '"></i>' +
+              '<span class="ak">' + escapeHtml(r.k) + '</span>' +
+              '<span class="av">' + escapeHtml(r.v) + '</span></div>').join("") + '</div>' +
+            '<p class="hcard-note">' + (gapList.length
+              ? "Worth tidying: " + escapeHtml(gapList.join(", ")) +
+                ". Amara answers from your catalogue only, so a gap becomes \u201clet me confirm that\u201d."
+              : (gaps.total
+                ? "Your catalogue is complete \u2014 every product has a photo, a category and a price."
+                : "Add a product and Amara can start quoting it.")) + '</p>';
+          return hcard({ title: "Amara right now", sub: "What your assistant is working with", body: body });
+        }
+
         function renderHome(force) {
           const host = document.getElementById("homeView");
           if (!host || !homeData) return;
@@ -13521,11 +13899,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // only occupies a column while it still has something to say; once
           // it is finished it returns "" and the chart takes the full width,
           // so the page never carries an empty half.
+          // Round 69. homeWeekCard is retired: the trend card does the same
+          // job with fourteen more days behind it and orders on the same axes.
           const setup = homeSetupCard(d);
-          const chart = homeWeekCard(d);
-          const band2 = setup
-            ? '<div class="home-split">' + chart + setup + '</div>'
-            : chart;
           // Round 49. The stagger is CSS now, driven by a --d written onto
           // each band. nth-of-type was tried first and is wrong here: the
           // bands are separated by hr elements and the alert row appears and
@@ -13560,21 +13936,25 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '</div>' +
               '</div>' +
               (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
-              '<hr class="hair">' +
-              '<div class="home-sec" style="--d:100ms">' +
-                '<div class="home-sec-head">' +
-                  '<span class="home-eyebrow"><span class="pulse-dot"></span>Right now</span>' +
+              // Round 69. The page was a stack of bands, each opened by the
+              // same uppercase tracked label, so nothing outranked anything.
+              // It is the reference's shape now: a wide column of the things
+              // you study, a narrow one of the things you act on, and titles
+              // in sentence case at two sizes instead of one shout.
+              '<div class="home-stats" id="homeStats" style="--d:100ms"></div>' +
+              '<div class="home-grid" style="--d:150ms">' +
+                '<div class="home-stack">' +
+                  homeTrendCard() +
+                  homeSellingCard(d) +
+                  '<div class="home-pair">' + homeRhythmCard() + homeConversionCard() + '</div>' +
                 '</div>' +
-                '<div class="home-stats" id="homeStats"></div>' +
+                '<div class="home-stack">' +
+                  homeWaitingCard(d) +
+                  homeAmaraCard(d) +
+                  setup +
+                  homeActivityCard(d) +
+                '</div>' +
               '</div>' +
-              '<hr class="hair">' +
-              '<div class="home-sec" style="--d:140ms">' + band2 + '</div>' +
-              '<hr class="hair">' +
-              '<div class="home-sec" style="--d:180ms"><div class="home-split flip">' +
-                homeWaitingCard(d) + homeActivityCard(d) +
-              '</div></div>' +
-              '<hr class="hair">' +
-              '<div class="home-sec" style="--d:220ms">' + homeCatalogueCard(d) + '</div>' +
               '<hr class="hair">' +
               '<div class="home-footline">' +
                 '<span>' + escapeHtml(d.profile.businessName || "Your shop") + ' &middot; WhatsApp Business</span>' +
@@ -13690,6 +14070,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             switchTab("catalog");
           } else if (action === "go-conversations" || action === "open-inbox") {
             switchTab("conversations");
+          } else if (action === "range") {
+            setHomeRange(Number(el.getAttribute("data-range")) || 7);
           } else if (action === "refresh") {
             // Round 68. The page already refreshes itself on a poll, so this
             // is not new capability -- it is the same fetch on demand, for the
@@ -15235,7 +15617,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             setTimeout(function () { if (!down) step.textContent = "Loading your conversations"; }, 900);
             setTimeout(function () { if (!down) step.textContent = "Almost there"; }, 2200);
           }
-          Promise.allSettled([loadDashboard(), loadHome()]).then(drop);
+          Promise.allSettled([loadDashboard(), loadHome(), loadHomeAnalytics()]).then(drop);
           setTimeout(drop, 4000);
         })();
 
@@ -16698,7 +17080,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 68";
+const BUILD_ROUND = "Round 69";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
