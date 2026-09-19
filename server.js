@@ -9369,6 +9369,101 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .q-row, .act-row { padding: 11px 13px; }
           .q-btn { display: none; }
         }
+
+        /* ================================================================
+           Round 60. The rail and the page were two shades of the same cream,
+           so the app read as one flat sheet with some text on it. The rail is
+           dark now in both themes -- it is navigation, not content, and it
+           should not compete with the work.
+
+           It is done by redefining the tokens *inside* .sidebar rather than
+           rewriting forty rules. Custom properties inherit, so every
+           descendant picks up the dark values on its own and the rail cannot
+           drift out of step with the rest of the sheet again.
+           ================================================================ */
+        :root {
+          --rail-bg: #221D18;
+          --rail-text: #F3EDE4;
+          --rail-muted: #B2A599;
+          --rail-muted-2: #8C8175;
+          --rail-line: rgba(255,255,255,0.09);
+          --rail-raise: rgba(255,255,255,0.08);
+          --rail-press: rgba(255,255,255,0.13);
+          --rail-accent: #E28B66;
+        }
+        [data-theme="dark"] {
+          /* The dark rail was two points off the dark canvas, which is the
+             same complaint as the cream-on-cream rail in light mode wearing a
+             different coat. It goes below the page, not beside it. */
+          --rail-bg: #0A0806;
+          --rail-text: #F4EEE5;
+          --rail-muted: #A79885;
+          --rail-muted-2: #7D7161;
+          --rail-line: rgba(255,255,255,0.07);
+          --rail-raise: rgba(255,255,255,0.06);
+          --rail-press: rgba(255,255,255,0.10);
+          --rail-accent: #E0825C;
+        }
+        .sidebar, [data-theme="dark"] .sidebar {
+          background: var(--rail-bg);
+          border-right: 1px solid var(--rail-line);
+          --text: var(--rail-text);
+          --muted: var(--rail-muted);
+          --muted-2: var(--rail-muted-2);
+          --border: var(--rail-line);
+          --border-light: var(--rail-line);
+          --border-strong: var(--rail-line);
+          --surface: var(--rail-raise);
+          --surface-2: var(--rail-raise);
+          --surface-3: var(--rail-press);
+          --accent: var(--rail-accent);
+          --accent-light: var(--rail-press);
+          --accent-soft: var(--rail-press);
+        }
+        /* The pill is a lift off the rail, not a card on a page: no border,
+           no drop shadow, just a lighter plane. */
+        .sidebar .nav-pill, [data-theme="dark"] .sidebar .nav-pill {
+          background: var(--rail-raise); box-shadow: none;
+        }
+        .sidebar nav.tabs button.active-tab,
+        [data-theme="dark"] .sidebar nav.tabs button.active-tab {
+          background: transparent; box-shadow: none; color: var(--rail-text); font-weight: 600;
+        }
+        .sidebar nav.tabs button.active-tab svg { color: var(--rail-accent); }
+        .sidebar nav.tabs button:hover { background: rgba(255,255,255,0.05); }
+        /* The live dot needs a ring the colour of what is behind it. */
+        .sidebar .spa-wrap::after, [data-theme="dark"] .sidebar .spa-wrap::after { box-shadow: 0 0 0 2px var(--rail-bg); }
+        .sidebar .sidebar-profile-avatar.brandmark { background: var(--brand); }
+        .sidebar .nav-badge { background: var(--rail-press); color: var(--rail-text); }
+        .sidebar .soon-tag { background: var(--rail-raise); color: var(--rail-muted-2); }
+        .sidebar hr, .sidebar .sidebar-sep { border-color: var(--rail-line); background: var(--rail-line); }
+
+        /* ================================================================
+           Round 60. The typewriter goes. Every label and every figure in this
+           dashboard was set in Geist Mono -- 11px, uppercase, widely tracked
+           -- which is the look Miji kept calling "from the 90s", and she was
+           right. A monospaced face earns its place in a terminal or a diff.
+           On a price it just looks like a receipt.
+
+           One redefinition rather than twenty-five edits: the label face is
+           the sans, and figures line up through tabular numerals instead of
+           through fixed-width letterforms.
+           ================================================================ */
+        body, body * { --font-mono: var(--font-sans); }
+        .htile-value, .product-price, .cat-line b, .perf-row b, .wk-stat b,
+        .an-figure, .kpi-value, .seller-rev, .ptile-price, .home-count-chip,
+        table.catalog-table td.num, .nav-badge, .sec-count, .wk-n, .wk-ylab, .q-wait {
+          font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "ss01" 1;
+        }
+        /* Tracking that suited a mono face is too wide for a sans one. */
+        .home-eyebrow, .home-eyebrow-note, .htile-label, .hero-eyebrow, .an-eyebrow,
+        .sidebar-profile-role, .sidebar-vendor, .wk-day, .wk-stat span, .act-when,
+        .waiting-when, .waiting-flag, .home-footline, .wk-scale, .sec-count,
+        .setup-progress-text, .dquote-who, .q-wait {
+          letter-spacing: 0.075em; font-weight: 600;
+        }
+        .home-eyebrow, .an-eyebrow, .htile-label { font-weight: 650; }
+        table.catalog-table td.num { font-size: 13.5px; font-weight: 550; letter-spacing: 0; }
       </style>
     </head>
     <body>
@@ -13043,7 +13138,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               if (!(p.category || "").trim()) missing.push("category");
               return '<div class="product-card' + (missing.length ? " needs-work" : "") + '" data-key="' + escapeHtml(k) + '">' +
                 '<div class="product-thumb">' +
-                  '<img src="' + escapeHtml(p.imageUrl || "") + '" alt="" loading="lazy">' +
+                  '<img src="' + escapeHtml(p.hasOwnPhoto ? (p.imageUrl || "") : "") + '" alt="" loading="lazy">' +
                   (p.category ? '<span class="thumb-cat">' + escapeHtml(p.category) + '</span>' : '') +
                   (sold ? '<span class="thumb-sold">' + sold + ' sold</span>' : '') +
                 '</div>' +
@@ -15754,7 +15849,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 59";
+const BUILD_ROUND = "Round 60";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
