@@ -10264,6 +10264,105 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .pf-stat + .pf-stat { box-shadow: inset 0 1px 0 var(--border-light); }
           .pf-grid { padding: 0 16px; }
         }
+
+        /* ==================================================================
+           Round 71. The card and the chart, rebuilt on the dashboard Miji
+           sent. Same information as before -- what changed is that it is in
+           zones with a rule between them, one card is filled so the eye has
+           somewhere to land, and the chart says it in a picture instead of a
+           legend.
+           ================================================================== */
+        .kpi { display: block; width: 100%; text-align: left; border: 0;
+          font-family: inherit; padding: 0; background: var(--surface);
+          border-radius: 16px; box-shadow: var(--shadow-sm); }
+        .kpi.has-spark { padding-bottom: 0; }
+        .kpi-top { display: flex; align-items: center; gap: 11px; margin: 0; padding: 15px 16px 0; }
+        /* A real container, not a tinted glyph. It is what gives the card a
+           top-left anchor instead of a floating mark. */
+        .kpi-icon { width: 40px; height: 40px; border-radius: 13px; flex: none;
+          display: grid; place-items: center; background: var(--accent-light); color: var(--accent-dark); }
+        .kpi-icon svg { width: 18px; height: 18px; }
+        .kpi-label { font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+        /* The delta sits ON the figure's line. Underneath it, it was a fourth
+           string down the card; beside it, it is part of the number. */
+        .kpi-figure { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+          padding: 13px 16px 15px; }
+        .kpi-value { font-family: var(--font-heading); font-size: 26px; font-weight: 650;
+          letter-spacing: -0.034em; line-height: 1.05; color: var(--text); font-variant-numeric: tabular-nums; }
+        .kpi-foot { display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+          border-top: 1px solid var(--border-light); font-size: 12px; color: var(--muted-2);
+          transition: color var(--dur-fast) ease; }
+        .kpi-foot span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .kpi-foot svg { width: 14px; height: 14px; margin-left: auto; flex: none;
+          transition: transform var(--dur-base) var(--ease-out); }
+        .kpi-link { cursor: pointer; transition: transform var(--dur-press) var(--ease-out),
+          box-shadow var(--dur-base) ease; }
+        @media (hover: hover) and (pointer: fine) {
+          .kpi-link:hover { box-shadow: var(--shadow-md); }
+          .kpi-link:hover .kpi-foot { color: var(--accent); }
+          .kpi-link:hover .kpi-foot svg { transform: translateX(3px); }
+        }
+        .kpi-link:active { transform: scale(0.985); }
+
+        /* One filled card. Four identical white rectangles give the eye
+           nowhere to start. */
+        .kpi-primary { background: linear-gradient(150deg, var(--accent-dark), var(--accent) 78%); }
+        .kpi-primary .kpi-label, .kpi-primary .kpi-value { color: #fff; }
+        .kpi-primary .kpi-icon { background: rgba(255,255,255,0.18); color: #fff; }
+        .kpi-primary .kpi-foot { color: rgba(255,255,255,0.78); border-top-color: rgba(255,255,255,0.16); }
+        .kpi-primary .delta.up, .kpi-primary .delta.down, .kpi-primary .delta.flat {
+          background: rgba(255,255,255,0.22); color: #fff; font-weight: 700; }
+        .kpi-primary .kpi-spark { opacity: .55; }
+        .kpi-primary .kpi-spark path[fill] { fill: rgba(255,255,255,.22); }
+        .kpi-primary .kpi-spark path[stroke] { stroke: rgba(255,255,255,.7); }
+        @media (hover: hover) and (pointer: fine) {
+          .kpi-primary.kpi-link:hover .kpi-foot { color: #fff; }
+        }
+        .kpi-spark { bottom: 40px; height: 34px; }
+
+        /* ---- the chart ------------------------------------------------- */
+        .cf { display: flex; gap: 12px; }
+        .cf-axis { display: flex; flex-direction: column; justify-content: space-between;
+          height: 186px; flex: none; font-size: 10.5px; color: var(--muted-2);
+          font-variant-numeric: tabular-nums; text-align: right; min-width: 26px; }
+        .cf-plot { position: relative; flex: 1; min-width: 0; height: 186px; }
+        .cf-grid { position: absolute; inset: 0 0 22px; display: flex; flex-direction: column;
+          justify-content: space-between; pointer-events: none; }
+        .cf-grid i { display: block; height: 1px; background: var(--border-light); }
+        .cf-cols { position: absolute; inset: 0; display: flex; align-items: flex-end;
+          gap: clamp(4px, 1.4%, 12px); }
+        .cf-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column;
+          justify-content: flex-end; align-items: stretch; gap: 7px;
+          background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+        .cf-bar { display: block; border-radius: 8px 8px 3px 3px;
+          background: linear-gradient(to top, var(--accent-soft), color-mix(in srgb, var(--accent) 34%, var(--surface)));
+          transition: background var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out); }
+        .cf-col.on .cf-bar, .cf-cols:not(:hover) .cf-col.is-last .cf-bar {
+          background: linear-gradient(to top, var(--accent-dark), var(--accent)); }
+        .cf-col.on .cf-bar { transform: scaleY(1.012); transform-origin: bottom; }
+        .cf-dow { font-size: 10.5px; color: var(--muted-2); height: 14px; line-height: 14px;
+          overflow: hidden; white-space: nowrap; }
+        .cf-col.on .cf-dow { color: var(--accent); font-weight: 600; }
+        .cf-tip { position: absolute; left: 0; top: -6px; z-index: 2; pointer-events: none;
+          padding: 7px 11px; border-radius: 10px; background: var(--navy); color: #F4EEE5;
+          font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap;
+          box-shadow: 0 10px 26px -12px rgba(28,27,25,.55);
+          opacity: 0; transform: translate(0, 0) scale(0.97);
+          transition: opacity 125ms var(--ease-out), transform 125ms var(--ease-out); }
+        .cf-tip.on { opacity: 1; }
+        [data-theme="dark"] .cf-tip { background: var(--surface-3); color: var(--text); }
+
+        @media (max-width: 760px) {
+          .kpi-top { padding: 13px 14px 0; gap: 10px; }
+          .kpi-icon { width: 34px; height: 34px; border-radius: 11px; }
+          .kpi-icon svg { width: 16px; height: 16px; }
+          .kpi-figure { padding: 11px 14px 13px; }
+          .kpi-value { font-size: 22px; }
+          .kpi-foot { padding: 10px 14px; font-size: 11.5px; }
+          .kpi-spark { bottom: 38px; height: 28px; }
+          .cf-axis, .cf-plot { height: 150px; }
+          .cf { gap: 9px; }
+        }
       </style>
     </head>
     <body>
@@ -11333,6 +11432,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
         // Round 68. Icons the new page head and KPI cards need.
+        const ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>';
         const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
         const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
         const ICON_TREND_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
@@ -13355,15 +13455,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '<span class="delta ' + dir + '">' + ic + escapeHtml(label) + '</span>';
         }
 
+        // Round 71. Rebuilt on the anatomy of the dashboard Miji sent.
+        //
+        // The old card was four strings in a pile: label, figure, delta, note,
+        // with a sparkline behind them. Exactly the same information is here;
+        // what changed is that it is in ZONES, which is the whole difference
+        // between "too much text" and "a card".
+        //
+        //   [icon]  Label                     <- identity, on its own line
+        //   FIGURE  [delta]                   <- the number, delta on its line
+        //   ---------------------------       <- a rule, so the zone ends
+        //   note                        ->    <- the footing, and the way out
+        //
+        // And one card is filled. Four identical white rectangles give the eye
+        // nowhere to land; the reference makes its first card solid and the
+        // rest quiet, so there is an obvious place to start reading.
         function kpiHtml(o) {
-          return '<div class="kpi' + (o.spark ? " has-spark" : "") + '">' +
+          return '<' + (o.action ? 'button type="button" data-home-action="' + o.action + '"' : "div") +
+            ' class="kpi' + (o.primary ? " kpi-primary" : "") + (o.spark ? " has-spark" : "") +
+            (o.action ? " kpi-link" : "") + '">' +
             (o.spark || "") +
-            '<div class="kpi-top"><span class="kpi-icon">' + (o.icon || "") + '</span>' +
-              '<span class="kpi-label">' + escapeHtml(o.label) + '</span></div>' +
-            '<div class="kpi-value">' + o.value + '</div>' +
-            '<div class="kpi-meta">' + (o.delta || "") +
-              (o.note ? '<span class="kpi-note">' + escapeHtml(o.note) + '</span>' : "") + '</div>' +
-          '</div>';
+            '<div class="kpi-top">' +
+              '<span class="kpi-icon">' + (o.icon || "") + '</span>' +
+              '<span class="kpi-label">' + escapeHtml(o.label) + '</span>' +
+            '</div>' +
+            '<div class="kpi-figure">' +
+              '<span class="kpi-value">' + o.value + '</span>' +
+              (o.delta || "") +
+            '</div>' +
+            (o.note
+              ? '<div class="kpi-foot"><span>' + escapeHtml(o.note) + '</span>' +
+                (o.action ? ICON_ARROW_R : "") + '</div>'
+              : "") +
+          '</' + (o.action ? "button" : "div") + '>';
         }
 
         function renderHomeStats(d) {
@@ -13395,7 +13519,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
           host.innerHTML =
             kpiHtml({
-              label: "Paid today", icon: ICON_WALLET, value: money(s.revenueTodayNaira),
+              label: "Paid today", icon: ICON_WALLET, value: money(s.revenueTodayNaira), primary: true, action: "go-analytics",
               spark: sparkSvg(revSeries, 200, 42),
               delta: revD.pct === null
                 ? deltaHtml("flat", yRev ? "flat" : "nothing yesterday")
@@ -13403,7 +13527,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               note: "vs " + money(yRev) + " yesterday",
             }) +
             kpiHtml({
-              label: "This week", icon: ICON_TREND, value: money(weekRev),
+              label: "This week", icon: ICON_TREND, value: money(weekRev), action: "go-analytics",
               spark: sparkSvg(revSeries, 200, 42),
               delta: weekD.pct === null
                 ? deltaHtml("flat", priorRev ? "flat" : "first week on record")
@@ -13411,7 +13535,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               note: "vs " + money(priorRev) + " the week before",
             }) +
             kpiHtml({
-              label: "Orders today", icon: ICON_BOX, value: String(s.paymentsToday || 0),
+              label: "Orders today", icon: ICON_BOX, value: String(s.paymentsToday || 0), action: "go-analytics",
               spark: sparkSvg(ordSeries, 200, 42),
               delta: deltaHtml(
                 todayOrd > ydayOrd ? "up" : todayOrd < ydayOrd ? "down" : "flat",
@@ -13420,7 +13544,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               note: ydayOrd ? "yesterday had " + ydayOrd : "none yesterday",
             }) +
             kpiHtml({
-              label: "New customers", icon: ICON_USERS, value: String(nw),
+              label: "New customers", icon: ICON_USERS, value: String(nw), action: "open-inbox",
               spark: sparkSvg(newSeries, 200, 42),
               delta: newD.pct === null
                 ? deltaHtml("flat", "this week")
@@ -13712,48 +13836,59 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               body: hEmpty(ICON_TREND, "Nothing banked yet",
                 "The moment a customer pays, the day they paid shows up here.") });
           }
-          const max = Math.max.apply(null, series.map((d) => Number(d.revenue) || 0).concat([1]));
-          const maxOrd = Math.max.apply(null, series.map((d) => Number(d.orders) || 0).concat([1]));
-          const W = 600, H = 150;
-          const step = series.length > 1 ? W / (series.length - 1) : W;
-          const pts = series.map((d, i) => [i * step, H - ((Number(d.revenue) || 0) / max) * (H - 12) - 6]);
-          const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
-          const area = line + " L" + W + " " + H + " L0 " + H + " Z";
-          const barW = Math.max(3, Math.min(14, (W / series.length) * 0.32));
-          const bars = series.map((d, i) => {
-            const h = ((Number(d.orders) || 0) / maxOrd) * (H - 24);
-            if (!h) return "";
-            return '<rect x="' + (i * step - barW / 2).toFixed(1) + '" y="' + (H - h).toFixed(1) +
-              '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" class="ht-bar"></rect>';
-          }).join("");
-          const grid = [0.25, 0.5, 0.75].map((f) =>
-            '<line x1="0" x2="' + W + '" y1="' + (H * f).toFixed(1) + '" y2="' + (H * f).toFixed(1) + '" class="ht-grid"/>').join("");
-          const labels = series.map((d, i) => {
-            if (series.length > 10 && i % Math.ceil(series.length / 7) !== 0 && i !== series.length - 1) return "";
-            const dt = new Date(d.date + "T00:00:00");
-            return '<span class="ht-lab" style="left:' + ((i * step) / W * 100).toFixed(2) + '%">' +
-              dt.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + '</span>';
+          // Round 71. Rebuilt on the chart in the dashboard Miji sent.
+          //
+          // The old one drew a line for money and bars for orders with a text
+          // legend explaining which was which -- two series and a sentence to
+          // decode them. The reference draws ONE series as bars and puts the
+          // detail in a tooltip, so nothing has to be explained in words and
+          // the picture is just the picture. Bars are pale until you touch
+          // one; the touched bar goes solid and the card above it carries the
+          // day, the money and the orders.
+          const vals = series.map((d) => Number(d.revenue) || 0);
+          const max = Math.max.apply(null, vals.concat([1]));
+          const money0 = (n) => "\u20A6" + Number(n || 0).toLocaleString();
+          const short = (n) => n >= 1000000 ? (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + "m"
+            : n >= 1000 ? Math.round(n / 1000) + "k" : String(n);
+          // A round top for the axis, so the gridlines land on whole numbers.
+          const niceStep = (raw) => {
+            const mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+            const n = (raw || 1) / mag;
+            return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+          };
+          const tickStep = niceStep(max / 4);
+          const top = Math.max(tickStep, Math.ceil(max / tickStep) * tickStep);
+          const ticks = [];
+          for (let t = 0; t <= top + 0.5; t += tickStep) ticks.push(Math.round(t));
+          const fmtDay = (iso) => {
+            const dt = new Date(iso + "T00:00:00");
+            return dt.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+          };
+          const cols = series.map((d, i) => {
+            const v = Number(d.revenue) || 0;
+            const o = Number(d.orders) || 0;
+            const h = top ? (v / top) * 100 : 0;
+            return '<button type="button" class="cf-col' + (i === series.length - 1 ? " is-last" : "") +
+              '" data-tip="' + escapeHtml(fmtDay(d.date) + "\u2004\u00b7\u2004" + money0(v) +
+                "\u2004\u00b7\u2004" + o + (o === 1 ? " order" : " orders")) + '">' +
+              '<span class="cf-bar" style="height:' + Math.max(h, v ? 2 : 0.8).toFixed(2) + '%"></span>' +
+              '<span class="cf-dow">' + new Date(d.date + "T00:00:00").getDate() + '</span>' +
+            '</button>';
           }).join("");
           const body =
-            '<div class="ht-legend">' +
-              '<span><i class="ht-sw rev"></i>Revenue</span>' +
-              '<span><i class="ht-sw ord"></i>Orders</span>' +
-            '</div>' +
-            '<div class="ht-wrap">' +
-              '<svg class="ht-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
-                '<defs><linearGradient id="htg" x1="0" y1="0" x2="0" y2="1">' +
-                '<stop offset="0" stop-color="var(--accent)" stop-opacity=".26"/>' +
-                '<stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>' +
-                grid + bars +
-                '<path d="' + area + '" fill="url(#htg)"/>' +
-                '<path d="' + line + '" class="ht-line"/>' +
-              '</svg>' +
-              '<div class="ht-labs">' + labels + '</div>' +
+            '<div class="cf">' +
+              '<div class="cf-axis">' + ticks.slice().reverse().map((t) =>
+                '<span>' + short(t) + '</span>').join("") + '</div>' +
+              '<div class="cf-plot">' +
+                '<div class="cf-grid">' + ticks.map(() => '<i></i>').join("") + '</div>' +
+                '<div class="cf-cols">' + cols + '</div>' +
+                '<div class="cf-tip" id="cfTip" aria-hidden="true"></div>' +
+              '</div>' +
             '</div>' +
             '<div class="ht-foot">' +
               '<div class="ht-stat"><b>' + money(total) + '</b><span>taken</span></div>' +
               '<div class="ht-stat"><b>' + orders + '</b><span>order' + (orders === 1 ? "" : "s") + '</span></div>' +
-              '<div class="ht-stat"><b>' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average</span></div>' +
+              '<div class="ht-stat"><b>' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average order</span></div>' +
             '</div>';
           return hcard({ title: "Revenue and orders", sub: "Last " + homeRange + " days, from your own records",
             aside: aside, cls: "hcard-wide", body: body });
@@ -13885,6 +14020,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // The picture that IS theirs -- the avatar -- is the one thing on
         // this page they can change.
         // ==================================================================
+        // Round 71. One delegated listener for the chart tooltip. It follows
+        // the hovered column and clamps to the plot, so a bar at either end
+        // does not push the card off its own edge. Touch gets it on tap --
+        // a coarse pointer has no hover, and a chart that only answers a
+        // mouse is a chart half the sellers cannot read.
+        (function wireChartTip() {
+          const move = (e) => {
+            const col = e.target.closest(".cf-col");
+            const plot = document.querySelector(".cf-plot");
+            const tip = document.getElementById("cfTip");
+            if (!plot || !tip) return;
+            if (!col) { tip.classList.remove("on"); return; }
+            tip.textContent = col.getAttribute("data-tip") || "";
+            tip.classList.add("on");
+            const pr = plot.getBoundingClientRect();
+            const cr = col.getBoundingClientRect();
+            const w = tip.offsetWidth || 160;
+            let x = cr.left - pr.left + cr.width / 2 - w / 2;
+            x = Math.max(0, Math.min(x, pr.width - w));
+            tip.style.transform = "translate(" + Math.round(x) + "px, 0)";
+            document.querySelectorAll(".cf-col.on").forEach((c) => c.classList.remove("on"));
+            col.classList.add("on");
+          };
+          document.addEventListener("pointerover", move);
+          document.addEventListener("pointerdown", move);
+          document.addEventListener("pointerleave", (e) => {
+            if (!e.target.closest || !e.target.closest(".cf-plot")) return;
+            const tip = document.getElementById("cfTip");
+            if (tip) tip.classList.remove("on");
+            document.querySelectorAll(".cf-col.on").forEach((c) => c.classList.remove("on"));
+          }, true);
+        })();
+
         function renderProfile() {
           const host = document.getElementById("profileView");
           if (!host || !homeData) return;
@@ -14154,6 +14322,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             switchTab("catalog");
           } else if (action === "go-conversations" || action === "open-inbox") {
             switchTab("conversations");
+          } else if (action === "go-analytics") {
+            switchTab("analytics");
           } else if (action === "go-profile") {
             switchTab("profile");
           } else if (action === "range") {
@@ -17169,7 +17339,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 70";
+const BUILD_ROUND = "Round 71";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
