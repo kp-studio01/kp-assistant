@@ -9981,6 +9981,59 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .home-sec + .home-sec { margin-top: 26px; }
           .home-stats { margin-bottom: 0; }
         }
+
+        /* ==================================================================
+           Round 68. The Overview head and the KPI cards, taken from her v2
+           file. The old tiles were a figure and a caption; these carry four
+           things -- what it is, what it is now, how that compares with the
+           period before, and the shape of the seven days behind it.
+           ================================================================== */
+        .home-summary { font-size: 13.5px; line-height: 1.55; color: var(--muted); margin: 5px 0 0; max-width: 62ch; }
+        .home-summary b { font-weight: 650; color: var(--text); }
+        .home-head-actions { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+        .home-head-actions .btn-quiet,
+        .home-head-actions .catalog-btn { display: inline-flex; align-items: center; gap: 7px; }
+        .home-head-actions svg { width: 15px; height: 15px; }
+        .btn-quiet.spinning svg { animation: spin 620ms var(--ease-io); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .btn-quiet.spinning svg { animation: none; } }
+
+        .kpi { position: relative; overflow: hidden; background: var(--surface);
+          border-radius: 18px; padding: 17px 18px 16px; box-shadow: var(--shadow-sm);
+          transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) ease; }
+        .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .kpi.has-spark { padding-bottom: 46px; }
+        .kpi-top { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; }
+        .kpi-icon { width: 27px; height: 27px; flex: none; display: grid; place-items: center;
+          border-radius: 9px; background: var(--accent-light); color: var(--accent-dark); }
+        .kpi-icon svg { width: 14px; height: 14px; }
+        .kpi-label { font-size: 12.5px; font-weight: 600; color: var(--muted); letter-spacing: -0.005em; }
+        .kpi-value { font-family: var(--font-heading); font-size: 27px; font-weight: 650;
+          letter-spacing: -0.032em; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+        .kpi-meta { display: flex; align-items: center; gap: 8px; margin-top: 9px; min-height: 20px; flex-wrap: wrap; }
+        .kpi-note { font-size: 11.5px; color: var(--muted-2); }
+        .kpi-spark { position: absolute; left: 0; right: 0; bottom: 0; height: 40px;
+          opacity: .45; pointer-events: none; }
+
+        .delta { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px;
+          border-radius: 999px; font-size: 11.5px; font-weight: 650;
+          font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .delta svg { width: 11px; height: 11px; }
+        .delta.up { background: var(--ok-bg); color: var(--ok-fg); }
+        .delta.down { background: var(--dang-bg); color: var(--dang-fg); }
+        .delta.flat { background: var(--surface-2); color: var(--muted-2); }
+
+        @media (max-width: 760px) {
+          .home-head-actions { width: 100%; }
+          .home-head-actions .catalog-btn { flex: 1; justify-content: center; }
+          .home-summary { font-size: 13px; }
+          .kpi { padding: 15px 15px 14px; }
+          .kpi.has-spark { padding-bottom: 40px; }
+          .kpi-value { font-size: 23px; }
+          /* The merged-card treatment from Round 67 applied to .htile, which
+             these replace. */
+          .home-stats { background: none; box-shadow: none; gap: 10px; border-radius: 0; overflow: visible; }
+        }
       </style>
     </head>
     <body>
@@ -11047,6 +11100,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+        // Round 68. Icons the new page head and KPI cards need.
+        const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
+        const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
+        const ICON_TREND_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
         const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
         const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
         const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
@@ -13091,28 +13148,135 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
 
         let homeStatsAnimated = false;
+        // Round 68. The line under the greeting. Every clause is a stored
+        // count -- what is waiting, what needs a person rather than Amara, and
+        // what was paid for today. When there is nothing, it says so plainly
+        // rather than printing three zeroes.
+        function homeSummaryLine(d) {
+          const waiting = d.waitingTotal || 0;
+          const takeover = d.takeoverTotal || 0;
+          const paid = (d.stats || {}).paymentsToday || 0;
+          const bits = [];
+          bits.push(waiting
+            ? '<b>' + waiting + '</b> conversation' + (waiting === 1 ? "" : "s") + ' waiting on a reply'
+            : "Nothing is waiting on you right now");
+          if (takeover) bits.push('<b>' + takeover + '</b> of those need a person, not Amara');
+          if (paid) bits.push('<b>' + paid + '</b> order' + (paid === 1 ? "" : "s") + ' paid for today');
+          return bits.join(" \u00b7 ") + ".";
+        }
+
+        // A sparkline drawn straight from the seven days the API already
+        // returns. It is the shape of the same numbers printed above it, so it
+        // adds no claim the card was not already making.
+        function sparkSvg(values, w, h) {
+          const vals = (values || []).map((v) => Number(v) || 0);
+          if (vals.length < 2) return "";
+          const max = Math.max.apply(null, vals.concat([1]));
+          const step = w / (vals.length - 1);
+          const pts = vals.map((v, i) => [i * step, h - (v / max) * (h - 4) - 2]);
+          const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+          const area = line + " L" + w + " " + h + " L0 " + h + " Z";
+          const gid = "sp" + Math.random().toString(36).slice(2, 8);
+          return '<svg class="kpi-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+            '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="var(--accent)" stop-opacity=".26"/>' +
+            '<stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>' +
+            '<path d="' + area + '" fill="url(#' + gid + ')"/>' +
+            '<path d="' + line + '" fill="none" stroke="var(--accent)" stroke-width="1.8" ' +
+            'stroke-linejoin="round" stroke-linecap="round" opacity=".7"/></svg>';
+        }
+
+        function pctChange(cur, prev) {
+          cur = Number(cur) || 0; prev = Number(prev) || 0;
+          if (!prev) return { dir: "flat", pct: null };
+          const diff = ((cur - prev) / prev) * 100;
+          if (Math.abs(diff) < 0.5) return { dir: "flat", pct: 0 };
+          return { dir: diff > 0 ? "up" : "down", pct: Math.abs(diff) };
+        }
+
+        function deltaHtml(dir, label) {
+          const ic = dir === "up" ? ICON_TREND_UP : dir === "down" ? ICON_TREND_DOWN : "";
+          return '<span class="delta ' + dir + '">' + ic + escapeHtml(label) + '</span>';
+        }
+
+        function kpiHtml(o) {
+          return '<div class="kpi' + (o.spark ? " has-spark" : "") + '">' +
+            (o.spark || "") +
+            '<div class="kpi-top"><span class="kpi-icon">' + (o.icon || "") + '</span>' +
+              '<span class="kpi-label">' + escapeHtml(o.label) + '</span></div>' +
+            '<div class="kpi-value">' + o.value + '</div>' +
+            '<div class="kpi-meta">' + (o.delta || "") +
+              (o.note ? '<span class="kpi-note">' + escapeHtml(o.note) + '</span>' : "") + '</div>' +
+          '</div>';
+        }
+
         function renderHomeStats(d) {
           const host = document.getElementById("homeStats");
           if (!host || !d.stats) return;
           const s = d.stats;
+          // Round 68, from her v2 file. The old tiles were a figure and a
+          // caption. These carry four things instead: what it is, what it is
+          // now, how that compares with the period before it, and the shape of
+          // the seven days behind it. Every one of those is a stored number --
+          // the week and weekPrior arrays the API already returns -- so the
+          // card says more without claiming more.
+          const money = (n) => "\u20A6" + Number(n || 0).toLocaleString();
+          const week = d.week || [];
+          const prior = d.weekPrior || [];
+          const revSeries = week.map((x) => Number(x.revenue) || 0);
+          const ordSeries = week.map((x) => Number(x.orders) || 0);
+          const newSeries = week.map((x) => Number(x.newCustomers) || 0);
+          const yRev = revSeries.length > 1 ? revSeries[revSeries.length - 2] : 0;
+          const revD = pctChange(s.revenueTodayNaira, yRev);
+          const weekRev = revSeries.reduce((a, b) => a + b, 0);
+          const priorRev = prior.reduce((a, b) => a + (Number(b.revenue) || 0), 0);
+          const weekD = pctChange(weekRev, priorRev);
+          const todayOrd = ordSeries.length ? ordSeries[ordSeries.length - 1] : 0;
+          const ydayOrd = ordSeries.length > 1 ? ordSeries[ordSeries.length - 2] : 0;
           const nw = d.newThisWeek || 0;
-          const paidToday = s.paymentsToday || 0;
+          const priorNew = prior.reduce((a, b) => a + (Number(b.newCustomers) || 0), 0);
+          const newD = pctChange(nw, priorNew);
+
           host.innerHTML =
-            homeTile("t-total", ICON_USERS, s.totalCustomers, "Total customers",
-              nw > 0 ? "+" + nw + " this week" : "none new this week") +
-            homeTile("t-active", ICON_CHAT, s.activeToday, "Active today",
-              s.totalCustomers ? "of " + s.totalCustomers + " you've ever spoken to" : "") +
-            homeTile("t-paused", ICON_PAUSE, s.pausedNow, "You're handling",
-              s.pausedNow ? "Amara has stepped back" : "Amara is on all of them") +
-            homeTile("t-revenue", ICON_WALLET, "\u20A6" + (s.revenueTodayNaira || 0).toLocaleString(), "Paid today",
-              paidToday ? paidToday + " order" + (paidToday === 1 ? "" : "s") : "no orders yet today");
-          // Count up only the first time. The poll must not restart it, or the
-          // numbers would visibly churn every few seconds.
+            kpiHtml({
+              label: "Paid today", icon: ICON_WALLET, value: money(s.revenueTodayNaira),
+              spark: sparkSvg(revSeries, 200, 42),
+              delta: revD.pct === null
+                ? deltaHtml("flat", yRev ? "flat" : "nothing yesterday")
+                : deltaHtml(revD.dir, (revD.dir === "up" ? "+" : "\u2212") + revD.pct.toFixed(0) + "%"),
+              note: "vs " + money(yRev) + " yesterday",
+            }) +
+            kpiHtml({
+              label: "This week", icon: ICON_TREND, value: money(weekRev),
+              spark: sparkSvg(revSeries, 200, 42),
+              delta: weekD.pct === null
+                ? deltaHtml("flat", priorRev ? "flat" : "first week on record")
+                : deltaHtml(weekD.dir, (weekD.dir === "up" ? "+" : "\u2212") + weekD.pct.toFixed(0) + "%"),
+              note: "vs " + money(priorRev) + " the week before",
+            }) +
+            kpiHtml({
+              label: "Orders today", icon: ICON_BOX, value: String(s.paymentsToday || 0),
+              spark: sparkSvg(ordSeries, 200, 42),
+              delta: deltaHtml(
+                todayOrd > ydayOrd ? "up" : todayOrd < ydayOrd ? "down" : "flat",
+                todayOrd > ydayOrd ? "+" + (todayOrd - ydayOrd)
+                  : todayOrd < ydayOrd ? "\u2212" + (ydayOrd - todayOrd) : "flat"),
+              note: ydayOrd ? "yesterday had " + ydayOrd : "none yesterday",
+            }) +
+            kpiHtml({
+              label: "New customers", icon: ICON_USERS, value: String(nw),
+              spark: sparkSvg(newSeries, 200, 42),
+              delta: newD.pct === null
+                ? deltaHtml("flat", "this week")
+                : deltaHtml(newD.dir, (newD.dir === "up" ? "+" : "\u2212") + newD.pct.toFixed(0) + "%"),
+              note: (s.totalCustomers || 0) + " customers all time",
+            });
+
           if (!homeStatsAnimated) {
             homeStatsAnimated = true;
-            const vals = host.querySelectorAll(".htile-value");
-            const targets = [s.totalCustomers, s.activeToday, s.pausedNow, s.revenueTodayNaira];
-            vals.forEach((el, i) => countUp(el, targets[i] || 0, i === 3 ? "N" : ""));
+            const vals = host.querySelectorAll(".kpi-value");
+            const targets = [s.revenueTodayNaira, weekRev, s.paymentsToday, nw];
+            vals.forEach((el, i) => countUp(el, targets[i] || 0, i < 2 ? "\u20A6" : ""));
           }
         }
 
@@ -13376,14 +13540,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // entered. There is no invented first name here: if they have
               // not told us who they are it falls back to the shop, and the
               // profile form now asks for it.
+              // Round 68. From her v2 file: the greeting is a page title, and
+              // under it a sentence that says what actually happened while she
+              // was away -- not the date, which the phone already shows. The
+              // two actions a seller wants from this screen sit on the right
+              // of it rather than being hunted for further down.
               '<div class="home-masthead" style="--d:0ms">' +
                 '<div style="min-width:0;">' +
                   '<h2 class="home-hello">' + greetingWord() +
                     (firstNameOf(d.profile) ? ', ' + escapeHtml(firstNameOf(d.profile)) : '') +
                     '<span>.</span></h2>' +
-                  '<span class="home-eyebrow-note">' + todayLine() + '</span>' +
+                  '<p class="home-summary">' + homeSummaryLine(d) + '</p>' +
                 '</div>' +
-                '<span class="home-eyebrow-note">Updates on its own</span>' +
+                '<div class="home-head-actions">' +
+                  '<button class="btn-quiet" id="homeRefresh" data-home-action="refresh">' +
+                    ICON_REFRESH + 'Refresh</button>' +
+                  '<button class="catalog-btn" data-home-action="open-inbox">' +
+                    ICON_CHAT + 'Open inbox</button>' +
+                '</div>' +
               '</div>' +
               (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
               '<hr class="hair">' +
@@ -13514,8 +13688,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             setSetupDismissed(true);
           } else if (action === "go-catalog") {
             switchTab("catalog");
-          } else if (action === "go-conversations") {
+          } else if (action === "go-conversations" || action === "open-inbox") {
             switchTab("conversations");
+          } else if (action === "refresh") {
+            // Round 68. The page already refreshes itself on a poll, so this
+            // is not new capability -- it is the same fetch on demand, for the
+            // moment you want to know now rather than in a few seconds. The
+            // icon turns while it runs so the press has an answer.
+            el.classList.add("spinning");
+            Promise.resolve(loadHome()).finally(() => {
+              setTimeout(() => el.classList.remove("spinning"), 420);
+            });
           } else if (action === "open-thread") {
             const phone = el.getAttribute("data-phone");
             if (phone) {
@@ -16515,7 +16698,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 67";
+const BUILD_ROUND = "Round 68";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
