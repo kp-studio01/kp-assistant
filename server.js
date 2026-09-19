@@ -236,6 +236,12 @@ function ensureCatalogEntry(sellerId) {
       // create themselves, no fixed taxonomy. A product without one simply
       // has no category.
       PRODUCT_CATEGORIES: {},
+      // Round 56. Up to two more photos per product, alongside the main one.
+      // They are stored under the same photo route with a suffixed key
+      // (<key>__2, <key>__3), so serving them needed no new endpoint. The main
+      // photo stays PRODUCT_IMAGES -- that is the one Amara sends -- and these
+      // are the extra angles a customer asks for.
+      PRODUCT_GALLERY: {},
       // Per-state delivery fees. Only states a seller explicitly added
       // show up here (that's what "which states do you deliver to" means
       // in practice), keyed by the slugs in NIGERIA_STATES above.
@@ -706,6 +712,7 @@ async function loadCatalogFromRedis(sellerId) {
       for (const key of Object.keys(catalog.PRODUCT_IMAGES)) delete catalog.PRODUCT_IMAGES[key];
       for (const key of Object.keys(catalog.PRODUCT_DESCRIPTIONS)) delete catalog.PRODUCT_DESCRIPTIONS[key];
       for (const key of Object.keys(catalog.PRODUCT_CATEGORIES || {})) delete catalog.PRODUCT_CATEGORIES[key];
+      for (const key of Object.keys(catalog.PRODUCT_GALLERY || {})) delete catalog.PRODUCT_GALLERY[key];
       for (const [key, p] of Object.entries(products)) {
         catalog.PRODUCT_PRICES[key] = p.price;
         catalog.PRODUCT_NAMES[key] = p.name;
@@ -713,6 +720,8 @@ async function loadCatalogFromRedis(sellerId) {
         catalog.PRODUCT_DESCRIPTIONS[key] = p.description || "";
         if (!catalog.PRODUCT_CATEGORIES) catalog.PRODUCT_CATEGORIES = {};
         catalog.PRODUCT_CATEGORIES[key] = p.category || "";
+        if (!catalog.PRODUCT_GALLERY) catalog.PRODUCT_GALLERY = {};
+        if (Array.isArray(p.gallery) && p.gallery.length) catalog.PRODUCT_GALLERY[key] = p.gallery;
       }
       console.log(`Catalog loaded from Redis for ${sellerId}: ${Object.keys(catalog.PRODUCT_PRICES).length} product(s).`);
     } else if (sellerId === SELLER1_ID) {
@@ -812,6 +821,8 @@ async function saveCatalogToRedis(sellerId) {
       imageUrl: catalog.PRODUCT_IMAGES[key] && catalog.PRODUCT_IMAGES[key] !== selfHostedUrl ? catalog.PRODUCT_IMAGES[key] : undefined,
       description: catalog.PRODUCT_DESCRIPTIONS[key] || undefined,
       category: (catalog.PRODUCT_CATEGORIES && catalog.PRODUCT_CATEGORIES[key]) || undefined,
+      gallery: (catalog.PRODUCT_GALLERY && catalog.PRODUCT_GALLERY[key] && catalog.PRODUCT_GALLERY[key].length)
+        ? catalog.PRODUCT_GALLERY[key].filter(Boolean) : undefined,
     };
   }
   await redisCommand(["SET", nsKey(sellerId, "catalog:products"), JSON.stringify(products)]);
@@ -3707,15 +3718,15 @@ const BRAND_TOKENS_CSS = `
        it. Weight and tracking do the hierarchy, not a second family.
        Geist Mono is reserved for identifiers -- order and booking
        references -- where fixed-width, unambiguous characters are the point. */
-    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     /* Headings carry the voice; the interface stays on Geist. Schibsted is a
        newspaper grotesk -- tighter apertures, flatter terminals, a heavier
        display weight -- so a title reads as set rather than as the same UI
        font at a larger size. Instrument Serif italic is the counterweight,
        used once, on the turn of the login headline. */
-    --font-heading: 'Schibsted Grotesk Variable', 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-heading: 'Schibsted Grotesk Variable', 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-    --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, 'Segoe UI Symbol', 'Noto Sans Mono', 'DejaVu Sans Mono', monospace;
     /* Motion, tokenised. These are the values already in use, not new ones:
        cubic-bezier(.22,1,.36,1) appears fifty times hand-typed across this
        file and is the house entrance curve. Naming them stops the next near
@@ -7472,6 +7483,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
         .catalog-card h2 { font-family: var(--font-heading); font-size: 15px; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
+        table.catalog-table td.num { font-family: var(--font-mono); font-feature-settings: "tnum" 1; font-size: 13px; }
         table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-light); font-size: 13px; vertical-align: middle; }
         table.catalog-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
         table.catalog-table th:first-child { border-top-left-radius: 8px; }
@@ -7645,7 +7657,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .card-head-products > div:last-child { display: flex; align-items: center; }
         /* Products as cards led by their photo -- that photo is exactly what
            Amara sends a customer, so it's the thing worth recognising. */
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 16px; }
         /* Catalogue toolbar: search and sort sit above the category chips, so
            all three compose instead of each one resetting the others. */
         .cat-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -8835,6 +8847,79 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
 
         /* ==================================================================
+           Round 58 -- the trail is a path, the header carries the product.
+           ================================================================== */
+        .crumb-mid { display: inline-flex; align-items: center; gap: 7px; }
+        .crumb-link { background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font-heading);
+          font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: var(--muted-2); white-space: nowrap;
+          transition: color var(--dur-fast) ease; }
+        .crumb-link:hover { color: var(--accent); }
+        .crumb-mid .crumb-sep svg { width: 13px; height: 13px; display: block; }
+        .crumb-mid .crumb-sep { display: inline-flex; color: var(--muted-2); opacity: .6; }
+
+        /* The picture, the name, and the two facts you would check before
+           touching anything. */
+        .peditor-id { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        .peditor-thumb { position: relative; width: 52px; height: 52px; border-radius: 13px; overflow: hidden; flex-shrink: 0;
+          background: var(--accent); box-shadow: inset 0 0 0 1px var(--border-strong); }
+        .peditor-thumb img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .peditor-thumb.has img { display: block; }
+        .peditor-thumb.has { background: var(--surface-3); }
+        .peditor-thumb i { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+          font-style: normal; font-family: var(--font-heading); font-size: 21px; font-weight: 700; color: #fff; }
+        .peditor-thumb.has i { display: none; }
+        .peditor-meta { font-size: 12.5px; color: var(--muted-2); margin-top: 4px; font-feature-settings: "tnum" 1; }
+
+        /* A little colour on the section labels, so a card announces itself
+           rather than starting with grey text in the corner. */
+        .peditor .pform-sec .home-eyebrow { position: relative; padding-left: 13px; color: var(--muted); }
+        .peditor .pform-sec .home-eyebrow::before { content: ""; position: absolute; left: 0; top: 50%;
+          transform: translateY(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+        .peditor .pform-sec .an-note { padding-left: 13px; }
+
+        /* ==================================================================
+           Round 56 -- the edit page, compared side by side with the reference
+           instead of from memory. Three things were wrong and all three were
+           contrast, not layout.
+           ================================================================== */
+        /* 1. The cards barely separated from the canvas. In the reference the
+              canvas is grey and the cards are white -- two clear steps apart.
+              Here they were one step, so nothing read as an object. */
+        .peditor .pform-sec { background: var(--surface); box-shadow: 0 1px 2px rgba(42,33,26,0.05), 0 10px 24px -18px rgba(42,33,26,0.22), inset 0 0 0 1px var(--border-light); }
+
+        /* 2. The inputs were the same tone as the card they sat on, so a field
+              looked like a line of text rather than something to type in. */
+        .peditor .field input, .peditor .field textarea, .peditor .rte textarea {
+          background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-strong); }
+        .peditor .field input:focus, .peditor .field textarea:focus {
+          box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--focus-ring); }
+        [data-theme="dark"] .peditor .field input, [data-theme="dark"] .peditor .rte textarea { background: var(--surface-2); }
+
+        /* 3. The toolbar was a heavy band across the middle of the card. */
+        .peditor .rte { box-shadow: inset 0 0 0 1px var(--border-strong); }
+        .peditor .rte-bar { background: var(--surface-2); border-bottom-color: var(--border); padding: 6px 8px; }
+        .peditor .rte-note { font-size: 10.5px; }
+
+        /* The gallery: two slots under the main frame, the shape the reference
+           uses. An empty slot is an invitation, not a placeholder. */
+        .pgal { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .pgal-slot { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; cursor: pointer;
+          background: var(--surface-2); border: 1px dashed var(--border-strong); padding: 0;
+          transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .pgal-slot:hover { border-color: var(--accent); background: var(--accent-light); }
+        .pgal-slot:active { transform: scale(0.97); }
+        .pgal-slot img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .pgal-slot.filled { border-style: solid; border-color: var(--border); background: var(--surface-3); }
+        .pgal-slot.filled img { display: block; }
+        .pgal-slot.filled .pgal-plus { display: none; }
+        .pgal-plus { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+          font-size: 20px; font-weight: 400; color: var(--muted-2); }
+        .pgal-slot.busy { opacity: .55; pointer-events: none; }
+        .pgal.locked .pgal-slot { cursor: default; opacity: .5; }
+        .pgal.locked .pgal-slot:hover { border-color: var(--border-strong); background: var(--surface-2); }
+        .pgal-note { font-size: 11.5px; color: var(--muted-2); margin-top: 8px; }
+
+        /* ==================================================================
            Round 55 -- the photo card, and the Products submenu.
            ================================================================== */
         /* A 16/11 frame, the proportion the reference uses, so the picture is
@@ -8869,21 +8954,46 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Its own header: title left with the way back under it, actions
            pinned right. A form whose Save is at the bottom of a long scroll
            makes you hunt for the one button you came to press. */
-        .catalog-card.editing > .card-head,
-        .catalog-card.editing > .cat-toolbar,
-        .catalog-card.editing > .cat-filter,
-        .catalog-card.editing > .product-grid,
-        .catalog-card.editing > .cat-summary { display: none; }
-        .catalog-card.editing { background: transparent; box-shadow: none; padding: 0; }
+        /* Round 57. The show/hide machinery that made one view behave like
+           three is gone: the editor and the delivery table are their own
+           pages now, so there is nothing left to toggle. */
         /* The catalogue list is capped at 800px, which is right for a grid of
            cards and far too narrow for a two-column editor -- it left the main
            column at 399px, half the width of the form it is modelled on. The
            editor takes the room it needs while it is open, and the list gets
            its narrow measure back when it closes. */
-        #catalogView:has(.catalog-card.editing) { max-width: 1180px; }
-        /* Delivery fees is a different job. It has no business sitting under
-           an open product form. */
-        #catalogView:has(.catalog-card.editing) > .catalog-card:not(.editing) { display: none; }
+        #productView { max-width: 1180px; }
+
+        /* Round 59. The last native controls in the app. Everything around
+           them was ours and these were the operating system's, which is the
+           kind of seam you stop noticing and a new user never does. */
+        .cat-sort select, .fees-row select, .field select, .catalog-form select {
+          appearance: none; -webkit-appearance: none; -moz-appearance: none;
+          padding-right: 30px; cursor: pointer;
+          background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236E6255' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat; background-position: right 10px center; background-size: 12px 12px;
+        }
+        .cat-sort select:hover, .fees-row select:hover, .field select:hover, .catalog-form select:hover { border-color: var(--muted-2); }
+        [data-theme="dark"] .cat-sort select, [data-theme="dark"] .fees-row select,
+        [data-theme="dark"] .field select, [data-theme="dark"] .catalog-form select {
+          background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A79A8B' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        }
+
+        /* Round 59. The Products pages were living in an 800px column while
+           Analytics had 1260, so the catalogue grid ran out of room at three
+           across and the delivery page was a small card adrift in half a
+           screen of nothing. */
+        .catalog-view#catalogView, .catalog-view#deliveryView, .catalog-view#productView { max-width: 1260px; padding: 24px 28px 30px; }
+
+        /* What Amara actually replies, built from the fees on the page. Not a
+           sample, not a placeholder -- the first listed state and its own
+           number, so the seller reads the sentence the customer reads. */
+        .dquote { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: var(--chat-bg);
+          box-shadow: inset 0 0 0 1px var(--border-light); font-size: 13px; line-height: 1.6; color: var(--text); }
+        .dquote:empty { display: none; }
+        .dquote b { font-weight: 600; }
+        .dquote-who { display: block; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+          text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2); margin-bottom: 6px; }
         .peditor { margin-top: 4px; }
         .peditor-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
           flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
@@ -8898,6 +9008,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            rather than a dialog. */
         .pform { display: grid; grid-template-columns: minmax(0,1fr) 316px; gap: 20px; align-items: start; }
         .pform-main, .pform-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+        #deliveryView .pform-side { position: sticky; top: 24px; }
         .pform-sec { background: var(--surface); border-radius: 16px; padding: 22px 24px 24px; box-shadow: var(--shadow-sm); }
         .pform-sec .an-head2 { margin-bottom: 18px; }
         .pform-sec .field-grid { margin: 0; }
@@ -9298,8 +9409,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span>Bookings</button>`
               : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Products<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
           <div class="subtabs" id="subProducts">
-            <button id="subCatalog" onclick="switchTab('catalog')">Catalogue</button>
-            <button id="subDelivery" onclick="goDelivery()">Delivery fees</button>
+            <button id="subCatalog" onclick="switchTab('catalog')">Product list</button>
+            <button id="subProduct" onclick="newProduct()">Add a product</button>
+            <button id="subDelivery" onclick="switchTab('delivery')">Delivery fees</button>
           </div>`
           }
           <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-6"/><path d="M12 21V3"/><path d="M19 21V9"/></svg></span>Analytics</button>
@@ -9342,6 +9454,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <div class="crumbs">
             <span class="crumb-root">Stafly</span>
             <span class="crumb-sep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>
+            <span class="crumb-mid" id="crumbTrail"></span>
             <h1 class="crumb-here" id="crumbHere">Dashboard</h1>
           </div>
           ${businessName ? `<span class="topbar-biz" title="${escapeHtmlServer(businessName)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg><span>${escapeHtmlServer(businessName)}</span></span>` : ""}
@@ -9408,20 +9521,31 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                title, the trail back to the list, and the two actions pinned
                right where a header puts them; the list hides while it is open,
                because you are editing one product, not browsing all of them. -->
+        </div>
+      </div>
+
+      <!-- Round 57. Three jobs, three pages. The editor and the delivery
+           table were living inside the catalogue view, shown and hidden by
+           class toggles -- one page pretending to be three. Each is its own
+           view now, reached from the menu and naming itself in the trail. -->
+      <div class="catalog-view" id="productView" style="display:none;">
           <div class="peditor" id="productPanel" style="display:none;">
             <div class="peditor-bar">
-              <div class="peditor-title">
-                <h2 id="productPanelTitle">New product</h2>
-                <button class="peditor-crumb" onclick="closeProductForm()">&larr; All products</button>
+              <!-- Round 58. The header was a word on a line. It carries the
+                   product now: its picture, its name, and the two facts you
+                   would check before touching anything. -->
+              <div class="peditor-id">
+                <span class="peditor-thumb" id="pHeadThumb"><img alt=""><i></i></span>
+                <div class="peditor-title">
+                  <h2 id="productPanelTitle">New product</h2>
+                  <div class="peditor-meta" id="pHeadMeta"></div>
+                </div>
               </div>
               <div class="peditor-actions">
                 <span class="catalog-msg" id="catalogMsg"></span>
                 <button class="btn-quiet" onclick="closeProductForm()">Cancel</button>
                 <button class="catalog-btn" onclick="saveProduct()">Save product</button>
               </div>
-            </div>
-            <div id="productEditingNote" style="display:none;font-size:12px;color:var(--muted);margin:-6px 0 16px;">
-              Editing "<b id="productEditingName"></b>" &middot; <a href="#" onclick="cancelEditProduct();return false;">cancel, add a new one instead</a>
             </div>
             <input type="hidden" id="pKey">
             <input type="hidden" id="pRemoveImage" value="">
@@ -9430,8 +9554,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="pform-main">
 
                 <div class="pform-sec">
-                  <div class="an-head2"><span class="home-eyebrow">Basic information</span>
-                    <span class="an-note">What Amara reads out when a customer asks</span></div>
+                  <div class="an-head2"><span class="home-eyebrow">What you're selling</span>
+                    <span class="an-note">Amara quotes these exactly as written</span></div>
                   <div class="field-grid">
                     <div class="field field-full">
                       <label for="pName">Product name</label>
@@ -9453,8 +9577,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 </div>
 
                 <div class="pform-sec">
-                  <div class="an-head2"><span class="home-eyebrow">Description</span>
-                    <span class="an-note">Materials, sizes, colours &mdash; anything she needs to answer accurately</span></div>
+                  <div class="an-head2"><span class="home-eyebrow">How you'd describe it</span>
+                    <span class="an-note">Materials, sizes, colours &mdash; whatever a customer asks about</span></div>
                   <!-- The toolbar writes WhatsApp's own formatting marks, which
                        is the only formatting that survives the trip: *bold*,
                        _italic_, ~strike~. Nothing here is decorative. -->
@@ -9476,8 +9600,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="pform-side">
 
                 <div class="pform-sec">
-                  <div class="an-head2"><span class="home-eyebrow">Product photo</span>
-                    <span class="an-note">The exact image Amara sends</span></div>
+                  <div class="an-head2"><span class="home-eyebrow">Photos</span>
+                    <span class="an-note">The first one is what Amara sends</span></div>
                   <!-- Round 55, bug. Opening a product that already had a photo
                        called clearPhotoPick(), which hides the preview and puts
                        the empty dashed box back -- so the seller was shown a
@@ -9492,6 +9616,22 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                       <button type="button" class="btn-quiet btn-tiny danger" onclick="removeShot()">Remove</button>
                     </div>
                   </div>
+                  <!-- Round 56. The reference shows a main image and two more
+                       beneath it, and it was right to: a customer asking to
+                       see a thing asks for more than one angle. Slots 2 and 3
+                       upload on pick, because they attach to a product that
+                       already exists; on a brand new one they wait until it
+                       has been saved and say so. -->
+                  <div class="pgal" id="pGal">
+                    <button type="button" class="pgal-slot" id="pGal1" onclick="pickExtra(1)" title="Add another photo">
+                      <img alt=""><span class="pgal-plus">+</span>
+                    </button>
+                    <button type="button" class="pgal-slot" id="pGal2" onclick="pickExtra(2)" title="Add another photo">
+                      <img alt=""><span class="pgal-plus">+</span>
+                    </button>
+                  </div>
+                  <input id="pExtraFile" type="file" accept="image/*" hidden onchange="uploadExtra(this.files)">
+                  <div class="pgal-note" id="pGalNote">Save the product first to add more photos</div>
                   <div class="dropzone" id="photoDrop" tabindex="0" role="button" aria-label="Choose or drop a product photo"
                        onclick="document.getElementById('pPhotoFile').click()"
                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('pPhotoFile').click();}">
@@ -9525,38 +9665,68 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               </div>
             </div>
           </div>
-        </div>
-        <div class="catalog-card">
-          <h2>Delivery fees</h2>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
-            Add the Nigerian states you actually deliver to, each with its own fee. Customers
-            outside those states can still be covered by a fallback fee below, or left
-            unavailable if you're not ready to ship there yet.
-          </div>
-          <table class="catalog-table" style="margin-bottom:14px;">
-            <thead><tr><th>State</th><th>Fee (N)</th><th></th></tr></thead>
-            <tbody id="deliveryStatesTableBody"></tbody>
-          </table>
-          <div class="fees-row">
-            <div>
-              <label>Add a state</label>
-              <select id="stateSelect"></select>
+      </div>
+
+      <!-- Round 59. This page was a bare h2, a paragraph and a raw table in an
+           800px column, sitting in half a screen of empty. It is built like
+           the product editor now -- the same .pform grid, the same section
+           cards, the same eyebrow and note -- and the side column carries the
+           one thing the seller cannot see anywhere else: the sentence Amara
+           sends, composed from the fees actually on this page. -->
+      <div class="catalog-view" id="deliveryView" style="display:none;">
+        <div class="pform">
+          <div class="pform-main">
+            <div class="pform-sec">
+              <div class="an-head2">
+                <span class="home-eyebrow">Where you deliver</span>
+                <span class="an-note">Amara quotes these by name. A state that is not on this list falls back to the fee below.</span>
+              </div>
+              <table class="catalog-table" style="margin-bottom:18px;">
+                <thead><tr><th>State</th><th>Fee</th><th></th></tr></thead>
+                <tbody id="deliveryStatesTableBody"></tbody>
+              </table>
+              <div class="fees-row">
+                <div>
+                  <label>Add a state</label>
+                  <select id="stateSelect"></select>
+                </div>
+                <div>
+                  <label>Fee</label>
+                  <input id="stateFee" type="number" min="0" placeholder="2000">
+                </div>
+                <button class="catalog-btn" onclick="addDeliveryState()">Add state</button>
+              </div>
+              <div class="catalog-msg" id="stateMsg"></div>
             </div>
-            <div>
-              <label>Fee (N)</label>
-              <input id="stateFee" type="number" min="0" placeholder="2000">
+
+            <div class="pform-sec">
+              <div class="an-head2">
+                <span class="home-eyebrow">Everywhere else</span>
+                <span class="an-note">One fee for every state you have not listed. Leave it blank and Amara says you do not deliver there yet.</span>
+              </div>
+              <div class="fees-row">
+                <div style="width:280px;">
+                  <label>Fallback fee</label>
+                  <input id="feeDefault" type="number" min="0" placeholder="Leave blank = don't deliver there yet">
+                </div>
+                <button class="catalog-btn" onclick="saveDeliveryDefaultFee()">Save fallback fee</button>
+              </div>
+              <div class="catalog-msg" id="feesMsg"></div>
             </div>
-            <button class="catalog-btn" onclick="addDeliveryState()">Add state</button>
           </div>
-          <div class="catalog-msg" id="stateMsg"></div>
-          <div class="fees-row" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-            <div style="width:280px;">
-              <label>Fallback fee for any other state (N)</label>
-              <input id="feeDefault" type="number" min="0" placeholder="Leave blank = don't deliver there yet">
+
+          <div class="pform-side">
+            <div class="pform-sec">
+              <div class="an-head2">
+                <span class="home-eyebrow">What a customer hears</span>
+                <span class="an-note">Straight from the fees on this page</span>
+              </div>
+              <div class="perf-row"><b id="delStateCount">0</b><span id="delStateCountLabel">states listed</span></div>
+              <div class="perf-row"><b id="delRange">&mdash;</b><span id="delRangeLabel">no fees set yet</span></div>
+              <div class="perf-row"><b id="delRest">&mdash;</b><span id="delRestLabel">on the fallback fee</span></div>
+              <div class="dquote" id="delQuote"></div>
             </div>
-            <button class="catalog-btn" onclick="saveDeliveryDefaultFee()">Save fallback fee</button>
           </div>
-          <div class="catalog-msg" id="feesMsg"></div>
         </div>
       </div>
       <div class="catalog-view" id="servicesView" style="display:none;">
@@ -11106,20 +11276,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Delivery fees lives on the catalogue page, so this is one
         // destination reached two ways rather than a second page pretending
         // to exist.
-        function goDelivery() {
-          window.__deliveryTarget = true;
-          switchTab("catalog");
-          setTimeout(() => {
-            const cards = document.querySelectorAll("#catalogView .catalog-card");
-            const target = cards[cards.length - 1];
-            if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-            const sd = document.getElementById("subDelivery");
-            const sc = document.getElementById("subCatalog");
-            if (sd) sd.classList.add("on");
-            if (sc) sc.classList.remove("on");
-            window.__deliveryTarget = false;
-          }, 320);
+        function newProduct() {
+          cancelEditProduct();
+          switchTab("product");
+          setTimeout(() => { const n = document.getElementById("pName"); if (n) n.focus(); }, 260);
         }
+
+        const CRUMB_SEP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
 
         function switchTab(tab) {
           // Not every element below exists on every seller's dashboard --
@@ -11127,7 +11290,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // seller never gets tabCatalog. Guarded with optional chaining
           // so this one function works for either businessType without
           // needing its own fork.
-          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView" };
+          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView", product: "productView", delivery: "deliveryView" };
           let entering = null;
           for (const t in views) {
             const el = document.getElementById(views[t]);
@@ -11139,7 +11302,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               el.style.display = "none";
             }
           }
-          const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings", support: "tabSupport" };
+          const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings", support: "tabSupport", product: "subProduct", delivery: "subDelivery" };
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
@@ -11147,23 +11310,59 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           moveNavPill(true);
           // Round 55. The submenu opens with its parent and closes with it.
           // Two entries, because two is how many real destinations there are.
+          // The group stays open across all three of its children, and the
+          // child that is actually showing carries the mark.
           const sub = document.getElementById("subProducts");
           if (sub) {
-            const on = tab === "catalog";
-            sub.classList.toggle("open", on);
+            const inGroup = tab === "catalog" || tab === "product" || tab === "delivery";
+            sub.classList.toggle("open", inGroup);
             const parent = document.getElementById("tabCatalog");
-            if (parent) parent.classList.toggle("open", on);
-            const sc = document.getElementById("subCatalog");
-            if (sc) sc.classList.toggle("on", on && !window.__deliveryTarget);
+            if (parent) { parent.classList.toggle("open", inGroup); parent.classList.toggle("group-on", inGroup); }
+            // "Add a product" is only lit while you are actually adding one.
+            // Editing an existing product belongs to the list it came from.
+            const editing = !!((document.getElementById("pKey") || {}).value);
+            const map = { catalog: "subCatalog", product: editing ? "subCatalog" : "subProduct", delivery: "subDelivery" };
+            ["subCatalog", "subProduct", "subDelivery"].forEach((id) => {
+              const el = document.getElementById(id);
+              if (el) el.classList.toggle("on", map[tab] === id);
+            });
           }
           // Round 50. "Live Dashboard" sat at the top of every screen in the
           // product, which tells you nothing about where you are. The trail
           // names the page you actually clicked.
-          const CRUMB = { home: "Dashboard", conversations: "Conversations", catalog: "Catalogue",
-            services: "Services", bookings: "Bookings", analytics: "Analytics",
-            settings: "Settings", support: "Help & support" };
+          // Round 58. The trail was repeating the page title -- "Plain white
+          // tee" in the header and "Plain white tee" in the crumb, the same
+          // words twice within an inch. A trail is a PATH: it says how you got
+          // here, and the title says what you are looking at.
+          const editingNow = !!((document.getElementById("pKey") || {}).value);
+          const CRUMB = {
+            home: ["Dashboard"], conversations: ["Conversations"], catalog: ["Catalogue"],
+            services: ["Services"], bookings: ["Bookings"], analytics: ["Analytics"],
+            settings: ["Settings"], support: ["Help & support"],
+            product: ["Catalogue", editingNow ? "Edit product" : "New product"],
+            delivery: ["Catalogue", "Delivery fees"],
+          };
+          const path = CRUMB[tab] || ["Dashboard"];
+          const trail = document.getElementById("crumbTrail");
           const crumb = document.getElementById("crumbHere");
-          if (crumb) crumb.textContent = CRUMB[tab] || "Dashboard";
+          if (trail) {
+            // No inline onclick here. A JS string, inside an HTML attribute,
+            // inside the server's own template literal is three levels of
+            // quoting and it is the exact shape that has broken this file
+            // before -- the escaped quote collapses and closes the string
+            // early. One delegated listener instead.
+            trail.innerHTML = path.slice(0, -1).map((seg) =>
+              '<button class="crumb-link" data-crumb="catalog">' + escapeHtml(seg) + '</button>' +
+              '<span class="crumb-sep">' + CRUMB_SEP + '</span>').join("");
+            if (!trail.dataset.wired) {
+              trail.dataset.wired = "1";
+              trail.addEventListener("click", (e) => {
+                const btn = e.target.closest("[data-crumb]");
+                if (btn) switchTab(btn.getAttribute("data-crumb"));
+              });
+            }
+          }
+          if (crumb) crumb.textContent = path[path.length - 1];
           try { document.title = (CRUMB[tab] || "Dashboard") + " \u00b7 Stafly.AI"; } catch (e) {}
           // Coming back to Conversations from the menu should land on the
           // LIST, not silently reopen whichever thread was last read -- on a
@@ -11235,7 +11434,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const paymentBlock = c.last_payment_at
             ? '<div class="detail-card paid-card">' +
                 '<div class="detail-card-title">Last payment</div>' +
-                '<div class="detail-amount">N' + Number(c.last_payment_amount || 0).toLocaleString() + '</div>' +
+                '<div class="detail-amount">\u20A6' + Number(c.last_payment_amount || 0).toLocaleString() + '</div>' +
                 '<div class="detail-muted">' + escapeHtml(formatFullDate(c.last_payment_at)) + '</div>' +
                 (c.last_payment_reference
                   ? '<div class="detail-ref" title="' + escapeHtml(c.last_payment_reference) + '">Ref ' + escapeHtml(String(c.last_payment_reference).slice(0, 18)) + '</div>'
@@ -11784,7 +11983,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   callbacks: {
                     label: (item) => {
                       const i = item.dataIndex;
-                      return "N" + item.parsed.y.toLocaleString() + " (" + orders[i] + " order" + (orders[i] === 1 ? "" : "s") + ")";
+                      return "\u20A6" + item.parsed.y.toLocaleString() + " (" + orders[i] + " order" + (orders[i] === 1 ? "" : "s") + ")";
                     },
                   },
                 },
@@ -11810,7 +12009,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                     font: { family: "Geist Variable", size: narrow ? 10 : 11 },
                     maxTicksLimit: narrow ? 4 : 6,
                     padding: narrow ? 4 : 8,
-                    callback: (v) => v >= 1000 ? "N" + Math.round(v / 1000) + "k" : "N" + v,
+                    callback: (v) => v >= 1000 ? "\u20A6" + Math.round(v / 1000) + "k" : "\u20A6" + v,
                   },
                 },
               },
@@ -11886,11 +12085,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }
 
           document.getElementById("analyticsKpis").innerHTML =
-            kpi("k-revenue", ICON_WALLET, "N" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
+            kpi("k-revenue", ICON_WALLET, "\u20A6" + totalRevenue.toLocaleString(), "Revenue", delta(totalRevenue, prev.revenue).html) +
             kpi("k-orders", ICON_BOX, totalOrders.toLocaleString(), "Paid orders", delta(totalOrders, prev.orders).html) +
-            kpi("k-average", ICON_WALLET, totalOrders > 0 ? "N" + avgOrder.toLocaleString() : "\u2014", "Average order",
+            kpi("k-average", ICON_WALLET, totalOrders > 0 ? "\u20A6" + avgOrder.toLocaleString() : "\u2014", "Average order",
               pill("none", false, totalOrders > 0 ? "across " + totalOrders + " order" + (totalOrders === 1 ? "" : "s") : "no orders yet")) +
-            kpi("k-best", ICON_TREND, bestIdx === -1 ? "\u2014" : "N" + values[bestIdx].toLocaleString(), "Best day",
+            kpi("k-best", ICON_TREND, bestIdx === -1 ? "\u2014" : "\u20A6" + values[bestIdx].toLocaleString(), "Best day",
               pill("none", false, bestIdx === -1 ? "no sales in this window" : escapeHtml(labels[bestIdx])));
 
           renderWeekdays(data);
@@ -11904,7 +12103,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   '<span class="seller-rank">' + (i + 1) + '</span>' +
                   '<div class="seller-main">' +
                     '<div class="seller-top"><span class="seller-name">' + escapeHtml(p.name) + '</span>' +
-                    '<span class="seller-rev">N' + p.revenue.toLocaleString() + '</span></div>' +
+                    '<span class="seller-rev">\u20A6' + p.revenue.toLocaleString() + '</span></div>' +
                     '<div class="best-seller-bar-track"><div class="best-seller-bar-fill" style="width:' + Math.round((p.sold / maxSold) * 100) + '%;"></div></div>' +
                     '<div class="seller-units">' + p.sold + ' sold</div>' +
                   '</div>' +
@@ -12228,7 +12427,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               s.totalCustomers ? "of " + s.totalCustomers + " you've ever spoken to" : "") +
             homeTile("t-paused", ICON_PAUSE, s.pausedNow, "You're handling",
               s.pausedNow ? "Amara has stepped back" : "Amara is on all of them") +
-            homeTile("t-revenue", ICON_WALLET, "N" + (s.revenueTodayNaira || 0).toLocaleString(), "Paid today",
+            homeTile("t-revenue", ICON_WALLET, "\u20A6" + (s.revenueTodayNaira || 0).toLocaleString(), "Paid today",
               paidToday ? paidToday + " order" + (paidToday === 1 ? "" : "s") : "no orders yet today");
           // Count up only the first time. The poll must not restart it, or the
           // numbers would visibly churn every few seconds.
@@ -12376,7 +12575,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="wk-foot">' +
                 '<div class="wk-stat"><b>' + totalNew + '</b><span>new</span></div>' +
                 '<div class="wk-stat"><b>' + totalOrders + '</b><span>paid orders</span></div>' +
-                '<div class="wk-stat"><b>N' + totalRev.toLocaleString() + '</b><span>taken</span></div>' +
+                '<div class="wk-stat"><b>\u20A6' + totalRev.toLocaleString() + '</b><span>taken</span></div>' +
               '</div>' +
             '</div>';
         }
@@ -12422,7 +12621,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div class="ptile-img">' + thumb +
                   (p.sold ? '<span class="ptile-sold">' + p.sold + ' sold</span>' : '') +
                   '<span class="ptile-veil"></span>' +
-                  '<span class="ptile-price">' + (p.price ? "N" + p.price.toLocaleString() : "No price") + '</span>' +
+                  '<span class="ptile-price">' + (p.price ? "\u20A6" + p.price.toLocaleString() : "No price") + '</span>' +
                 '</div>' +
                 '<div class="ptile-name">' + escapeHtml(p.name) + '</div>' +
               '</div>';
@@ -12850,7 +13049,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '</div>' +
                 '<div class="product-body">' +
                   '<div class="product-name" title="' + escapeHtml(p.name) + '">' + escapeHtml(p.name) + '</div>' +
-                  '<div class="product-price">' + (Number(p.price) ? "N" + Number(p.price).toLocaleString() : '<span class="price-missing">No price set</span>') + '</div>' +
+                  '<div class="product-price">' + (Number(p.price) ? "\u20A6" + Number(p.price).toLocaleString() : '<span class="price-missing">No price set</span>') + '</div>' +
                   (missing.length
                     ? '<div class="product-flag">' + ICON_ALERT + 'Missing ' + missing.join(", ") + '</div>'
                     : '') +
@@ -12884,7 +13083,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               summary.innerHTML =
                 '<span>' + keys.length + ' product' + (keys.length === 1 ? "" : "s") + '</span>' +
                 '<span>' + (visible.length === keys.length ? "all shown" : visible.length + " shown") + '</span>' +
-                '<span>N' + totalValue.toLocaleString() + ' listed value</span>' +
+                '<span>\u20A6' + totalValue.toLocaleString() + ' listed value</span>' +
                 (needing
                   ? '<span class="sum-warn">' + needing + ' need' + (needing === 1 ? "s" : "") + ' attention</span>'
                   : '<span class="sum-ok">all complete</span>');
@@ -12901,6 +13100,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           renderDeliveryStates(window.deliveryStatesCache);
           document.getElementById("feeDefault").value =
             deliveryDefaultFee === null || deliveryDefaultFee === undefined ? "" : deliveryDefaultFee;
+          paintDeliverySummary();
 
           if (bankDetails) {
             document.getElementById("bankName").value = bankDetails.bankName || "";
@@ -12991,12 +13191,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             (p.imageUrl && p.imageUrl.indexOf("/images/") === -1 && p.imageUrl.indexOf("/catalog-photo/") === -1) ? p.imageUrl : "";
           clearPhotoPick();
           showShot(p.imageUrl || "");
+          paintGallery(p.gallery || []);
+          setTimeout(paintHeader, 0);
           const catEl2 = document.getElementById("pCategory");
           if (catEl2) catEl2.value = p.category || "";
-          document.getElementById("productEditingName").textContent = p.name;
-          document.getElementById("productEditingNote").style.display = "block";
+          // Round 57. The title was "Edit product", lifted straight off the
+          // reference. A page that already has Save and Cancel in its header
+          // does not need to announce that it is an edit screen -- it should
+          // say WHICH product you are looking at.
           const title = document.getElementById("productPanelTitle");
-          if (title) title.textContent = "Edit product";
+          if (title) title.textContent = p.name || "Product";
           openProductForm(); // editing has to reveal the panel, not just fill it
           document.getElementById("pName").scrollIntoView({ behavior: "smooth", block: "center" });
         }
@@ -13011,7 +13215,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (catEl) catEl.value = "";
           clearPhotoPick();
           showShot("");
-          document.getElementById("productEditingNote").style.display = "none";
+          paintGallery([]);
           const title = document.getElementById("productPanelTitle");
           if (title) title.textContent = "New product";
         }
@@ -13063,6 +13267,63 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             dz.style.display = "";
           }
         }
+        // Slots 2 and 3. They post on their own, straight away, because they
+        // attach to a product that already exists -- there is nothing to hold
+        // them for. A product with no key yet has nothing to attach to, so the
+        // slots stay shut and say why.
+        let extraSlot = 0;
+        function pickExtra(n) {
+          const key = (document.getElementById("pKey") || {}).value || "";
+          if (!key) return;
+          extraSlot = n;
+          document.getElementById("pExtraFile").click();
+        }
+        async function uploadExtra(files) {
+          const f = files && files[0];
+          if (!f || !extraSlot) return;
+          const key = (document.getElementById("pKey") || {}).value || "";
+          if (!key) return;
+          if (f.size > MAX_PHOTO_BYTES) { flash(document.getElementById("catalogMsg"), "That photo is over 1.5MB.", "bad"); return; }
+          const slotEl = document.getElementById("pGal" + extraSlot);
+          if (slotEl) slotEl.classList.add("busy");
+          const fd = new FormData();
+          fd.append("key", key);
+          fd.append("name", document.getElementById("pName").value);
+          fd.append("price", document.getElementById("pPrice").value);
+          fd.append("photoSlot", String(extraSlot));
+          fd.append("photo", f);
+          try {
+            const res = await fetch("/api/catalog/product?" + ADMIN_QS, { method: "POST", body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Could not upload.");
+            const url = URL.createObjectURL(f);
+            if (slotEl) { slotEl.classList.add("filled"); slotEl.querySelector("img").src = url; }
+            flash(document.getElementById("catalogMsg"), "Photo added", "ok");
+            loadCatalog();
+          } catch (err) {
+            flash(document.getElementById("catalogMsg"), err.message, "bad");
+          } finally {
+            if (slotEl) slotEl.classList.remove("busy");
+            document.getElementById("pExtraFile").value = "";
+            extraSlot = 0;
+          }
+        }
+        function paintGallery(list) {
+          const key = (document.getElementById("pKey") || {}).value || "";
+          const note = document.getElementById("pGalNote");
+          const gal = document.getElementById("pGal");
+          if (note) note.style.display = key ? "none" : "block";
+          if (gal) gal.classList.toggle("locked", !key);
+          [1, 2].forEach((n) => {
+            const el = document.getElementById("pGal" + n);
+            if (!el) return;
+            const url = (list || [])[n - 1];
+            el.classList.toggle("filled", !!url);
+            const img = el.querySelector("img");
+            if (url) img.src = url; else img.removeAttribute("src");
+          });
+        }
+
         function replaceShot() {
           const box = document.getElementById("pShot");
           const dz = document.getElementById("photoDrop");
@@ -13148,12 +13409,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         function openProductForm() {
           const panel = document.getElementById("productPanel");
           if (!panel) return;
-          const card = panel.closest(".catalog-card");
-          if (card) card.classList.add("editing");
           panel.style.display = "block";
+          if (!document.getElementById("productView") ||
+              getComputedStyle(document.getElementById("productView")).display === "none") switchTab("product");
           initDropzone();
           showProductPerf();
-          const view = document.getElementById("catalogView");
+          paintHeader();
+          ["pName", "pPrice", "pCategory"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el && !el.dataset.hdr) { el.dataset.hdr = "1"; el.addEventListener("input", paintHeader); }
+          });
+          const view = document.getElementById("productView");
           if (view) view.scrollTop = 0;
           const name = document.getElementById("pName");
           if (name) name.focus();
@@ -13161,6 +13427,33 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         // Only shown when this product has actually sold something. No card
         // that says zero for a product nobody has bought yet.
+        // The header mirrors whatever is in the form, live, so the thing you
+        // are editing is always named and pictured at the top of the page.
+        function paintHeader() {
+          const thumb = document.getElementById("pHeadThumb");
+          const meta = document.getElementById("pHeadMeta");
+          const title = document.getElementById("productPanelTitle");
+          if (!thumb || !meta) return;
+          const name = (document.getElementById("pName") || {}).value || "";
+          const price = Number((document.getElementById("pPrice") || {}).value || 0);
+          const cat = (document.getElementById("pCategory") || {}).value || "";
+          const key = (document.getElementById("pKey") || {}).value || "";
+          if (title && key) title.textContent = name || "Product";
+          const src = (document.getElementById("pShotImg") || {}).src || "";
+          const img = thumb.querySelector("img");
+          const ph = thumb.querySelector("i");
+          const hasShot = !!src && getComputedStyle(document.getElementById("pShot")).display !== "none";
+          if (hasShot) { img.src = src; thumb.classList.add("has"); }
+          else { img.removeAttribute("src"); thumb.classList.remove("has"); }
+          if (ph) ph.textContent = (name || "?").trim().charAt(0).toUpperCase();
+          const bits = [];
+          if (price) bits.push("\u20A6" + price.toLocaleString());
+          if (cat) bits.push(cat);
+          const extra = document.querySelectorAll(".pgal-slot.filled").length + (hasShot ? 1 : 0);
+          if (extra) bits.push(extra === 1 ? "1 photo" : extra + " photos");
+          meta.textContent = bits.join("  \u00b7  ");
+        }
+
         function showProductPerf() {
           const box = document.getElementById("pPerf");
           if (!box) return;
@@ -13201,10 +13494,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           el.setSelectionRange(s + insert.length, s + insert.length);
         }
         function closeProductForm() {
-          const panel = document.getElementById("productPanel");
-          const card = panel && panel.closest(".catalog-card");
-          if (card) card.classList.remove("editing");
-          if (panel) panel.style.display = "none";
+          switchTab("catalog");
           cancelEditProduct();
           const msg = document.getElementById("catalogMsg");
           if (msg) { msg.textContent = ""; msg.className = "catalog-msg"; }
@@ -13261,7 +13551,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // does.
           if (existing && (photoFile || imageUrlValue)) {
             const confirmed = confirm(
-              'Replace the LIVE photo for "' + existing.name + '" (N' + Number(existing.price).toLocaleString() + ')? ' +
+              'Replace the LIVE photo for "' + existing.name + '" (\u20A6' + Number(existing.price).toLocaleString() + ')? ' +
               "Customers messaging Amara on WhatsApp right now may already be seeing the current photo, and this takes effect immediately."
             );
             if (!confirmed) return;
@@ -13323,6 +13613,72 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }
         }
 
+
+        function paintDeliverySummary() {
+          const states = window.deliveryStatesCache || {};
+          const slugs = Object.keys(states);
+          const fees = slugs.map((s) => Number(states[s]) || 0).filter((n) => n > 0);
+          const rawFallback = (document.getElementById("feeDefault") || {}).value;
+          const fallback = rawFallback === "" || rawFallback === undefined || rawFallback === null
+            ? null : Number(rawFallback);
+          const money = (n) => "\u20A6" + Number(n).toLocaleString();
+
+          const countEl = document.getElementById("delStateCount");
+          const countLab = document.getElementById("delStateCountLabel");
+          const rangeEl = document.getElementById("delRange");
+          const rangeLab = document.getElementById("delRangeLabel");
+          const quote = document.getElementById("delQuote");
+          if (!countEl || !rangeEl || !quote) return;
+
+          countEl.textContent = String(slugs.length);
+          countLab.textContent = slugs.length === 1 ? "state listed" : "states listed";
+
+          if (fees.length === 0) {
+            rangeEl.textContent = "\u2014";
+            rangeLab.textContent = "no fees set yet";
+          } else {
+            const lo = Math.min.apply(null, fees), hi = Math.max.apply(null, fees);
+            rangeEl.textContent = lo === hi ? money(lo) : money(lo) + " \u2013 " + money(hi);
+            rangeLab.textContent = lo === hi ? "on every listed state" : "across your listed states";
+          }
+
+          const nameFor = (slug) => {
+            const found = (window.nigeriaStates || []).find((s) => s.slug === slug);
+            return found ? found.name : slug;
+          };
+          const all = (window.nigeriaStates || []).length;
+          const restEl = document.getElementById("delRest");
+          const restLab = document.getElementById("delRestLabel");
+          if (restEl && restLab) {
+            const rest = all ? all - slugs.length : 0;
+            if (!all) { restEl.textContent = "\u2014"; restLab.textContent = "state list not loaded"; }
+            else if (fallback !== null && fallback >= 0) {
+              restEl.textContent = String(rest);
+              restLab.textContent = (rest === 1 ? "state pays " : "states pay ") + money(fallback);
+            } else {
+              restEl.textContent = String(rest);
+              restLab.textContent = rest === 1 ? "state you do not deliver to" : "states you do not deliver to";
+            }
+          }
+
+          const named = slugs.slice().sort((a, b) => nameFor(a).localeCompare(nameFor(b)))[0];
+          let line = "";
+          if (named) {
+            line = "Delivery to <b>" + escapeHtml(nameFor(named)) + "</b> is <b>" +
+              money(states[named]) + "</b>.";
+            if (fallback !== null && fallback >= 0) {
+              line += " Anywhere else is <b>" + money(fallback) + "</b>.";
+            } else {
+              line += " Outside your listed states she says delivery is not available yet.";
+            }
+          } else if (fallback !== null && fallback >= 0) {
+            line = "Delivery is <b>" + money(fallback) + "</b> to any state in Nigeria.";
+          } else {
+            line = "Nothing is set, so Amara tells customers delivery is not available yet.";
+          }
+          quote.innerHTML = '<span class="dquote-who">Amara replies</span>' + line;
+        }
+
         function renderDeliveryStates(deliveryStates) {
           const body = document.getElementById("deliveryStatesTableBody");
           const slugs = Object.keys(deliveryStates || {});
@@ -13336,11 +13692,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 .map((slug) =>
                   '<tr>' +
                     '<td>' + escapeHtml(nameFor(slug)) + '</td>' +
-                    '<td>N' + Number(deliveryStates[slug]).toLocaleString() + '</td>' +
+                    '<td class="num">\u20A6' + Number(deliveryStates[slug]).toLocaleString() + '</td>' +
                     '<td><button class="catalog-btn danger" onclick="removeDeliveryState(\\'' + slug + '\\')">Remove</button></td>' +
                   '</tr>'
                 ).join("")
-            : '<tr><td colspan="3" style="color:var(--muted-2);">No states added yet. Amara won\\'t quote delivery to any state until you add at least one, or set a fallback fee below.</td></tr>';
+            : '<tr><td colspan="3" style="color:var(--muted-2);">No states yet. Until you add one or set a fallback fee, Amara tells customers delivery is not set up.</td></tr>';
+          paintDeliverySummary();
         }
 
         async function addDeliveryState() {
@@ -13485,7 +13842,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div class="svc-name">' + escapeHtml(o.name) + '</div>' +
                 '<div class="svc-meta">' +
                   (Number(o.price)
-                    ? '<span class="svc-price">N' + Number(o.price).toLocaleString() + '</span>'
+                    ? '<span class="svc-price">\u20A6' + Number(o.price).toLocaleString() + '</span>'
                     : '<span class="svc-price warn">No price set</span>') +
                   '<span>' + escapeHtml(dur) + '</span>' +
                   (mode
@@ -14640,7 +14997,7 @@ app.post("/api/catalog/product", (req, res, next) => {
 }, async (req, res) => {
   const seller = await resolveActingSeller(req);
   if (!seller) return res.status(403).json({ error: "unauthorized" });
-  const { key, name, price, imageUrl, description, category, removeImage } = req.body || {};
+  const { key, name, price, imageUrl, description, category, removeImage, photoSlot } = req.body || {};
 
   // Same "code is the guarantee" rule as everywhere else money-adjacent
   // in this file: validate for real here, don't just trust whatever the
@@ -14695,7 +15052,21 @@ app.post("/api/catalog/product", (req, res, next) => {
       console.error("catalog photo remove: failed to delete from Redis:", err.message);
     }
   }
-  if (req.file) {
+  // Slot 1 and 2 are the extra photos; slot 0 (or absent) is the main one.
+  const slot = Number(photoSlot) === 1 ? 1 : Number(photoSlot) === 2 ? 2 : 0;
+  if (req.file && slot > 0) {
+    const gkey = `${cleanKey}__${slot + 1}`;
+    const mime = req.file.mimetype;
+    sellerPhotoCache[`${seller.sellerId}:${gkey}`] = { mime, buffer: req.file.buffer };
+    if (!Array.isArray(seller.catalog.PRODUCT_GALLERY[cleanKey])) seller.catalog.PRODUCT_GALLERY[cleanKey] = [];
+    seller.catalog.PRODUCT_GALLERY[cleanKey][slot - 1] = `${BASE_URL}/catalog-photo/${seller.sellerId}/${gkey}`;
+    try {
+      await redisCommand(["SET", nsKey(seller.sellerId, `catalog:photo:${gkey}`),
+        JSON.stringify({ mime, data: req.file.buffer.toString("base64") })]);
+    } catch (err) {
+      console.error("catalog gallery upload: failed to persist:", err.message);
+    }
+  } else if (req.file) {
     // A real photo was uploaded: store it in Redis (base64) next to the
     // rest of this seller's catalog, cache it in memory for fast serving,
     // and point PRODUCT_IMAGES at our own /catalog-photo URL for it.
@@ -15383,7 +15754,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 55";
+const BUILD_ROUND = "Round 59";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
