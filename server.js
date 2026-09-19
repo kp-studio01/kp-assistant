@@ -9627,12 +9627,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            end and is why a panel feels like it was placed rather than thrown.
            ================================================================ */
         .drawer-scrim {
-          position: fixed; inset: 0; background: rgba(34,29,24,0.42);
+          /* Round 77. This was inset: 0, so the panel dimmed the rail and ate
+             every click on it -- you could not move to another page without
+             closing the panel first. The rail is 240px and is not what the
+             panel is over, so the scrim starts where the content does. Below
+             1000px the rail is off-canvas and the scrim is full-bleed again. */
+          position: fixed; top: 0; right: 0; bottom: 0; left: 240px;
+          background: rgba(34,29,24,0.42);
           opacity: 0; pointer-events: none; z-index: 60;
           transition: opacity var(--dur-base) var(--ease-out);
         }
         [data-theme="dark"] .drawer-scrim { background: rgba(0,0,0,0.58); }
         .drawer-scrim.on { opacity: 1; pointer-events: auto; }
+        @media (max-width: 1000px) { .drawer-scrim { left: 0; } }
         @supports (backdrop-filter: blur(2px)) { .drawer-scrim.on { backdrop-filter: blur(2px); } }
 
         .catalog-view#productView {
@@ -12947,7 +12954,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               { transform: "translate(" + dx + "px," + dy + "px)", width: first.width + "px", height: first.height + "px" },
               { transform: "none", width: last.width + "px", height: last.height + "px" },
             ],
-            { duration: 320, easing: "cubic-bezier(.3, 1.05, .4, 1)" }
+            { duration: 260, easing: "cubic-bezier(.3, 1.05, .4, 1)" }
           );
         }
 
@@ -13052,7 +13059,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // The add button belongs to the list, so it exists only while the
           // list is what you are looking at.
           document.body.classList.toggle("fab-on", shown === "catalog");
-          moveNavPill(true);
+          // Round 77. moveNavPill() used to run HERE, before the block below
+          // set "on" on the sub-row. It reads the active row to know where to
+          // travel, so inside Products it measured the row that was leaving
+          // and the highlight only caught up at the next resize. It is called
+          // once, after every class in this function has settled.
           // Round 55. The submenu opens with its parent and closes with it.
           // Two entries, because two is how many real destinations there are.
           // The group stays open across all three of its children, and the
@@ -13073,6 +13084,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               if (el) el.classList.toggle("on", map[tab] === id);
             });
           }
+          moveNavPill(true);
           // Round 50. "Live Dashboard" sat at the top of every screen in the
           // product, which tells you nothing about where you are. The trail
           // names the page you actually clicked.
@@ -18098,7 +18110,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 76";
+const BUILD_ROUND = "Round 77";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
