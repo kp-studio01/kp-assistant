@@ -2225,6 +2225,13 @@ app.post("/webhook", async (req, res) => {
     const statuses = value?.statuses;
     if (statuses && statuses.length > 0) {
       for (const status of statuses) {
+        // Round 73. sent -> delivered -> read, recorded against the message id
+        // so the dashboard can show one tick, two ticks, or two blue ticks.
+        // Only ever moves forward: a late "sent" callback cannot demote a
+        // message the customer has already read.
+        if (status.id && RANK[status.status]) {
+          recordMessageStatus(seller.sellerId, status.id, status.status).catch(() => {});
+        }
         if (status.status === "failed") {
           console.error(
             "DELIVERY FAILED:",
@@ -2569,7 +2576,17 @@ async function processBufferedTurn(seller, from) {
         await markReadAndShowTyping(seller, messageId);
       }
       await humanPause(bubbles[i]);
-      await sendWhatsApp(seller, from, bubbles[i]);
+      const outRes = await sendWhatsApp(seller, from, bubbles[i]);
+      // Round 73. Tag the stored message with the id WhatsApp gave it, so the
+      // status callbacks that arrive later have something to attach to.
+      if (outRes && outRes.messageId) {
+        for (let h = history.length - 1; h >= 0; h--) {
+          if (history[h].role === "assistant" && history[h].content === bubbles[i] && !history[h].wamid) {
+            history[h].wamid = outRes.messageId;
+            break;
+          }
+        }
+      }
       console.log(`Amara -> ${from}: ${bubbles[i]}`);
     }
 
@@ -3078,6 +3095,44 @@ async function sendWhatsAppImage(seller, to, imageUrl) {
 }
 
 // ---------- The WhatsApp send ----------
+
+// ---------------------------------------------------------------------------
+// Round 73. Delivery state per message.
+//
+// WhatsApp sends a status callback for every message the business sends, and
+// the three that matter arrive in order: sent, delivered, read. They are kept
+// in one hash per seller, keyed by the message id Meta returns on the send, so
+// a tick in the dashboard is a thing WhatsApp actually said rather than an
+// assumption that leaving our server means arriving on a phone.
+// ---------------------------------------------------------------------------
+const RANK = { sent: 1, delivered: 2, read: 3 };
+
+async function recordMessageStatus(sellerId, wamid, status) {
+  const key = nsKey(sellerId, "msgstatus");
+  try {
+    const current = await redisCommand(["HGET", key, wamid]);
+    if (current && (RANK[current] || 0) >= (RANK[status] || 0)) return;
+    await redisCommand(["HSET", key, wamid, status]);
+    // These are only useful while the thread is still worth looking at.
+    await redisCommand(["EXPIRE", key, String(60 * 60 * 24 * 30)]);
+  } catch (err) {
+    console.error("recordMessageStatus failed:", err.message);
+  }
+}
+
+async function getMessageStatuses(sellerId, ids) {
+  const wanted = (ids || []).filter(Boolean);
+  if (!wanted.length) return {};
+  try {
+    const vals = await redisCommand(["HMGET", nsKey(sellerId, "msgstatus")].concat(wanted));
+    const out = {};
+    wanted.forEach((id, i) => { if (vals && vals[i]) out[id] = vals[i]; });
+    return out;
+  } catch (err) {
+    return {};
+  }
+}
+
 async function sendWhatsApp(seller, to, text) {
   if (!seller.phoneNumberId || !seller.whatsappToken) {
     console.error(`sendWhatsApp: seller ${seller.sellerId} has no WhatsApp number connected yet, message not sent.`);
@@ -3105,7 +3160,11 @@ async function sendWhatsApp(seller, to, text) {
       console.error("WhatsApp send error:", JSON.stringify(data.error));
       return false;
     }
-    return true;
+    // Round 73. The id Meta gives back is the only way a later status callback
+    // can be matched to the message it belongs to. It was being discarded.
+    // Callers test this for truthiness, and an object is truthy, so every one
+    // of the 23 call sites behaves exactly as before.
+    return { ok: true, messageId: data.messages && data.messages[0] && data.messages[0].id };
   } catch (err) {
     // Meta occasionally returns a non-JSON error page during outages or
     // rate limiting. Don't let that crash the whole flow, just log it.
@@ -7261,9 +7320,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .thread-meta .lbl-short { display: inline; }
           .tm-phone { flex-shrink: 1; }
         }
-        .thread-status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ok-fg); white-space: nowrap; }
-        .thread-status-chip.is-paused { color: var(--warn-fg); }
-        .thread-status-chip .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        /* Round 73. A dot and a sentence floating in the header -- the "looks
+           like text only, not a standard design". It is a pill now, on its own
+           ground, with a ring on the dot, which is how every other state in
+           this product is drawn. */
+        .thread-status-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 9px;
+          border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+          color: var(--ok-fg); background: var(--ok-bg); box-shadow: inset 0 0 0 1px var(--ok-border); }
+        .thread-status-chip.is-paused { color: var(--warn-fg); background: var(--warn-bg);
+          box-shadow: inset 0 0 0 1px var(--warn-border); }
+        .thread-status-chip .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+          flex-shrink: 0; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
         .thread-sub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
@@ -10486,6 +10553,69 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .hcard-aside .hseg { width: 100%; }
           .hcard-aside .hseg-btn { flex: 1; }
         }
+
+        /* ==================================================================
+           Round 73.
+           ================================================================== */
+        .home-full { margin-bottom: 18px; }
+        /* With the whole page to work in, the chart gets the height to match
+           the width -- a wide, short plot reads as a strip, not a chart. */
+        .home-full .cf-axis, .home-full .cf-plot { height: 236px; }
+        .home-full .cf-cols { gap: clamp(6px, 1.6%, 18px); }
+
+        /* ---- the ticks --------------------------------------------------
+           Drawn only from the callbacks WhatsApp actually sent. A message with
+           no recorded status shows no tick at all, which is the honest state:
+           "we have not heard yet" is not "delivered". */
+        .bubble-tick { display: inline-flex; align-items: center; margin-left: 4px;
+          vertical-align: -1px; color: var(--muted-2); }
+        .bubble-tick svg { width: 15px; height: 11px; }
+        .bubble-tick.read { color: #34B7F1; }
+        .bubble.assistant .bubble-tick { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+        .bubble.assistant .bubble-tick.read { color: #34B7F1; }
+
+        /* ---- the composer ----------------------------------------------
+           The send button used to sit at the bottom of the pill, and the
+           bottom of the pill is a toolbar -- so it lined up with nothing.
+           It is the last item on that toolbar now, which is where every
+           composer worth copying puts it, and it cannot drift again because
+           it shares the row's baseline. */
+        .msg-compose { align-items: stretch; }
+        .compose-tools { display: flex; align-items: center; gap: 2px; }
+        .compose-tools .msg-send-btn { margin-left: auto; width: 34px; height: 34px; }
+        .compose-tools .msg-send-btn svg { width: 16px; height: 16px; }
+
+        /* ---- the phone, on a thread ------------------------------------
+           A conversation on a phone is the whole screen. The date chip, the
+           theme toggle and the account avatar belong to a dashboard, and on
+           390px they were taking a fifth of the width off the top of a
+           message thread to say nothing about it. */
+        @media (max-width: 760px) {
+          body:has(.layout.thread-open) .topbar-date-chip,
+          body:has(.layout.thread-open) .theme-toggle,
+          body:has(.layout.thread-open) .topbar-avatar,
+          body:has(.layout.thread-open) .crumbs,
+          body:has(.layout.thread-open) .topbar-biz { display: none; }
+          body:has(.layout.thread-open) .topbar { padding: 8px 12px; min-height: 0; }
+          body:has(.layout.thread-open) .msg-compose { padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
+          /* :has() is everywhere that matters now, but a browser without it
+             should still get a usable thread rather than a broken header, so
+             nothing above is load-bearing -- it only removes chrome. */
+          .compose-tools .msg-send-btn { width: 36px; height: 36px; }
+        }
+
+        /* .bubble-time floats right, so a tick placed after it in the markup
+           still painted before it. They are one floated unit now, in the
+           order WhatsApp uses: the time, then the ticks. */
+        .bubble-meta { float: right; display: inline-flex; align-items: center; gap: 3px;
+          margin: 6px -1px -2px 10px; }
+        .bubble-meta .bubble-time { float: none; margin: 0; }
+        .bubble-meta .bubble-tick { margin-left: 0; vertical-align: 0; }
+        /* On the accent bubble a muted tick disappears. These are the two
+           states that are not read, so they stay quiet but legible. */
+        .bubble.assistant .bubble-tick { color: rgba(255,255,255,0.72); }
+        .bubble.assistant .bubble-tick.read { color: #8FD8FF; }
+        .bubble.user .bubble-tick { color: var(--muted-2); }
       </style>
     </head>
     <body>
@@ -11555,6 +11685,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
         const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
         // Round 68. Icons the new page head and KPI cards need.
+        // Round 73. WhatsApp's own two shapes: one check, and two overlapping.
+        const ICON_TICK1 = '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 7.5 11 15 3"/></svg>';
+        const ICON_TICK2 = '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 7.5 5 11 12.5 3"/><path d="M8 11 15.5 3"/></svg>';
         const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor" stroke="none"/></svg>';
         const ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>';
         const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
@@ -11773,6 +11906,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             // first load of it. A background poll on the SAME conversation
             // just refreshes the messages + button, so it never wipes text
             // the owner is actively typing into the compose or notes box.
+            threadStatuses = data.statuses || {};
             if (isClick || phone !== renderedThreadPhone) {
               renderThread(phone, data.history, data.customer);
               renderedThreadPhone = phone;
@@ -11832,10 +11966,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             // outgoing message without it gets no label at all rather than a
             // guessed one.
             const byHtml = (!isUser && m.by === "owner") ? '<span class="bubble-by">You</span>' : "";
+            // Round 73. One tick when WhatsApp accepted it, two when it
+            // reached the phone, two in blue when it was opened. Drawn only
+            // from the callbacks WhatsApp actually sent: a message with no
+            // status recorded gets no tick rather than an optimistic one.
+            const st = !isUser && m.wamid ? (threadStatuses[m.wamid] || "") : "";
+            const tickHtml = st
+              ? '<span class="bubble-tick' + (st === "read" ? " read" : "") + '" title="' +
+                (st === "read" ? "Read" : st === "delivered" ? "Delivered" : "Sent") + '">' +
+                (st === "sent" ? ICON_TICK1 : ICON_TICK2) + '</span>'
+              : "";
             html += '<div class="msg-row ' + (isUser ? "from-user" : "from-assistant") + (endsGroup ? " group-end" : "") + '">' +
               '<div class="bubble-col">' +
                 '<div class="bubble ' + (isUser ? "user" : "assistant") + (endsGroup ? " has-tail" : "") + '">' +
-                  '<span class="bubble-text">' + escapeHtml(m.content) + '</span>' + byHtml + timeHtml +
+                  '<span class="bubble-text">' + escapeHtml(m.content) + '</span>' + byHtml +
+                  ((timeHtml || tickHtml) ? '<span class="bubble-meta">' + timeHtml + tickHtml + '</span>' : "") +
                 '</div>' +
               '</div>' +
               '</div>';
@@ -11932,6 +12077,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             : '<span class="thread-status-chip" id="threadStatusChip"><span class="chip-dot"></span><span class="lbl-full">Amara is replying</span><span class="lbl-short">Amara replying</span></span>';
         }
 
+        let threadStatuses = {};
+
         function renderThread(phone, history, customer) {
           const isPaused = customer && customer.paused === "yes";
           const main = document.getElementById("main");
@@ -12008,9 +12155,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                       '</div>' +
                     '</div>' +
                   '</div>' +
+                  '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
                 '</div>' +
               '</div>' +
-              '<button class="msg-send-btn" id="composeSendBtn" onclick="sendManualMessage(\\'' + phone + '\\')" title="Send" aria-label="Send">' + ICON_SEND + '</button>' +
             '</div>' +
             // The private note moved into the details panel beside the thread
             // -- it's reference material, and keeping it out of this column
@@ -14334,17 +14481,22 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // you study, a narrow one of the things you act on, and titles
               // in sentence case at two sizes instead of one shout.
               '<div class="home-stats" id="homeStats" style="--d:100ms"></div>' +
-              '<div class="home-grid" style="--d:150ms">' +
+              // Round 73. The chart is the widest thing on this page and was
+              // sharing a column with cards that fit in half of it, so it was
+              // drawing seven days into 560px while Needs you sat in a column
+              // beside it doing nothing with its height. It spans the page;
+              // everything else starts underneath.
+              '<div class="home-full" style="--d:150ms">' + homeTrendCard() + '</div>' +
+              '<div class="home-grid" style="--d:190ms">' +
                 '<div class="home-stack">' +
-                  homeTrendCard() +
                   homeSellingCard(d) +
                   '<div class="home-pair">' + homeRhythmCard() + homeConversionCard() + '</div>' +
+                  homeActivityCard(d) +
                 '</div>' +
                 '<div class="home-stack">' +
                   homeWaitingCard(d) +
                   homeAmaraCard(d) +
                   setup +
-                  homeActivityCard(d) +
                 '</div>' +
               '</div>' +
               '<hr class="hair">' +
@@ -16098,7 +16250,12 @@ app.get("/api/conversation", async (req, res) => {
   try {
     const history = await getConversation(seller.sellerId, phone);
     const customer = await getCustomer(seller.sellerId, phone);
-    res.json({ history, customer });
+    // Round 73. One lookup for the whole thread rather than one per bubble.
+    const statuses = await getMessageStatuses(
+      seller.sellerId,
+      history.filter((m) => m.role === "assistant" && m.wamid).map((m) => m.wamid)
+    );
+    res.json({ history, customer, statuses });
   } catch (err) {
     console.error("api/conversation failed:", err.message);
     res.status(500).json({ error: "failed to load conversation" });
@@ -16222,9 +16379,10 @@ app.post("/api/send-message", async (req, res) => {
     // on top of the owner, same protection as clicking "Take over".
     await pauseCustomer(seller.sellerId, phone);
     const sent = await sendWhatsApp(seller, phone, text);
+    const sentId = sent && sent.messageId ? sent.messageId : null;
     if (!sent) return res.status(502).json({ error: "WhatsApp rejected the message, please try again" });
     let history = await getConversation(seller.sellerId, phone);
-    history.push({ role: "assistant", content: text, at: Date.now(), by: "owner" });
+    history.push({ role: "assistant", content: text, at: Date.now(), by: "owner", wamid: sentId || undefined });
     history = history.slice(-10);
     await saveConversation(seller.sellerId, phone, history);
     console.log(`Dashboard manual message: owner messaged ${phone} directly from the dashboard.`);
@@ -17488,7 +17646,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 72";
+const BUILD_ROUND = "Round 73";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
