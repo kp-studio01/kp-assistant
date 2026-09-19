@@ -3829,6 +3829,13 @@ const BRAND_TOKENS_CSS = `
     --brand-light: #FBF0EB;
     --accent: #BC4B2A;
     --accent-dark: #9E3D21;
+    /* The foreground for anything FILLED with the accent. It is not always
+       white: the accent is seller-selectable, and white on amber or teal
+       measures around 3.2:1. applyAccent() recomputes this from whichever
+       colour is actually in use, picking whichever of white or ink reads
+       better against the lighter end of the fill. */
+    --on-accent: #FFFFFF;
+    --accent-ink: #17110D;
     --accent-light: #FCF2EE;
     --accent-soft: #F6E0D6;
     /* Every neutral below used to be a Tailwind slate value -- #f8fafc,
@@ -3905,6 +3912,11 @@ const BRAND_TOKENS_CSS = `
     --brand-light: #2C1B14;
     --accent: #E0714B;
     --accent-dark: #C4552F;
+    /* Dark lifts the accent so accent TEXT stays legible on a near-black
+       ground. That same lift makes white text on an accent FILL fail: white
+       on #E0714B is 3.17:1. Ink wins here at 5.95:1. */
+    --on-accent: #17110D;
+    --accent-ink: #17110D;
     --accent-light: #2C1B14;
     --accent-soft: #3A241A;
     /* Round 64. Neutralised alongside light. A warm dark under a neutral
@@ -4076,7 +4088,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
         .pre.done { opacity: 0; visibility: hidden; transform: scale(1.035); }
         body:not(.ready) .shell, body:not(.ready) .shell * { animation-play-state: paused !important; }
         .pre-mark { width: 52px; height: 52px; border-radius: 15px; display: flex; align-items: center;
-          justify-content: center; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          justify-content: center; background: var(--accent);
           color: #fff; font-family: var(--font-heading); font-weight: 700; font-size: 24px;
           box-shadow: 0 14px 40px rgba(215,136,84,.42); animation: preMark .9s cubic-bezier(.22,1,.36,1) both; }
         .pre-bar { width: 116px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
@@ -4422,7 +4434,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
 
         .submit-btn { position: relative; overflow: hidden; width: 100%; margin-top: 26px;
           padding: 13px; border: none; border-radius: 11px; cursor: pointer;
-          background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff;
+          background: var(--accent); color: #fff;
           font-family: inherit; font-size: 14.5px; font-weight: 600; letter-spacing: -.005em;
           box-shadow: 0 6px 18px var(--accent-shadow);
           transition: transform .16s cubic-bezier(.22,1,.36,1), box-shadow .2s; }
@@ -5340,7 +5352,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .pic-row { display: flex; align-items: center; gap: 13px; }
         .pic { width: 52px; height: 52px; border-radius: 15px; flex-shrink: 0; overflow: hidden; color: #fff;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
-          font-size: 21px; font-weight: 700; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          font-size: 21px; font-weight: 700; background: var(--accent);
           box-shadow: 0 6px 16px var(--accent-shadow); }
         .pic img { width: 100%; height: 100%; object-fit: cover; }
         .pic-btn { padding: 9px 15px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
@@ -5393,7 +5405,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .shot-prev.avatar::after { content: attr(data-initial); width: 52px; height: 52px; border-radius: 16px;
           display: flex; align-items: center; justify-content: center; color: #fff;
           font-family: var(--font-heading); font-weight: 700; font-size: 21px;
-          background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          background: var(--accent);
           box-shadow: 0 5px 14px var(--accent-shadow); }
         .shot-prev.avatar.has-photo::after { display: none; }
         .shot-prev.avatar img { width: 52px; height: 52px; border-radius: 16px; object-fit: cover;
@@ -5403,7 +5415,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .shot-tile span { display: block; font-size: 11.5px; color: #B0A299; margin-top: 3px; }
         .hello-mark { width: 62px; height: 62px; border-radius: 19px; margin: 0 auto 22px; color: #fff;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
-          font-weight: 700; font-size: 27px; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          font-weight: 700; font-size: 27px; background: var(--accent);
           box-shadow: 0 14px 34px var(--accent-shadow);
           animation: helloPop .85s cubic-bezier(.22,1,.36,1) both; }
         @keyframes helloPop { from { opacity: 0; transform: scale(.72) translateY(10px); } to { opacity: 1; transform: none; } }
@@ -5411,7 +5423,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .hello .lede { margin: 0 auto 4px; }
         .next { display: inline-flex; align-items: center; gap: 9px; padding: 11px 22px; border: none; cursor: pointer;
           border-radius: 11px; font-family: inherit; font-size: 14px; font-weight: 620; color: #fff;
-          background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+          background: var(--accent);
           box-shadow: 0 6px 16px var(--accent-shadow);
           transition: transform .17s cubic-bezier(.22,1,.36,1), box-shadow .2s, opacity .2s; }
         .next:hover { transform: translateY(-2px); box-shadow: 0 12px 24px var(--accent-shadow-strong); }
@@ -5434,7 +5446,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           background: rgba(255,255,255,.07); margin-bottom: 13px; }
         .prev-av { width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; overflow: hidden; color: #fff;
           display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700;
-          font-family: var(--font-heading); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); }
+          font-family: var(--font-heading); background: var(--accent); }
         .prev-av img { width: 100%; height: 100%; object-fit: cover; }
         .prev-me-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
         .prev-me-lines i { display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.30); }
@@ -5486,7 +5498,7 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
         .pp-av { position: relative; z-index: 2; width: 58px; height: 58px; border-radius: 17px;
           margin-top: -29px; color: #fff; overflow: hidden;
           display: flex; align-items: center; justify-content: center; font-family: var(--font-heading);
-          font-size: 23px; font-weight: 700; background: linear-gradient(140deg, var(--accent), var(--accent-dark));
+          font-size: 23px; font-weight: 700; background: var(--accent);
           box-shadow: 0 0 0 4px #fff, 0 6px 16px rgba(41,25,15,.16); }
         .pp-av img { width: 100%; height: 100%; object-fit: cover; }
         .pp-name { font-family: var(--font-heading); font-size: 18px; font-weight: 660; letter-spacing: -.025em;
@@ -6374,7 +6386,7 @@ app.get("/customers", async (req, res) => {
         body { font-family: var(--font-sans); margin: 0; background: var(--bg); color: var(--text); }
         header { background: var(--navy); color: white; padding: 18px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
         header .sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top:3px; }
-        header a { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
+        header a { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background: var(--accent); color: white; border-radius:8px; font-size:12.5px; font-weight:600; text-decoration:none; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
         header a:hover { transform: translateY(-1px); box-shadow: 0 4px 10px var(--accent-shadow-strong); }
         .wrap { max-width: 1160px; margin: 28px auto 48px; padding: 0 24px; }
         .stats-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -7022,7 +7034,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(34,26,20,0.42); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
-        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
+        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
         /* A real profile card at the top of the sidebar -- who's logged
            in and what kind of seller they are, using only real fields
            already passed into dashboardHtml (never fabricated). This is
@@ -7042,7 +7054,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .spa-wrap::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 2px var(--surface-2); }
         [data-theme="dark"] .spa-wrap::after { box-shadow: 0 0 0 2px #100E0C; }
         .sidebar-profile-avatar.brandmark { background: var(--brand); }
-        .sidebar-profile-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; overflow: hidden; box-shadow: none; }
+        .sidebar-profile-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; overflow: hidden; box-shadow: none; }
         /* Once a shop has a picture it should be the shop everywhere, not just
            on Home. The accent glow is dropped when a real photo is in place --
            a coloured halo behind someone's own photograph looks like a mistake. */
@@ -7381,7 +7393,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .bubble { position: relative; padding: 7px 11px 8px 12px; font-size: 14.5px; line-height: 1.42; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 12px; box-shadow: 0 1px 1px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.06); max-width: 100%; }
         .bubble-text { white-space: pre-wrap; }
         .bubble.user { background: var(--surface); color: var(--text); }
-        .bubble.assistant { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; }
+        .bubble.assistant { background: var(--accent); color: var(--on-accent); }
         /* Only the last bubble of a group gets a real tail, pointing back at
            that side's avatar -- same rhythm WhatsApp uses. */
         .bubble.has-tail.user { border-bottom-left-radius: 4px; }
@@ -7626,7 +7638,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
         /* Native widgets (date pickers, scrollbars, select arrows) follow this. */
         [data-theme="dark"] { color-scheme: dark; }
-        .catalog-btn { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px var(--accent-shadow); transition: box-shadow .15s, transform .15s; }
+        .catalog-btn { background: var(--accent); color: var(--on-accent); border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px var(--accent-shadow); transition: box-shadow .15s, transform .15s; }
         .catalog-btn:hover { box-shadow: 0 4px 10px var(--accent-shadow-strong); transform: translateY(-1px); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
         .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
@@ -7927,7 +7939,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .choice { padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .12s ease; }
         .choice:hover { border-color: var(--accent); color: var(--accent); }
         .choice:active { transform: scale(0.96); }
-        .choice.on { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 8px var(--accent-shadow); }
+        .choice.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 2px 8px var(--accent-shadow); }
         .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
         @media (max-width: 700px) { .field-grid { grid-template-columns: 1fr; } }
         /* Settings rows: label + explanation on the left, the control on the
@@ -8002,7 +8014,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .msg-compose-inner:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); background: var(--surface); }
         .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
-        .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
+        .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
         .msg-send-btn svg { width: 17px; height: 17px; }
         .msg-send-btn { transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-fast) ease; }
         .msg-send-btn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 4px 10px var(--accent-shadow-strong); }
@@ -8131,7 +8143,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* A ring of light rather than a border: the picture sits in it instead
            of being cut out of the page by a hard edge. */
         .hero-ring { position: relative; width: 128px; height: 128px; border-radius: 50%; padding: 9px; background: var(--accent-soft); }
-        .hero-avatar { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: linear-gradient(145deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 42px; font-weight: 600; letter-spacing: -0.03em; box-shadow: 0 8px 22px rgba(28,27,25,0.22); }
+        .hero-avatar { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 42px; font-weight: 600; letter-spacing: -0.03em; box-shadow: 0 8px 22px rgba(28,27,25,0.22); }
         .hero-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .hero-avatar.has-photo { background: var(--surface-3); }
         .hero-figure .photo-btn { right: 2px; bottom: 6px; padding: 8px; border-radius: 50%; }
@@ -8194,7 +8206,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .brand-avatar-wrap { position: relative; width: 96px; margin-top: -48px; margin-bottom: 15px; }
         /* The ring is the card's own background, so the avatar reads as
            mounted on the card rather than pasted over the cover. */
-        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: linear-gradient(140deg, var(--accent), var(--accent-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(28,27,25,0.20); }
+        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(28,27,25,0.20); }
         /* With a real photograph in it, an accent-coloured glow reads as a
            rendering fault rather than depth. A neutral drop shadow is what a
            photo actually wants. */
@@ -8963,7 +8975,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .q-wait svg { width: 11px; height: 11px; }
         .q-wait.mine { color: var(--accent); }
         .q-line { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .q-btn { flex-shrink: 0; height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .q-btn { flex-shrink: 0; height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         .q-btn:hover { background: var(--accent-dark); }
         .q-btn:active { transform: scale(0.96); }
         .list-empty { display: flex; align-items: center; gap: 10px; padding: 18px 16px; font-size: 12.5px; color: var(--muted); }
@@ -9921,7 +9933,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             position: fixed; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
             z-index: 40; display: none; align-items: center; gap: 8px;
             height: 50px; padding: 0 20px; border: 0; border-radius: 999px;
-            background: var(--accent); color: #fff; font-family: inherit;
+            background: var(--accent); color: var(--on-accent); font-family: inherit;
             font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; cursor: pointer;
             box-shadow: 0 10px 24px -8px rgba(188,75,42,0.55), 0 2px 6px rgba(28,27,25,0.18);
             transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-fast) ease;
@@ -10290,7 +10302,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .pf-avwrap { position: relative; flex-shrink: 0; }
         .pf-av { width: 104px; height: 104px; border-radius: 26px; overflow: hidden;
           display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(145deg, var(--accent), var(--accent-dark)); color: #fff;
+          background: var(--accent); color: #fff;
           font-family: var(--font-heading); font-size: 38px; font-weight: 650; letter-spacing: -0.03em;
           box-shadow: 0 0 0 5px var(--bg), 0 10px 26px -12px rgba(28,27,25,.5); }
         .pf-av.has-photo { background: var(--surface-3); }
@@ -10780,7 +10792,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
         button.takeover-btn svg { width: 15px; height: 15px; flex: none; }
         button.takeover-btn.take {
-          background: var(--accent); color: #fff;
+          background: var(--accent); color: var(--on-accent);
           box-shadow: 0 1px 2px rgba(28,27,25,.14), 0 6px 16px -10px var(--accent-shadow-strong);
         }
         button.takeover-btn.hand {
@@ -10919,6 +10931,66 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           background: color-mix(in srgb, var(--accent) 15%, var(--surface));
           color: color-mix(in srgb, var(--accent) 88%, var(--text));
         }
+
+        /* ==================================================================
+           Round 76.
+           ================================================================== */
+        /* Miji: the labels "look kinda big". They were 22px tall at 11.5px
+           text -- which is a button's proportions, not a mark's. A badge
+           should read as annotation on the thing beside it, so it comes down
+           a step and lets the content it annotates stay the larger thing. */
+        .badge, .live-pill, .waiting-flag, .q-wait.mine, .thread-status-chip,
+        .sec-count, .nav-badge, .list-tab-count, .soon-tag, .delta {
+          height: 19px; padding: 0 8px; font-size: 11px; gap: 5px;
+        }
+        .badge svg, .live-pill svg, .waiting-flag svg, .q-wait.mine svg,
+        .thread-status-chip svg, .delta svg { width: 11px; height: 11px; }
+        .badge .dot, .live-pill .live-dot, .thread-status-chip .chip-dot { width: 5px; height: 5px; }
+        .list-tab-count, .nav-badge { min-width: 19px; height: 18px; padding: 0 5px; font-size: 10.5px; }
+        .sec-count, .q-wait.mine { height: 18px; padding: 0 7px; font-size: 10.5px; }
+
+        /* The two coming-soon channels, on one row instead of two. */
+        .soon-row { display: flex; align-items: center; gap: 10px; height: 34px;
+          padding: 0 10px; margin: 0 2px; border-radius: 9px; opacity: .62; }
+        .soon-marks { display: inline-flex; align-items: center; gap: 4px; color: var(--rail-muted-2); }
+        .soon-marks svg { width: 15px; height: 15px; }
+        .soon-text { font-size: 12.5px; font-weight: 500; color: var(--rail-muted-2);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+        .soon-row .soon-tag { flex: none; }
+
+        /* ---- the account control, top right ---------------------------
+           It was a 34px gradient circle with a 3px ring of accent-light round
+           it -- a coloured blob with a letter in it, which is what a photo
+           placeholder looks like when nobody has decided what it is. It is a
+           control: the picture, a caret to say it opens something, a quiet
+           ground that answers the pointer, and a real ring only when it has
+           a real photograph to hold. */
+        .topbar-avatar {
+          width: auto; height: 34px; padding: 3px 8px 3px 3px; gap: 6px;
+          border-radius: 999px; background: transparent; box-shadow: none;
+          display: inline-flex; align-items: center; color: var(--muted);
+          transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+        }
+        .topbar-avatar::before {
+          content: attr(data-initial); flex: none;
+          width: 28px; height: 28px; border-radius: 50%;
+          display: grid; place-items: center;
+          background: var(--accent); color: #fff;
+          font-family: var(--font-heading); font-size: 12px; font-weight: 650; letter-spacing: -0.02em;
+        }
+        .topbar-avatar::after {
+          content: ""; flex: none; width: 9px; height: 9px; margin-right: 1px;
+          background: currentColor; opacity: .55;
+          clip-path: polygon(50% 72%, 6% 28%, 18% 16%, 50% 48%, 82% 16%, 94% 28%);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .topbar-avatar:hover { background: var(--surface-2); }
+        }
+        .topbar-avatar:active { transform: scale(0.96); }
+        .topbar-avatar.has-photo::before { background: var(--surface-3); content: ""; }
+        .topbar-avatar img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+          display: block; flex: none; order: -1; }
+        .topbar-avatar.has-photo::before { display: none; }
       </style>
     </head>
     <body>
@@ -10956,7 +11028,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             isBookable
               ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg></span>Services</button>
           <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span>Bookings</button>`
-              : `<button id="tabCatalog" onclick="switchTab('catalog')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Products<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
+              : `<button id="tabCatalog" onclick="toggleProductsGroup()"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Products<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
           <div class="subtabs" id="subProducts">
             <button id="subCatalog" onclick="switchTab('catalog')">Product list</button>
             <button id="subProduct" onclick="newProduct()">Add a product</button>
@@ -10974,8 +11046,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         <div class="rail-group-label">Channels</div>
         <nav class="tabs">
           <button id="tabWhatsApp" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>WhatsApp<span class="live-tag" title="Connected"></span></button>
-          <button class="soon" type="button" disabled><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg></span>Instagram<span class="soon-tag">Soon</span></button>
-          <button class="soon" type="button" disabled><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></span>Facebook<span class="soon-tag">Soon</span></button>
+          <!-- Round 76. Two disabled rows, both saying "Soon", were taking
+               two of the rail's most valuable inches to advertise things that
+               do not exist yet. They are one row, with both marks on it. -->
+          <div class="soon-row" title="Instagram and Facebook are not connected yet">
+            <span class="soon-marks">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </span>
+            <span class="soon-text">Instagram &amp; Facebook</span>
+            <span class="soon-tag">Soon</span>
+          </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -11014,7 +11095,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
             <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
           </button>
-          <button class="topbar-avatar" onclick="switchTab('profile')" title="${escapeHtmlServer(businessName || "Your business")}" aria-label="Your shop profile">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</button>
+          <button class="topbar-avatar" onclick="switchTab('profile')" data-initial="${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}" title="${escapeHtmlServer(businessName || "Your business")}" aria-label="Your shop profile"></button>
         </div>
       </header>
       <div class="home-view" id="homeView"></div>
@@ -12887,6 +12968,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Delivery fees lives on the catalogue page, so this is one
         // destination reached two ways rather than a second page pretending
         // to exist.
+        // Round 76. Whether the seller has folded the Products group shut.
+        // It resets the moment they leave the group, so it never persists as
+        // a surprise on a screen where it is not visible.
+        let productsCollapsed = false;
+        function toggleProductsGroup() {
+          const inGroup = ["catalog", "product", "delivery"].indexOf(currentTabName()) !== -1;
+          if (!inGroup) return switchTab("catalog");
+          productsCollapsed = !productsCollapsed;
+          const sub = document.getElementById("subProducts");
+          const parent = document.getElementById("tabCatalog");
+          if (sub) sub.classList.toggle("open", !productsCollapsed);
+          if (parent) parent.classList.toggle("open", !productsCollapsed);
+          moveNavPill(true);
+        }
+        function currentTabName() {
+          return document.body.getAttribute("data-tab") || "home";
+        }
+
         function newProduct() {
           cancelEditProduct();
           openProductForm();
@@ -12961,7 +13060,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const sub = document.getElementById("subProducts");
           if (sub) {
             const inGroup = tab === "catalog" || tab === "product" || tab === "delivery";
-            sub.classList.toggle("open", inGroup);
+            if (!inGroup) productsCollapsed = false;
+            sub.classList.toggle("open", inGroup && !productsCollapsed);
             const parent = document.getElementById("tabCatalog");
             if (parent) { parent.classList.toggle("open", inGroup); parent.classList.toggle("group-on", inGroup); }
             // "Add a product" is only lit while you are actually adding one.
@@ -13187,7 +13287,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // component that already reads var(--accent) follows automatically.
         const ACCENTS = [
           { id: "clay",   name: "Clay",   base: "#BC4B2A", dark: "#9E3D21", light: "#FBF0EB", soft: "#F4DED5", darkLight: "#2C1B14", darkSoft: "#3A241A", darkBase: "#E0714B" },
-          { id: "indigo", name: "Indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", darkLight: "#1e2440", darkSoft: "#2a3157", darkBase: "#6366f1" },
+          // Indigo's dark base was #6366f1; white on it measured 4.47:1, three
+          // hundredths short of AA. #5F62EF reads 4.69:1 and looks the same.
+          { id: "indigo", name: "Indigo", base: "#4f46e5", dark: "#4338ca", light: "#eef2ff", soft: "#e0e7ff", darkLight: "#1e2440", darkSoft: "#2a3157", darkBase: "#5F62EF" },
           { id: "teal",   name: "Teal",   base: "#0d9488", dark: "#0f766e", light: "#ecfdf9", soft: "#ccfbf1", darkLight: "#0f2b2a", darkSoft: "#12403c", darkBase: "#2dd4bf" },
           { id: "blue",   name: "Blue",   base: "#2563eb", dark: "#1d4ed8", light: "#eff6ff", soft: "#dbeafe", darkLight: "#12203c", darkSoft: "#1c3260", darkBase: "#60a5fa" },
           { id: "violet", name: "Violet", base: "#7c3aed", dark: "#6d28d9", light: "#f5f3ff", soft: "#ede9fe", darkLight: "#241a40", darkSoft: "#38266b", darkBase: "#a78bfa" },
@@ -13205,6 +13307,28 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           root.setProperty("--accent-dark", dark ? a.base : a.dark);
           root.setProperty("--accent-light", dark ? a.darkLight : a.light);
           root.setProperty("--accent-soft", dark ? a.darkSoft : a.soft);
+          // What goes ON TOP of an accent fill. White is not a safe default:
+          // the seller picks the accent, and white on amber (#d97706) is
+          // 3.19:1 and on teal (#0d9488) 3.74:1 -- both already failing in
+          // light mode before dark lifts them further. Measure instead of
+          // assuming, against the LIGHTER of the gradient's two stops, which
+          // is the hard case for white.
+          const lum = (hex) => {
+            const ch = [1, 3, 5].map((i) => {
+              const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+              return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+          };
+          const INK = "#17110D";
+          // Accent fills are flat now, not gradients. A gradient spans enough
+          // luminance that neither white nor ink clears 4.5:1 at both ends --
+          // clay in dark measured 3.17:1 against one stop and 3.72:1 against
+          // the other. One colour, one correct foreground.
+          const L = lum(dark ? a.darkBase : a.base);
+          const vsWhite = 1.05 / (L + 0.05);
+          const vsInk = (L + 0.05) / (lum(INK) + 0.05);
+          root.setProperty("--on-accent", vsWhite >= vsInk ? "#FFFFFF" : INK);
           // The glow under accent-coloured buttons has to be derived from the
           // chosen accent too -- left hardcoded, a teal button kept an indigo
           // halo and the edges read as wrong.
@@ -15018,7 +15142,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               el.classList.add("has-photo");
             } else {
               el.classList.remove("has-photo");
-              el.textContent = initial;
+              // Round 76. The topbar control draws its initial from a data
+              // attribute so the caret it also carries is not wiped by a
+              // textContent assignment meant for the rail's plain circle.
+              const img = el.querySelector("img");
+              if (img) img.remove();
+              if (el.classList.contains("topbar-avatar")) el.setAttribute("data-initial", initial);
+              else el.textContent = initial;
             }
           });
         }
@@ -17968,7 +18098,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 75";
+const BUILD_ROUND = "Round 76";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
