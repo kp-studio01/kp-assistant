@@ -9671,6 +9671,161 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         #productView #photoDrop { order: 2; }
         #productView #pGal { order: 3; margin-top: 12px; }
         #productView #pGalNote { order: 4; }
+
+        /* ==================================================================
+           Round 65 -- the phone.
+           ================================================================== */
+        @media (max-width: 760px) {
+          /* A 2.5px accent bar across the top of every tile. It was drawn for
+             the cream ground where it read as a tint; on white it reads as an
+             error underline, four of them in a row. */
+          .htile::before { display: none; }
+          /* .htile-top was set to a column in the mobile block, then a later
+             rule outside it set align-items: center -- so the label and its
+             icon stacked and centred while the figure under them stayed left.
+             The row layout is right on a phone too: label left, icon right. */
+          .htile-top { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+          .htile-label { margin-top: 0; font-size: 11px; }
+          .htile-icon { width: auto; height: auto; background: none; border-radius: 0; }
+          .htile-icon svg { width: 14px; height: 14px; }
+
+          /* The hero took a whole screen before you reached a number: a 180px
+             avatar on its own line, then the name, then the status, then a
+             full-width button. It is a header now, not a page. */
+          .hero { padding: 18px 16px 16px; gap: 14px; }
+          .hero-ring { width: 76px; height: 76px; padding: 5px; }
+          .hero-avatar { font-size: 26px; }
+          .hero-name, .hero h1 { font-size: 24px; }
+          .hero-meta { gap: 12px; margin-top: 12px; font-size: 12px; }
+          .hero .btn-quiet, .hero .catalog-btn { width: auto; }
+        }
+
+        /* ==================================================================
+           Round 65. On a phone the product editor was a full screen that
+           happened to arrive from the right: a 130px header before the first
+           field, Save wrapped onto its own line at the top of the screen and
+           out of thumb reach, and nothing to say you were on top of the
+           catalogue rather than somewhere else entirely.
+
+           It is a sheet now. It rises from the bottom edge, stops short of
+           the top so the list stays visible behind it, and carries a handle
+           at the front so the shape reads before any text does. The header
+           is a title and a close. Save and Cancel sit in a bar at the bottom,
+           where the thumb already is, clear of the home indicator.
+           ================================================================== */
+        @media (max-width: 700px) {
+          .catalog-view#productView {
+            top: auto; right: 0; left: 0; bottom: 0; width: 100%;
+            height: 94dvh; max-height: 94dvh;
+            border-left: 0; border-top: 1px solid var(--border);
+            border-radius: 22px 22px 0 0;
+            transform: translateY(100%);
+            box-shadow: 0 -20px 50px -24px rgba(28,27,25,0.34);
+          }
+          .catalog-view#productView.on { transform: none; }
+
+          /* The handle. Not decoration -- it is the one mark that says this
+             sheet can be dismissed downward before anyone reads a word. */
+          #productView .peditor::before {
+            content: ""; flex: none; width: 38px; height: 4px; border-radius: 99px;
+            background: var(--border-strong); opacity: .7;
+            margin: 9px auto 3px;
+          }
+          #productView .peditor-bar {
+            padding: 6px 16px 12px; gap: 10px; flex-wrap: nowrap; align-items: center;
+          }
+          /* The thumbnail is identity for a wide panel. At 390px it is 52px of
+             a 358px row, spent on something the title already says. */
+          #productView .peditor-thumb { display: none; }
+          #productView .peditor-title h2 { font-size: 17px; }
+          #productView .peditor-meta { font-size: 12px; margin-top: 1px; }
+
+          /* Actions leave the header for a bar at the bottom. Save is the
+             wide one because it is the thing you came to do. */
+          #productView .peditor-actions {
+            position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+            background: var(--surface-2);
+            border-top: 1px solid var(--border);
+          }
+          #productView .peditor-actions .catalog-btn { flex: 1; justify-content: center; height: 46px; font-size: 14.5px; }
+          #productView .peditor-actions .btn-quiet { height: 46px; padding: 0 18px; }
+          #productView .peditor-actions .catalog-msg { display: none; }
+          /* Room for that bar, so the last field is never under it. */
+          #productView .peditor-body { padding-bottom: 96px; }
+        }
+        @media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+          .catalog-view#productView { transition: none; }
+        }
+
+        /* Round 65. The phone hero stacked column-reverse: the avatar took a
+           row of its own with nothing beside it, then the name, then the
+           status, then the meta -- a screen and a half before the first
+           number. It is a contact header now, the shape a phone already uses
+           for an identity: picture and name on one line, everything else
+           under them. */
+        @media (max-width: 760px) {
+          .hero { flex-direction: row; align-items: flex-start; flex-wrap: wrap; gap: 14px; padding: 18px 16px 16px; }
+          .hero-figure { order: 0; }
+          .hero-text { order: 1; flex: 1 1 180px; min-width: 0; }
+          .hero-ring { width: 64px; height: 64px; padding: 4px; }
+          .hero-avatar { font-size: 24px; }
+          .hero-figure .photo-btn { padding: 6px; right: 0; bottom: 0; }
+          .hero-figure .photo-btn svg { width: 13px; height: 13px; }
+          .hero-meta { order: 2; flex: 1 0 100%; margin-top: 4px; padding-top: 12px;
+            box-shadow: inset 0 1px 0 var(--border-light); }
+          /* Top-right is where the shop name now ends, and the two were
+             overlapping. Bottom-right is empty on this layout. */
+          /* Neither corner of this card is free at 390px: the shop name
+             ends at the top right and the meta line runs along the
+             bottom. So it is a mark, not a pill. */
+          .hero-cover-btn { top: 12px; right: 12px; padding: 8px; border-radius: 50%; }
+          .hero-cover-btn svg { width: 15px; height: 15px; }
+          .hcb-label { position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip-path: inset(50%); white-space: nowrap; }
+        }
+
+        /* ==================================================================
+           Round 65. The catalogue on a phone.
+           ================================================================== */
+        /* Base state first. Every rule for this button lives inside a
+           max-width query, so without this line the desktop had a stray
+           inline button sitting in the flow -- which the occlusion probe
+           caught as 35 covered text runs at three widths. */
+        .fab { display: none; }
+        @media (max-width: 700px) {
+          /* Search, then the view switch and Sort sharing one line -- rather
+             than three full-width rows of chrome before the first product. */
+          .cat-toolbar { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 10px; align-items: center; }
+          .cat-search { grid-column: 1 / -1; }
+          .cat-sort { display: flex; align-items: center; gap: 8px; min-width: 0; }
+          .cat-sort select { width: 100%; }
+          /* The empty state sat inside a grid track and wrapped to five lines
+             in a column a third of the screen wide. */
+          .product-grid .empty { grid-column: 1 / -1; padding: 30px 8px; }
+          .product-grid .empty .empty-sub { max-width: 34ch; }
+
+          /* Add a product lives in the menu, and on a phone the menu is behind
+             the hamburger -- so on the one screen where you would add one,
+             there was no way to. It is a button where a phone puts its primary
+             action, and only on the screen it belongs to. */
+          .fab {
+            position: fixed; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
+            z-index: 40; display: none; align-items: center; gap: 8px;
+            height: 50px; padding: 0 20px; border: 0; border-radius: 999px;
+            background: var(--accent); color: #fff; font-family: inherit;
+            font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; cursor: pointer;
+            box-shadow: 0 10px 24px -8px rgba(188,75,42,0.55), 0 2px 6px rgba(28,27,25,0.18);
+            transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-fast) ease;
+          }
+          .fab svg { width: 17px; height: 17px; }
+          .fab:active { transform: scale(0.96); }
+          body.fab-on .fab { display: inline-flex; }
+          /* It is an action on the list, so it goes away while the sheet that
+             performs it is open. */
+          body.drawer-open .fab { display: none; }
+        }
       </style>
     </head>
     <body>
@@ -9699,7 +9854,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <span class="spa-wrap"><span class="sidebar-profile-avatar brandmark">S</span></span>
           <div style="min-width:0;">
             <div class="sidebar-profile-name">Stafly<span style="color:var(--accent);">.AI</span></div>
-            <div class="sidebar-profile-role">${isBookable ? "Bookings assistant" : "WhatsApp sales"}</div>
           </div>
         </div>
         <nav class="tabs">
@@ -9994,6 +10148,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           </div>
       </div>
       <div class="drawer-scrim" id="productScrim"></div>
+      <!-- Round 65. Phone only, catalogue only. -->
+      <button class="fab" id="addFab" onclick="newProduct()" aria-label="Add a product">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add a product
+      </button>
 
       <!-- Round 59. This page was a bare h2, a paragraph and a raw table in an
            800px column, sitting in half a screen of empty. It is built like
@@ -11658,6 +11817,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             if (scrim) scrim.classList.toggle("on", asDrawer);
             document.body.classList.toggle("drawer-open", asDrawer);
           }
+          // The add button belongs to the list, so it exists only while the
+          // list is what you are looking at.
+          document.body.classList.toggle("fab-on", shown === "catalog");
           moveNavPill(true);
           // Round 55. The submenu opens with its parent and closes with it.
           // Two entries, because two is how many real destinations there are.
@@ -12589,7 +12751,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const heroStyle = p.coverUrl ? ' style="--cover-img:url(' + encodeURI(p.coverUrl) + ')"' : '';
           return '' +
             '<div class="' + heroCls + '"' + heroStyle + '>' +
-              '<button class="hero-cover-btn" data-home-action="pick-cover">' + ICON_CAMERA + (p.coverUrl ? "Change cover" : "Add cover") + '</button>' +
+              // Round 65. The label is wrapped so the phone can drop it and keep
+              // the button as a 34px circle. At 390px neither corner of this
+              // card is free: top-right is where the shop name ends and
+              // bottom-right is the meta line, so the button stops being a
+              // pill and becomes a mark.
+              '<button class="hero-cover-btn" data-home-action="pick-cover" title="' +
+                (p.coverUrl ? "Change cover" : "Add cover") + '" aria-label="' +
+                (p.coverUrl ? "Change cover" : "Add cover") + '">' + ICON_CAMERA +
+                '<span class="hcb-label">' + (p.coverUrl ? "Change cover" : "Add cover") + '</span></button>' +
               // Round 51. This panel carried five rows of text and the line
               // directly above it already said "WhatsApp sales assistant" --
               // so the same words appeared twice inside 40 pixels. The eyebrow
@@ -16189,7 +16359,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 64";
+const BUILD_ROUND = "Round 65";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
