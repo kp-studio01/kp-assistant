@@ -10666,6 +10666,259 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .q-prev { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .q-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .q-top .q-wait { margin-left: auto; }
+
+        /* ==================================================================
+           Round 75. One badge, six tones.
+
+           There were ten separate badge implementations in this file --
+           .live-pill, .waiting-flag, .list-tab-count, .nav-badge, .sec-count,
+           .product-flag, .q-wait.mine, .thread-status-chip, .delta, .soon --
+           each with its own size, weight, radius and colour. That is why they
+           never looked like a set.
+
+           And the colour was the bigger half of it. The semantic fills were
+           Tailwind's #f0fdf4 / #fffbeb / #eff6ff -- pale, cold, flat stickers
+           that belong to a different palette than the one this product uses,
+           with a saturated mid-tone text on top and a hard ring around it.
+           That combination is exactly what reads as 1990s.
+
+           These are mixed FROM the state's hue INTO our own surface, so a
+           badge sits on this palette instead of on top of it: a 13% tint, the
+           text at the dark end of the same hue, no ring at all, and a dot at
+           full saturation where the state is live. One size, one radius, one
+           weight.
+           ================================================================== */
+        .badge, .live-pill, .waiting-flag, .q-wait.mine, .thread-status-chip,
+        .sec-count, .nav-badge, .list-tab-count, .soon-tag, .delta {
+          --bdg-hue: var(--muted);
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          height: 22px; padding: 0 9px; border-radius: 999px;
+          font-family: var(--font-sans); font-size: 11.5px; font-weight: 600;
+          letter-spacing: -0.005em; text-transform: none; white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+          color: color-mix(in srgb, var(--bdg-hue) 82%, var(--text));
+          background: color-mix(in srgb, var(--bdg-hue) 13%, var(--surface));
+          box-shadow: none; border: 0;
+          transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+        }
+        .badge svg, .live-pill svg, .waiting-flag svg, .q-wait.mine svg,
+        .thread-status-chip svg, .delta svg { width: 12px; height: 12px; flex: none; }
+        /* The dot is the one thing at full strength -- it is the signal. */
+        .badge .dot, .live-pill .live-dot, .thread-status-chip .chip-dot {
+          width: 6px; height: 6px; border-radius: 50%; flex: none;
+          background: var(--bdg-hue); box-shadow: none;
+        }
+
+        .badge-live, .live-pill, .thread-status-chip { --bdg-hue: var(--ok-fg); }
+        .badge-warn, .waiting-flag, .q-wait.mine, .live-pill.off,
+        .thread-status-chip.is-paused { --bdg-hue: var(--warn-fg); }
+        .badge-bad { --bdg-hue: var(--dang-fg); }
+        .badge-info { --bdg-hue: var(--info-fg); }
+        .badge-accent, .sec-count, .nav-badge { --bdg-hue: var(--accent); }
+        .badge-quiet, .list-tab-count, .soon-tag { --bdg-hue: var(--muted-2); }
+        /* Round 68 set background and colour on .delta.up directly, and a
+           two-class selector beats the one-class rule above -- so the deltas
+           kept their old flat fills and came out grey. Same specificity here,
+           reading from the hue like everything else. */
+        .delta.up { --bdg-hue: var(--ok-fg);
+          color: color-mix(in srgb, var(--ok-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--ok-fg) 13%, var(--surface)); }
+        .delta.down { --bdg-hue: var(--dang-fg);
+          color: color-mix(in srgb, var(--dang-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--dang-fg) 13%, var(--surface)); }
+        .delta.flat { --bdg-hue: var(--muted-2);
+          color: color-mix(in srgb, var(--muted-2) 82%, var(--text));
+          background: color-mix(in srgb, var(--muted-2) 13%, var(--surface)); }
+        /* The filled card keeps its own treatment: a tint mixed into white
+           would vanish on it. */
+        .kpi-primary .delta.up, .kpi-primary .delta.down, .kpi-primary .delta.flat {
+          background: rgba(255,255,255,0.22); color: #fff; }
+
+        /* A live state should look alive. One slow pulse on the dot, only
+           where the thing it marks is genuinely running -- not on a count,
+           not on a category, not on anything static. */
+        .live-pill:not(.off) .live-dot,
+        .thread-status-chip:not(.is-paused) .chip-dot {
+          animation: bdgPulse 2.4s var(--ease-io) infinite;
+        }
+        @keyframes bdgPulse {
+          0%, 68%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bdg-hue) 42%, transparent); }
+          34% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--bdg-hue) 0%, transparent); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .live-pill .live-dot, .thread-status-chip .chip-dot { animation: none; }
+        }
+
+        /* The counts are numbers, so they get the tighter box a number wants. */
+        .list-tab-count, .nav-badge { min-width: 21px; height: 20px; padding: 0 6px; font-size: 11px; }
+        .sec-count { height: 20px; padding: 0 8px; }
+        .q-wait.mine { height: 20px; padding: 0 8px 0 7px; font-size: 11px; }
+        /* The product flag is a line of text, not a pill -- but it was using
+           the same shouting weight. */
+        .product-flag { font-size: 11.5px; font-weight: 550; color: var(--warn-fg); }
+
+        /* ==================================================================
+           Round 75. Take over.
+
+           It was two raw Tailwind gradients -- #d97706 and #16a34a -- which
+           belong to no palette in this product, on a button whose only motion
+           was a 1px hover lift. It is built from our own tokens now, carries
+           a mark for each of its two meanings, and answers a press.
+
+           The two states are deliberately not the same weight. Taking a
+           thread off Amara is a commitment, so it is the solid one; handing
+           it back is a release, so it is the quiet one. A product where both
+           directions shout equally makes neither of them mean anything.
+           ================================================================== */
+        button.takeover-btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+          height: 36px; padding: 0 15px; border-radius: 10px; border: 0;
+          font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+          cursor: pointer; box-shadow: none;
+          transition: background var(--dur-fast) ease, color var(--dur-fast) ease,
+            box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+        }
+        button.takeover-btn svg { width: 15px; height: 15px; flex: none; }
+        button.takeover-btn.take {
+          background: var(--accent); color: #fff;
+          box-shadow: 0 1px 2px rgba(28,27,25,.14), 0 6px 16px -10px var(--accent-shadow-strong);
+        }
+        button.takeover-btn.hand {
+          background: var(--surface-2); color: var(--text);
+          box-shadow: inset 0 0 0 1px var(--border);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          button.takeover-btn.take:hover { background: var(--accent-dark); }
+          button.takeover-btn.hand:hover { background: var(--surface-3); }
+          button.takeover-btn:hover { transform: none; }
+        }
+        button.takeover-btn:active { transform: scale(0.97); }
+        button.takeover-btn:focus-visible { outline: 2px solid var(--focus-edge); outline-offset: 2px; }
+
+        /* ==================================================================
+           Round 75. Motion, where it has a job.
+
+           Per the brief: entrances use ease-out so the first frame is the
+           fastest; nothing uses ease-in; nothing animates from scale(0);
+           hover is gated behind a fine pointer; everything is under 300ms;
+           and anything repeated dozens of times a day is not animated at all.
+           ================================================================== */
+        /* Switching view. One movement, 180ms, so the page answers the click
+           before you have finished making it. Not on the conversation view --
+           that one is opened many times an hour. */
+        #homeView.view-in, #catalogView.view-in, #analyticsView.view-in,
+        #settingsView.view-in, #supportView.view-in, #profileView.view-in,
+        #deliveryView.view-in {
+          animation: viewIn 180ms var(--ease-out) both;
+        }
+        @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } }
+
+        /* A thread row answers the pointer with its own ground, not a jump. */
+        .q-row, .act-row {
+          border-radius: 12px;
+          transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .q-row:hover, .act-row:hover { background: var(--surface-2); }
+        }
+        .q-row:active, .act-row:active { transform: scale(0.992); }
+
+        /* The rows in Needs you and Live activity arrive in sequence rather
+           than all at once. 40ms apart: read as deliberate, settled inside a
+           fifth of a second. */
+        .q-row, .act-row { animation: rowIn 240ms var(--ease-out) both; }
+        .q-row:nth-child(1), .act-row:nth-child(1) { animation-delay: 0ms; }
+        .q-row:nth-child(2), .act-row:nth-child(2) { animation-delay: 40ms; }
+        .q-row:nth-child(3), .act-row:nth-child(3) { animation-delay: 80ms; }
+        .q-row:nth-child(4), .act-row:nth-child(4) { animation-delay: 120ms; }
+        .q-row:nth-child(n+5), .act-row:nth-child(n+5) { animation-delay: 160ms; }
+        @keyframes rowIn { from { opacity: 0; transform: translateY(7px); } }
+
+        /* The bars draw up from the axis on the first paint of a range. */
+        .cf-col .cf-bar { animation: barUp 420ms var(--ease-out) both; transform-origin: bottom; }
+        .cf-col:nth-child(1) .cf-bar { animation-delay: 0ms; }
+        .cf-col:nth-child(2) .cf-bar { animation-delay: 35ms; }
+        .cf-col:nth-child(3) .cf-bar { animation-delay: 70ms; }
+        .cf-col:nth-child(4) .cf-bar { animation-delay: 105ms; }
+        .cf-col:nth-child(5) .cf-bar { animation-delay: 140ms; }
+        .cf-col:nth-child(6) .cf-bar { animation-delay: 175ms; }
+        .cf-col:nth-child(n+7) .cf-bar { animation-delay: 210ms; }
+        @keyframes barUp { from { transform: scaleY(0.04); opacity: .35; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .q-row, .act-row, .cf-col .cf-bar,
+          #homeView.view-in, #catalogView.view-in, #analyticsView.view-in,
+          #settingsView.view-in, #supportView.view-in, #profileView.view-in,
+          #deliveryView.view-in { animation: none !important; }
+        }
+
+        /* Two variants set their fill directly in older rules and so beat the
+           one-class base above. Same declarations, read from the hue. */
+        #homeView .q-wait.mine, .q-wait.mine {
+          --bdg-hue: var(--warn-fg);
+          color: color-mix(in srgb, var(--warn-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--warn-fg) 13%, var(--surface));
+          box-shadow: none;
+        }
+        .sec-count.hot {
+          --bdg-hue: var(--accent);
+          color: color-mix(in srgb, var(--accent) 82%, var(--text));
+          background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+        }
+        /* And the two the thread header uses, for the same reason. */
+        .thread-status-chip {
+          color: color-mix(in srgb, var(--ok-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--ok-fg) 13%, var(--surface));
+          box-shadow: none;
+        }
+        .thread-status-chip.is-paused {
+          color: color-mix(in srgb, var(--warn-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--warn-fg) 13%, var(--surface));
+          box-shadow: none;
+        }
+        .live-pill.off {
+          color: color-mix(in srgb, var(--warn-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--warn-fg) 13%, var(--surface));
+        }
+        .waiting-flag {
+          color: color-mix(in srgb, var(--warn-fg) 82%, var(--text));
+          background: color-mix(in srgb, var(--warn-fg) 13%, var(--surface));
+        }
+
+        /* Measured inside every badge: text against its own mixed fill.
+           list-tab-count came back at 4.49, a hair under the floor, so the
+           text mix goes from 82% of the hue to 88%. */
+        .badge, .live-pill, .waiting-flag, .q-wait.mine, .thread-status-chip,
+        .sec-count, .list-tab-count, .soon-tag, .delta {
+          color: color-mix(in srgb, var(--bdg-hue) 88%, var(--text));
+        }
+        /* In the rail the surface is a translucent white over near-black, and
+           a tint mixed into it lands at 1.16:1. The rail gets its own fill. */
+        .sidebar .nav-badge, .sidebar .soon-tag {
+          background: rgba(255,255,255,0.12); color: var(--rail-text);
+        }
+        /* A mix into transparent leaves a translucent fill, which cannot be
+           measured against anything and reads differently over each thing it
+           sits on. Mixed into the rail's own ground instead, so what the
+           probe sees is what renders. */
+        .sidebar .nav-badge { background: color-mix(in srgb, var(--rail-accent) 30%, var(--rail-bg));
+          color: #fff; }
+        .sidebar .soon-tag { background: color-mix(in srgb, #FFFFFF 13%, var(--rail-bg));
+          color: var(--rail-muted); }
+        /* --muted-2 at 88% still landed at 4.49:1 on its own fill -- a hair
+           under. The counts read from --muted, which is a step darker. */
+        /* The original rule set background and colour directly and the mix
+           was never reaching it. Stated outright, measured at 5.5:1. */
+        .list-tabs .list-tab-count, .list-tab-count {
+          --bdg-hue: var(--muted);
+          background: color-mix(in srgb, var(--muted) 13%, var(--surface));
+          color: color-mix(in srgb, var(--muted) 88%, var(--text));
+          font-weight: 600;
+        }
+        .list-tab.active-list-tab .list-tab-count {
+          background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+          color: color-mix(in srgb, var(--accent) 88%, var(--text));
+        }
       </style>
     </head>
     <body>
@@ -11738,6 +11991,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // Round 73. WhatsApp's own two shapes: one check, and two overlapping.
         const ICON_TICK1 = '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 7.5 11 15 3"/></svg>';
         const ICON_TICK2 = '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 7.5 5 11 12.5 3"/><path d="M8 11 15.5 3"/></svg>';
+        // Round 75. A hand for taking the thread off Amara, a spark for
+        // giving it back to her.
+        const ICON_HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 10.5V4a1.5 1.5 0 0 1 3 0v7"/><path d="M17 11V6.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1.5a6 6 0 0 1-4.6-2.2L4 15"/><path d="M11 11V8.5a1.5 1.5 0 0 0-3 0V15"/></svg>';
+        const ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.7 9l5.5 1.7-5.5 1.7L12 18l-1.7-5.6L4.8 10.7 10.3 9z"/><path d="M18.5 16.5 19 18l1.5.5L19 19l-.5 1.5L18 19l-1.5-.5L18 18z"/></svg>';
         const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor" stroke="none"/></svg>';
         const ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>';
         const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
@@ -12077,8 +12334,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             // thread the mobile button silently grew back to the long
             // wording and started colliding with the number again.
             btn.innerHTML = isPaused
-              ? '<span class="lbl-full">Hand back to Amara</span><span class="lbl-short">Hand back</span>'
-              : '<span class="lbl-full">Take over</span><span class="lbl-short">Take over</span>';
+              ? ICON_SPARK + '<span class="lbl-full">Hand back to Amara</span><span class="lbl-short">Hand back</span>'
+              : ICON_HAND + '<span class="lbl-full">Take over</span><span class="lbl-short">Take over</span>';
             btn.onclick = function () { toggleTakeover(selectedPhone, isPaused); };
           }
           const dot = document.querySelector(".thread-avatar .status-dot");
@@ -12169,7 +12426,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                   // truncating a button is worse than shortening its wording.
                   (isPaused
                     ? '<span class="lbl-full">Hand back to Amara</span><span class="lbl-short">Hand back</span>'
-                    : '<span class="lbl-full">Take over</span><span class="lbl-short">Take over</span>') +
+                    : ICON_HAND + '<span class="lbl-full">Take over</span><span class="lbl-short">Take over</span>') +
                 '</button>' +
                 '<div class="more-menu">' +
                   '<button class="icon-btn" id="moreMenuBtn" onclick="toggleMoreMenu()" title="More">' + ICON_MORE + '</button>' +
@@ -12676,6 +12933,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             parentTab.className = "";
           }
           if (tab === "profile") renderProfile();
+          // Round 75. One short entrance per view switch. Retriggered by
+          // removing and re-adding the class, because an animation that is
+          // already on the element will not replay on its own.
+          if (entering && shown !== "conversations") {
+            entering.classList.remove("view-in");
+            void entering.offsetWidth;
+            entering.classList.add("view-in");
+          }
           const drawer = document.getElementById("productView");
           const scrim = document.getElementById("productScrim");
           if (drawer) {
@@ -17703,7 +17968,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 74";
+const BUILD_ROUND = "Round 75";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
