@@ -10188,6 +10188,82 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            it is a caption on the whole page, not a heading -- but it was the
            same weight as the titles above it. */
         #homeView .home-footline { font-size: 10.5px; letter-spacing: 0.07em; font-weight: 500; opacity: .85; }
+
+        /* ==================================================================
+           Round 70. The profile page.
+
+           The cover is drawn, not uploaded: one piece of artwork every shop
+           shares, built from the brand colour and a soft field of circles, so
+           the top of this page is Stafly's and the avatar below it is the
+           seller's. That division is the whole idea -- a product where every
+           account supplies its own banner looks like whatever those people
+           happened to have on their phone.
+           ================================================================== */
+        .catalog-view#profileView { max-width: 1120px; padding: 0 0 30px; }
+        .pf-wrap { padding: 0 0 4px; }
+        .pf-cover {
+          height: 172px; border-radius: 0 0 20px 20px; position: relative; overflow: hidden;
+          background:
+            radial-gradient(60% 120% at 12% 8%, rgba(255,255,255,.20), transparent 60%),
+            radial-gradient(52% 110% at 88% 96%, rgba(0,0,0,.26), transparent 62%),
+            linear-gradient(118deg, var(--accent-dark) 0%, var(--accent) 52%, #D98A63 100%);
+        }
+        .pf-cover::after {
+          content: ""; position: absolute; inset: 0; opacity: .5;
+          background-image:
+            radial-gradient(circle at 18% 72%, rgba(255,255,255,.16) 0 46px, transparent 47px),
+            radial-gradient(circle at 46% 22%, rgba(255,255,255,.11) 0 78px, transparent 79px),
+            radial-gradient(circle at 78% 68%, rgba(255,255,255,.13) 0 60px, transparent 61px),
+            radial-gradient(circle at 94% 16%, rgba(255,255,255,.09) 0 40px, transparent 41px);
+        }
+        [data-theme="dark"] .pf-cover { filter: saturate(.92) brightness(.82); }
+
+        .pf-idrow { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;
+          padding: 0 28px; margin-top: -46px; position: relative; z-index: 1; }
+        .pf-avwrap { position: relative; flex-shrink: 0; }
+        .pf-av { width: 104px; height: 104px; border-radius: 26px; overflow: hidden;
+          display: flex; align-items: center; justify-content: center;
+          background: linear-gradient(145deg, var(--accent), var(--accent-dark)); color: #fff;
+          font-family: var(--font-heading); font-size: 38px; font-weight: 650; letter-spacing: -0.03em;
+          box-shadow: 0 0 0 5px var(--bg), 0 10px 26px -12px rgba(28,27,25,.5); }
+        .pf-av.has-photo { background: var(--surface-3); }
+        .pf-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pf-av.sm { width: 56px; height: 56px; border-radius: 16px; font-size: 21px; box-shadow: none; }
+        .pf-avwrap .photo-btn { right: -4px; bottom: -4px; padding: 8px; border-radius: 50%; }
+        .pf-avwrap .photo-btn svg { width: 14px; height: 14px; }
+        .pf-idtext { flex: 1 1 220px; min-width: 0; padding-bottom: 6px; }
+        .pf-name { font-family: var(--font-heading); font-size: 27px; font-weight: 650;
+          letter-spacing: -0.032em; color: var(--text); margin: 0; }
+        .pf-tag { font-size: 13.5px; color: var(--muted); margin: 4px 0 0; }
+        .pf-idrow .live-pill { margin-bottom: 8px; flex-shrink: 0; }
+
+        .pf-stats { display: flex; gap: 0; margin: 20px 28px 22px;
+          background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+        .pf-stat { flex: 1; min-width: 0; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; }
+        .pf-stat + .pf-stat { box-shadow: inset 1px 0 0 var(--border-light); }
+        .pf-stat b { font-family: var(--font-heading); font-size: 20px; font-weight: 650;
+          letter-spacing: -0.028em; color: var(--text); font-variant-numeric: tabular-nums;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pf-stat span { font-size: 11.5px; color: var(--muted-2); }
+
+        .pf-grid { padding: 0 28px; }
+        .pf-save { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+        .pf-avhint { display: flex; align-items: flex-start; gap: 14px; }
+        button.topbar-avatar { border: 0; cursor: pointer; font-family: inherit;
+          transition: transform var(--dur-press) var(--ease-out); }
+        button.topbar-avatar:active { transform: scale(0.94); }
+
+        @media (max-width: 760px) {
+          .pf-cover { height: 118px; border-radius: 0 0 16px 16px; }
+          .pf-idrow { padding: 0 16px; margin-top: -36px; gap: 14px; }
+          .pf-av { width: 82px; height: 82px; border-radius: 22px; font-size: 30px; box-shadow: 0 0 0 4px var(--bg); }
+          .pf-name { font-size: 22px; }
+          .pf-idrow .live-pill { margin-bottom: 0; }
+          .pf-stats { margin: 16px 16px 16px; flex-direction: column; }
+          .pf-stat { flex-direction: row; align-items: baseline; justify-content: space-between; padding: 12px 16px; }
+          .pf-stat + .pf-stat { box-shadow: inset 0 1px 0 var(--border-light); }
+          .pf-grid { padding: 0 16px; }
+        }
       </style>
     </head>
     <body>
@@ -10255,7 +10331,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             ${key ? `<button onclick="window.location.href='/admin?key=${key}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg></span>All sellers</button>` : ""}
           </nav>
           <div class="sidebar-divider"></div>
-          <div class="rail-account" onclick="switchTab('settings')" title="Your account">
+          <div class="rail-account" onclick="switchTab('profile')" title="Your shop profile">
             <span class="spa-wrap"><span class="sidebar-profile-avatar">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span></span>
             <div style="min-width:0;">
               <div class="rail-account-name">${escapeHtmlServer(businessName || "Your business")}</div>
@@ -10283,7 +10359,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
             <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
           </button>
-          <span class="topbar-avatar" title="${escapeHtmlServer(businessName || "Your business")}">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</span>
+          <button class="topbar-avatar" onclick="switchTab('profile')" title="${escapeHtmlServer(businessName || "Your business")}" aria-label="Your shop profile">${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}</button>
         </div>
       </header>
       <div class="home-view" id="homeView"></div>
@@ -10522,6 +10598,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            cards, the same eyebrow and note -- and the side column carries the
            one thing the seller cannot see anywhere else: the sentence Amara
            sends, composed from the fees actually on this page. -->
+      <!-- Round 70. The shop profile, off the dashboard and onto its own page. -->
+      <div class="catalog-view" id="profileView" style="display:none;"></div>
       <div class="catalog-view" id="deliveryView" style="display:none;">
         <div class="pform">
           <div class="pform-main">
@@ -12144,7 +12222,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // seller never gets tabCatalog. Guarded with optional chaining
           // so this one function works for either businessType without
           // needing its own fork.
-          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView", delivery: "deliveryView" };
+          const views = { home: "homeView", conversations: "conversationsView", catalog: "catalogView", services: "servicesView", bookings: "bookingsView", analytics: "analyticsView", settings: "settingsView", support: "supportView", delivery: "deliveryView", profile: "profileView" };
           // Round 61. The product editor is not in that map any more. It is a
           // panel over the catalogue, so the catalogue is what stays on screen
           // underneath it -- the list you are adding to never leaves.
@@ -12162,6 +12240,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             }
           }
           const tabs = { home: "tabHome", conversations: "tabConversations", catalog: "tabCatalog", services: "tabServices", bookings: "tabBookings", analytics: "tabAnalytics", settings: "tabSettings", support: "tabSupport", product: "subProduct", delivery: "subDelivery" };
+          // Profile has no rail item of its own -- it is reached from the
+          // account row and the avatar, both of which sit outside nav.tabs.
           for (const t in tabs) {
             const el = document.getElementById(tabs[t]);
             if (el) el.className = t === tab ? "active-tab" : "";
@@ -12174,6 +12254,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (parentTab && (tab === "catalog" || tab === "product" || tab === "delivery")) {
             parentTab.className = "";
           }
+          if (tab === "profile") renderProfile();
           const drawer = document.getElementById("productView");
           const scrim = document.getElementById("productScrim");
           if (drawer) {
@@ -12217,7 +12298,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const CRUMB = {
             home: ["Dashboard"], conversations: ["Conversations"], catalog: ["Catalogue"],
             services: ["Services"], bookings: ["Bookings"], analytics: ["Analytics"],
-            settings: ["Settings"], support: ["Help & support"],
+            settings: ["Settings"], support: ["Help & support"], profile: ["Profile"],
             product: ["Catalogue", editingNow ? "Edit product" : "New product"],
             delivery: ["Catalogue", "Delivery fees"],
           };
@@ -13017,7 +13098,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // what state the account is actually in. Every number and row here is
         // read from stored data -- nothing on this page is estimated.
         let homeData = null;
-        let editingProfile = false;
+        // Round 70. editingProfile is gone with the in-place form: the
+        // profile is a page, so there is no dashboard state to guard.
 
         // Lagos time of day, from the browser clock -- not a stored value and
         // not a guess about anything.
@@ -13052,21 +13134,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // the eye stops seeing two rectangles overlapping and sees one thing
         // changing. 120ms out, rebuild, then back -- fast enough that it reads
         // as a transition rather than a wait.
-        function swapProfile(toEdit) {
-          const host = document.getElementById("homeView");
-          if (!host || prefersReducedMotion() || !host.animate) {
-            editingProfile = toEdit;
-            return void renderHome(true);
-          }
-          host.classList.add("home-swapping");
-          setTimeout(() => {
-            editingProfile = toEdit;
-            renderHome(true);
-            requestAnimationFrame(() => host.classList.remove("home-swapping"));
-            const first = host.querySelector("#pfName");
-            if (toEdit && first) setTimeout(() => first.focus(), 180);
-          }, 130);
-        }
 
         const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
         const ICON_TICK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><polyline points="8 12.2 11 15.2 16 9.5"/></svg>';
@@ -13109,90 +13176,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }
         }
 
-        function homeBrandCard(p, d) {
-          const initial = escapeHtml((p.businessName || "S").trim().charAt(0).toUpperCase());
-          const avatar = p.avatarUrl ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">' : initial;
-          const meta = [];
-          meta.push('<span>' + ICON_BOX + d.catalogue.total + ' product' + (d.catalogue.total === 1 ? "" : "s") + '</span>');
-          meta.push('<span>' + ICON_USERS + d.stats.totalCustomers + ' customer' + (d.stats.totalCustomers === 1 ? "" : "s") + '</span>');
-          // The pill states a fact from the connection check, nothing more:
-          // Amara literally cannot reply without both credentials.
-          const live = d.connection.connected && !d.connection.suspended
-            ? '<span class="live-pill"><span class="live-dot"></span>Amara is live</span>'
-            : '<span class="live-pill off"><span class="live-dot"></span>Not connected</span>';
-          // Round 42. One panel instead of a banner with a face stuck to it.
-          // The eyebrow says what this dashboard is, the name and tagline say
-          // whose it is, the pill says whether Amara can actually answer, and
-          // the picture sits in a ring on the right. The seller's cover photo,
-          // when they have uploaded one, becomes this panel's background.
-          const heroCls = 'hero' + (p.coverUrl ? ' has-cover' : '');
-          const heroStyle = p.coverUrl ? ' style="--cover-img:url(' + encodeURI(p.coverUrl) + ')"' : '';
-          return '' +
-            '<div class="' + heroCls + '"' + heroStyle + '>' +
-              // Round 65. The label is wrapped so the phone can drop it and keep
-              // the button as a 34px circle. At 390px neither corner of this
-              // card is free: top-right is where the shop name ends and
-              // bottom-right is the meta line, so the button stops being a
-              // pill and becomes a mark.
-              '<button class="hero-cover-btn" data-home-action="pick-cover" title="' +
-                (p.coverUrl ? "Change cover" : "Add cover") + '" aria-label="' +
-                (p.coverUrl ? "Change cover" : "Add cover") + '">' + ICON_CAMERA +
-                '<span class="hcb-label">' + (p.coverUrl ? "Change cover" : "Add cover") + '</span></button>' +
-              // Round 51. This panel carried five rows of text and the line
-              // directly above it already said "WhatsApp sales assistant" --
-              // so the same words appeared twice inside 40 pixels. The eyebrow
-              // is gone, and the meta row keeps only the two figures that are
-              // dashboard facts. Location and the join date are profile
-              // details; they live in Edit profile, where they belong.
-              '<div class="hero-text">' +
-                '<h2 class="hero-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' +
-                (p.tagline
-                  ? '<div class="hero-tag">' + escapeHtml(p.tagline) + '</div>'
-                  : '<div class="hero-tag">No tagline yet. <button data-home-action="edit-profile">Add one</button></div>') +
-                '<div class="hero-row">' + live +
-                  '<button class="btn-quiet brand-edit-btn" data-home-action="edit-profile">Edit profile</button>' +
-                '</div>' +
-                (meta.length ? '<div class="hero-meta">' + meta.join("") + '</div>' : '') +
-              '</div>' +
-              '<div class="hero-figure">' +
-                '<div class="hero-ring">' +
-                  '<div class="hero-avatar' + (p.avatarUrl ? " has-photo" : "") + '">' + avatar + '</div>' +
-                '</div>' +
-                '<button class="photo-btn" data-home-action="pick-avatar" aria-label="' + (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
-              '</div>' +
-            '</div>';
-        }
 
-        function homeProfileForm(p) {
-          return '' +
-            '<div class="brand-card"><div style="padding:22px 24px 24px;">' +
-              '<h3 style="font-family:var(--font-heading);font-size:18px;font-weight:750;letter-spacing:-0.015em;margin:0;">Edit profile</h3>' +
-              '<div class="home-card-sub">Your shop in your own words. Amara never writes any of this for you.</div>' +
-              '<div class="profile-form">' +
-                '<div class="profile-field"><label for="pfName">Business name</label>' +
-                  '<input id="pfName" maxlength="60" value="' + escapeHtml(p.businessName || "") + '"></div>' +
-                '<div class="profile-field"><label for="pfContact">Your name</label>' +
-                  '<input id="pfContact" maxlength="40" placeholder="e.g. Peter" value="' + escapeHtml(p.contactName || "") + '"></div>' +
-                '<div class="profile-field"><label for="pfTagline">Tagline</label>' +
-                  '<input id="pfTagline" maxlength="90" placeholder="e.g. Ready-to-wear Ankara, made in Lagos" value="' + escapeHtml(p.tagline || "") + '"></div>' +
-                '<div class="profile-field"><label for="pfLocation">Location</label>' +
-                  '<input id="pfLocation" maxlength="60" placeholder="e.g. Lekki, Lagos" value="' + escapeHtml(p.location || "") + '"></div>' +
-                '<div class="profile-field"><label for="pfAbout">About</label>' +
-                  '<textarea id="pfAbout" maxlength="400" placeholder="What you sell, who you sell to, anything a customer should know.">' + escapeHtml(p.about || "") + '</textarea></div>' +
-              '</div>' +
-              '<span class="catalog-msg" id="profileStatus"></span>' +
-              '<div class="setup-actions">' +
-                '<button class="catalog-btn" data-home-action="save-profile">Save changes</button>' +
-                '<button class="btn-quiet" data-home-action="cancel-profile">Cancel</button>' +
-              '</div>' +
-            '</div></div>';
-        }
 
         function homeSetupCard(d) {
           const p = d.profile;
           const steps = [
             { done: !!p.avatarUrl, label: "Profile picture", action: "pick-avatar" },
-            { done: !!p.coverUrl, label: "Cover photo", action: "pick-cover" },
+            { done: !!p.contactName, label: "Your name", action: "go-profile" },
             { done: !!p.tagline, label: "Short tagline", action: "edit-profile" },
             { done: d.catalogue.total > 0, label: "First product", action: "go-catalog" },
           ];
@@ -13878,6 +13868,97 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return hcard({ title: "Amara right now", sub: "What your assistant is working with", body: body });
         }
 
+        // ==================================================================
+        // Round 70. The shop profile leaves the dashboard.
+        //
+        // It was the biggest block on the page -- name, tagline, status pill,
+        // Edit profile, two counters and a cover control -- and none of it is
+        // something you read every morning. It is settings wearing a hero's
+        // clothes. The dashboard opens on the greeting and the figures now;
+        // the profile is its own page, reached from the account row in the
+        // rail or the avatar in the top bar, which is where every tool this
+        // seller already uses puts it.
+        //
+        // The cover is Stafly's, not the seller's. One piece of artwork,
+        // identical for every shop, so the product looks like a product
+        // rather than like whatever photograph someone happened to upload.
+        // The picture that IS theirs -- the avatar -- is the one thing on
+        // this page they can change.
+        // ==================================================================
+        function renderProfile() {
+          const host = document.getElementById("profileView");
+          if (!host || !homeData) return;
+          const d = homeData;
+          const p = d.profile || {};
+          const initial = escapeHtml((p.businessName || "S").trim().charAt(0).toUpperCase());
+          const live = d.connection && d.connection.connected && !d.connection.suspended;
+          const totalProducts = (d.catalogue || {}).total || 0;
+          const totalCustomers = (d.stats || {}).totalCustomers || 0;
+          host.innerHTML =
+            '<div class="pf-wrap">' +
+              '<div class="pf-cover" aria-hidden="true"></div>' +
+              '<div class="pf-idrow">' +
+                '<div class="pf-avwrap">' +
+                  '<div class="pf-av' + (p.avatarUrl ? " has-photo" : "") + '">' +
+                    (p.avatarUrl ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">' : initial) +
+                  '</div>' +
+                  '<button class="photo-btn" data-home-action="pick-avatar" aria-label="' +
+                    (p.avatarUrl ? "Change profile picture" : "Add a profile picture") + '">' + ICON_CAMERA + '</button>' +
+                '</div>' +
+                '<div class="pf-idtext">' +
+                  '<h2 class="pf-name">' + escapeHtml(p.businessName || "Your business") + '</h2>' +
+                  '<p class="pf-tag">' + (p.tagline ? escapeHtml(p.tagline) : "No tagline yet") + '</p>' +
+                '</div>' +
+                (live
+                  ? '<span class="live-pill"><span class="live-dot"></span>Amara is live</span>'
+                  : '<span class="live-pill off"><span class="live-dot"></span>Not connected</span>') +
+              '</div>' +
+              '<div class="pf-stats">' +
+                '<div class="pf-stat"><b>' + totalProducts + '</b><span>product' + (totalProducts === 1 ? "" : "s") + '</span></div>' +
+                '<div class="pf-stat"><b>' + totalCustomers + '</b><span>customer' + (totalCustomers === 1 ? "" : "s") + '</span></div>' +
+                '<div class="pf-stat"><b>' + (p.location ? escapeHtml(p.location) : "\u2014") + '</b><span>location</span></div>' +
+              '</div>' +
+              '<div class="home-grid pf-grid">' +
+                '<div class="home-stack">' +
+                  hcard({
+                    title: "Your shop, in your words",
+                    sub: "Amara reads this when a customer asks who you are. It never writes any of it for you.",
+                    body:
+                      '<div class="profile-form">' +
+                        '<div class="profile-field"><label for="pfName">Business name</label>' +
+                          '<input id="pfName" maxlength="60" value="' + escapeHtml(p.businessName || "") + '"></div>' +
+                        '<div class="profile-field"><label for="pfContact">Your name</label>' +
+                          '<input id="pfContact" maxlength="40" placeholder="e.g. Peter" value="' + escapeHtml(p.contactName || "") + '"></div>' +
+                        '<div class="profile-field"><label for="pfTagline">Tagline</label>' +
+                          '<input id="pfTagline" maxlength="90" placeholder="e.g. Ready-to-wear Ankara, made in Lagos" value="' + escapeHtml(p.tagline || "") + '"></div>' +
+                        '<div class="profile-field"><label for="pfLocation">Location</label>' +
+                          '<input id="pfLocation" maxlength="60" placeholder="e.g. Lekki, Lagos" value="' + escapeHtml(p.location || "") + '"></div>' +
+                        '<div class="profile-field"><label for="pfAbout">About</label>' +
+                          '<textarea id="pfAbout" maxlength="400" placeholder="What you sell, who you sell to, anything a customer should know.">' + escapeHtml(p.about || "") + '</textarea></div>' +
+                      '</div>' +
+                      '<div class="pf-save"><button class="catalog-btn" data-home-action="save-profile">Save changes</button>' +
+                        '<span class="catalog-msg" id="profileStatus"></span></div>',
+                  }) +
+                '</div>' +
+                '<div class="home-stack">' +
+                  hcard({
+                    title: "Your picture",
+                    sub: "The one image here that is yours. It is what customers see beside Amara\u2019s replies.",
+                    body:
+                      '<div class="pf-avhint">' +
+                        '<div class="pf-av sm' + (p.avatarUrl ? " has-photo" : "") + '">' +
+                          (p.avatarUrl ? '<img src="' + escapeHtml(p.avatarUrl) + '" alt="">' : initial) + '</div>' +
+                        '<div><button class="btn-quiet btn-tiny" data-home-action="pick-avatar">' +
+                          (p.avatarUrl ? "Change picture" : "Add a picture") + '</button>' +
+                          '<p class="hcard-note" style="margin-top:8px;">Square works best. PNG or JPG, up to 1.5MB.</p></div>' +
+                      '</div>',
+                  }) +
+                  homeAmaraCard(d) +
+                '</div>' +
+              '</div>' +
+            '</div>';
+        }
+
         function renderHome(force) {
           const host = document.getElementById("homeView");
           if (!host || !homeData) return;
@@ -13887,7 +13968,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // page would visibly re-deal itself every few seconds.
           const fresh = !host.querySelector(".home-inner");
           if (!force) {
-            if (editingProfile && host.querySelector("#pfName")) return;
             const sig = homeSignature(d);
             if (sig === lastHomeSignature && host.querySelector(".home-inner")) return;
             lastHomeSignature = sig;
@@ -13935,7 +14015,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                     ICON_CHAT + 'Open inbox</button>' +
                 '</div>' +
               '</div>' +
-              (editingProfile ? homeProfileForm(d.profile) : homeBrandCard(d.profile, d)) +
+              // Round 70. The hero card is gone from here. It is the profile
+              // page now, and the dashboard opens on the figures.
               // Round 69. The page was a stack of bands, each opened by the
               // same uppercase tracked label, so nothing outranked anything.
               // It is the reference's shape now: a wide column of the things
@@ -14055,13 +14136,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const el = e.target.closest("[data-home-action]");
           if (!el) return;
           const action = el.getAttribute("data-home-action");
-          if (action === "pick-avatar" || action === "pick-cover") {
-            pendingPhotoKind = action === "pick-cover" ? "cover" : "avatar";
+          if (action === "pick-avatar") {
+            // Round 70. "pick-cover" is gone with the seller-uploaded cover.
+            // The upload route still exists server-side so anything already
+            // stored is not orphaned, but nothing in the product calls it.
+            pendingPhotoKind = "avatar";
             document.getElementById("brandPhotoInput")?.click();
           } else if (action === "edit-profile") {
-            swapProfile(true);
-          } else if (action === "cancel-profile") {
-            swapProfile(false);
+            // Round 70. This used to swap the dashboard into a form in place.
+            // It is a page now, so it is a destination like any other.
+            switchTab("profile");
           } else if (action === "save-profile") {
             saveProfile();
           } else if (action === "dismiss-setup") {
@@ -14070,6 +14154,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             switchTab("catalog");
           } else if (action === "go-conversations" || action === "open-inbox") {
             switchTab("conversations");
+          } else if (action === "go-profile") {
+            switchTab("profile");
           } else if (action === "range") {
             setHomeRange(Number(el.getAttribute("data-range")) || 7);
           } else if (action === "refresh") {
@@ -14109,7 +14195,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Could not save.");
             homeData.profile = data.profile;
-            editingProfile = false;
+            // Round 70. The form is on the profile page now, so that is what
+            // repaints. The dashboard is refreshed too because the greeting
+            // reads contactName.
+            renderProfile();
             renderHome(true);
             // The business name appears in three places outside this card.
             syncBusinessName(data.profile.businessName);
@@ -17080,7 +17169,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 69";
+const BUILD_ROUND = "Round 70";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
