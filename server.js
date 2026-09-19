@@ -9826,6 +9826,45 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              performs it is open. */
           body.drawer-open .fab { display: none; }
         }
+
+        /* ==================================================================
+           Round 66. Two things the phone pass left behind.
+           ================================================================== */
+        @media (max-width: 760px) {
+          /* The shop name and the cover button share the top of the card, and
+             "KP Collections" happens to be short enough to miss it -- a longer
+             one runs straight under it. Reserving padding for it only moved
+             the problem: at 390px the name then wrapped to two lines to avoid
+             a button it might never have reached.
+
+             So on a phone the button stops floating. It becomes the last item
+             in the same row as the avatar and the name, which means the three
+             of them divide the width between themselves and no length of shop
+             name can ever run beneath it. */
+          .hero-cover-btn { position: static; order: 2; align-self: flex-start;
+            margin-left: auto; flex-shrink: 0; }
+
+          /* Last 7 days put a 76px drawing beside two lines of text, so the
+             chart -- the thing the section is named after -- was the smallest
+             element in it. On a phone it stacks: the drawing at a size you can
+             read, the sentence under it. */
+          .wk-blank { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px 0 16px; }
+          .wk-blank-art { width: 108px; height: 60px; }
+          .wk-blank-text { max-width: none; }
+
+          /* Three figures on one line at 390px gave each 110px and the labels
+             ran into the gutters. They get the full width, one per row, with
+             the rule between them turned from vertical to horizontal. */
+          /* Round 44 made this a three-column grid, so flex-direction on it
+             does nothing -- which is why the first attempt at this left all
+             three figures jammed on one line. It is one column of rows. */
+          .wk-foot { display: grid; grid-template-columns: minmax(0,1fr); gap: 0; }
+          .wk-stat { flex-direction: row; align-items: baseline; justify-content: space-between;
+            gap: 12px; padding: 9px 0; border-right: 0; }
+          .wk-stat + .wk-stat { box-shadow: inset 0 1px 0 var(--border-light); }
+          .wk-stat b { font-size: 17px; order: 2; }
+          .wk-stat span { order: 1; }
+        }
       </style>
     </head>
     <body>
@@ -16359,7 +16398,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 65";
+const BUILD_ROUND = "Round 66";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
