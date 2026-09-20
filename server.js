@@ -48,6 +48,7 @@ app.get("/vendor/chart.js", (req, res) => {
 // path is all that's needed -- the browser resolves the font files
 // itself, no path-rewriting required.
 app.use("/vendor/fonts/inter", express.static(path.join(__dirname, "node_modules", "@fontsource", "inter")));
+app.use("/vendor/fonts/ui", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "inter")));
 app.use("/vendor/fonts/plus-jakarta-sans", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "plus-jakarta-sans")));
 app.use("/vendor/fonts/geist", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "geist")));
 app.use("/vendor/fonts/geist-mono", express.static(path.join(__dirname, "node_modules", "@fontsource-variable", "geist-mono")));
@@ -3764,7 +3765,7 @@ app.get("/subscribe", async (req, res) => {
 // bundling Chart.js locally: no dependency on fonts.googleapis.com being
 // reachable, which this sandbox's own network policy already proved can
 // silently fail.
-const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/geist/files/geist-latin-wght-normal.woff2" crossorigin><link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/display/files/schibsted-grotesk-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/geist/index.css"><link rel="stylesheet" href="/vendor/fonts/geist-mono/index.css"><link rel="stylesheet" href="/vendor/fonts/display/index.css"><link rel="stylesheet" href="/vendor/fonts/serif/latin-400-italic.css">`;
+const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/ui/files/inter-latin-wght-normal.woff2" crossorigin><link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/ui/index.css"><link rel="stylesheet" href="/vendor/fonts/plus-jakarta-sans/index.css"><link rel="stylesheet" href="/vendor/fonts/display/index.css"><link rel="stylesheet" href="/vendor/fonts/geist-mono/index.css"><link rel="stylesheet" href="/vendor/fonts/serif/latin-400-italic.css">`;
 
 const BRAND_TOKENS_CSS = `
   :root {
@@ -3787,8 +3788,16 @@ const BRAND_TOKENS_CSS = `
 
        The tail of each stack names the faces that carry the naira sign,
        because none of the self-hosted ones do -- measured, not assumed. */
-    --font-sans: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
-    --font-heading: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    /* Round 79. Two faces, two jobs -- which is what every one of the three
+       references does and what this file did not. Seline pairs Roobert with
+       Inter, Wiza pairs Britti Sans with Inter, Dub pairs Satoshi with Inter.
+       All three run Inter for every piece of UI text between 11 and 16px and
+       bring the display face out only for the big sizes. One face trying to
+       be both a 26px figure and an 11px badge is why nothing read as
+       deliberate. Inter is the workhorse; Plus Jakarta Sans is the display
+       voice (it is the substitute Wiza's own sheet names for Britti Sans). */
+    --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    --font-heading: 'Plus Jakarta Sans Variable', 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     /* Instrument Serif italic is the one counterweight, used once, on the
        turn of the login headline. */
     --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
@@ -11002,6 +11011,141 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .topbar-avatar img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
           display: block; flex: none; order: -1; }
         .topbar-avatar.has-photo::before { display: none; }
+
+        /* ================================================================
+           ROUND 79 - BORDERS CARRY THE STRUCTURE
+           ================================================================
+           Three style references Miji pulled -- Seline, Wiza and Dub -- all
+           say the same thing, and Dub says it outright: a 1px hairline is
+           the most deployed element in the whole system, used 1942 times,
+           and shadows are reserved for exactly three cases. This file had
+           161 rules painting a shadow. A card that floats for no reason is
+           the single loudest "generic dashboard" signal there is, and it is
+           what she has been pointing at every time she says the word mid.
+
+           So: every content surface is defined by its edge. Shadows survive
+           only where something genuinely leaves the page -- a menu over
+           content, the product panel, a toast -- plus a 1px lift on the one
+           filled action. This block sits last on purpose: source order is
+           how fights are settled in this file.
+           ================================================================ */
+        .hcard, .home-card, .catalog-card, .kpi, .kpi-card, .htile, .stat-tile,
+        .an-card, .bk-card, .svc-card, .product-card, .ptile, .pform-sec,
+        .peditor-sec, .setup-card, .detail-pane, .list-item, .nr-item,
+        .wk-card, .conv-card, .home-alert, .cat-summary, .pf-card, .pf-stat,
+        .hero-meta, .day-divider span, .choice, .swatch, .search-box,
+        .cat-search input, .cat-sort select, .list-tab, .seg-control {
+          box-shadow: none;
+        }
+        .hcard, .home-card, .catalog-card, .kpi-card, .htile, .stat-tile,
+        .an-card, .bk-card, .svc-card, .product-card, .pform-sec,
+        .peditor-sec, .setup-card, .pf-card {
+          border: 1px solid var(--border);
+        }
+        /* Hover is a change of ground, not a change of altitude. A card that
+           lifts on hover is the same tell as a card that floats at rest. */
+        .catalog-card:hover, .htile:hover, .stat-tile:hover, .kpi-card:hover,
+        .bk-card:hover, .svc-card:hover, .product-card:hover,
+        .ptile:hover .ptile-img {
+          box-shadow: none;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .catalog-card:hover, .htile:hover, .stat-tile:hover, .kpi-card:hover,
+          .bk-card:hover, .svc-card:hover, .product-card:hover {
+            border-color: var(--border-strong);
+          }
+        }
+        /* The three exceptions, and the one lift. */
+        .more-menu-dropdown, .emoji-picker-dropdown {
+          box-shadow: 0 10px 15px -3px rgba(28,27,25,0.10), 0 4px 6px -4px rgba(28,27,25,0.10);
+        }
+        .catalog-view#productView {
+          box-shadow: -24px 0 56px -24px rgba(28,27,25,0.32);
+        }
+        .toast { box-shadow: 0 10px 15px -3px rgba(28,27,25,0.12), 0 4px 6px -4px rgba(28,27,25,0.10); }
+        .catalog-btn, .msg-send-btn { box-shadow: 0 1px 2px rgba(28,27,25,0.06); }
+        [data-theme="dark"] .more-menu-dropdown,
+        [data-theme="dark"] .emoji-picker-dropdown,
+        [data-theme="dark"] .toast { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.4); }
+        [data-theme="dark"] .catalog-view#productView { box-shadow: -24px 0 56px -24px rgba(0,0,0,0.6); }
+
+        /* ---------------------------------------------------------------
+           Five radii, and no sixth. Dub: pills for tags, one value for
+           buttons, one for cards, one for the large surfaces. This file had
+           twenty-one, which is the same failure as thirty-three font sizes.
+           --------------------------------------------------------------- */
+        .badge, .live-pill, .waiting-flag, .q-wait.mine, .thread-status-chip,
+        .sec-count, .nav-badge, .list-tab-count, .soon-tag, .delta,
+        .cat-chip, .list-tab, .seg-control button { border-radius: 999px; }
+        .catalog-btn, .btn-quiet, .icon-btn, .q-btn, button.takeover-btn,
+        .choice, .swatch, nav.tabs button, .subtabs button,
+        .sidebar-footer-link { border-radius: 8px; }
+        .field input, .field select, .field textarea, .search-box,
+        .search-box input, .cat-search input, .cat-sort select,
+        .catalog-form input, .catalog-form select, .catalog-form textarea { border-radius: 6px; }
+        .hcard, .home-card, .catalog-card, .kpi, .kpi-card, .htile,
+        .stat-tile, .an-card, .bk-card, .svc-card, .product-card,
+        .pform-sec, .peditor-sec, .setup-card, .list-item, .nr-item,
+        .home-alert, .pf-card { border-radius: 12px; }
+        .more-menu-dropdown, .emoji-picker-dropdown, .toast,
+        .detail-pane, .conv-card { border-radius: 16px; }
+
+        /* ---------------------------------------------------------------
+           The display face comes out only at the top three steps -- 20, 26
+           and 34 -- and never below. Dub's sheet puts it plainly: switch to
+           the UI face for everything 30px and under; Seline runs its display
+           face at 32 and 52 only. Everything else on this screen is Inter,
+           which is what a dense product is supposed to be set in.
+           Weight 500, not 600, because at these sizes weight is not what
+           carries the emphasis. Size is.
+           --------------------------------------------------------------- */
+        .home-hello, .topbar h1, .an-title, .peditor-title h2, .catalog-card h2,
+        .kpi-value, .kpi-figure, .htile-value, .conversion-stat,
+        .stat-tile .stat-value, .detail-amount, .hero-name, .hero h1, .pf-name,
+        .brand-name, .wk-hero b, .wk-stat b, .ht-stat b, .pf-stat b,
+        .cat-line b, .perf-row b, .donut-n {
+          font-family: var(--font-heading);
+          font-weight: 500;
+        }
+        /* Figures are read as columns, so they line up. */
+        .kpi-value, .kpi-figure, .htile-value, .conversion-stat,
+        .stat-tile .stat-value, .detail-amount, .wk-hero b, .wk-stat b,
+        .ht-stat b, .pf-stat b, .donut-n {
+          font-variant-numeric: tabular-nums;
+          font-feature-settings: "tnum" 1;
+        }
+
+        /* ---------------------------------------------------------------
+           The bar filled its whole slot, edge to edge, which is why one day
+           of takings read as a block of background rather than a measurement.
+           A bar is a mark on a grid, not a panel. And it is flat: gradients
+           on data are decoration standing where a value should be.
+           --------------------------------------------------------------- */
+        .cf-bar {
+          width: min(100%, 30px); margin: 0 auto;
+          border-radius: 5px 5px 2px 2px;
+          background: color-mix(in srgb, var(--accent) 24%, var(--surface));
+        }
+        .cf-col.on .cf-bar, .cf-cols:not(:hover) .cf-col.is-last .cf-bar {
+          background: var(--accent);
+        }
+
+        /* ---------------------------------------------------------------
+           One filled action per screen. Three stacked accent buttons in
+           Needs you meant the loudest thing on the dashboard was a list of
+           things to read, competing with Open inbox, which is the action
+           the whole screen is for. Reply is the workhorse button now:
+           white ground, hairline, dark label. Every reference makes the
+           same split -- one committed fill, everything else outlined.
+           --------------------------------------------------------------- */
+        .q-btn {
+          background: var(--surface);
+          color: var(--text);
+          box-shadow: inset 0 0 0 1px var(--border-strong);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .q-btn:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--muted-2); }
+        }
       </style>
     </head>
     <body>
@@ -18114,7 +18258,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 78";
+const BUILD_ROUND = "Round 79";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
