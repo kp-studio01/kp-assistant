@@ -7001,11 +7001,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            thing that sits above them. */
         .topbar { background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
         .topbar-left { display: flex; align-items: center; gap: 11px; min-width: 0; }
-        .topbar h1 { font-family: var(--font-heading); font-size: 17px; margin: 0; font-weight: 700; color: var(--text); letter-spacing: -0.015em; white-space: nowrap; }
+        .topbar h1 { font-family: var(--font-heading); font-size: 16px; margin: 0; font-weight: 600; color: var(--text); letter-spacing: -0.014em; white-space: nowrap; }
         /* The business name was a grey "· Name" tacked onto the title; as its
            own chip it reads as "which shop you're looking at" instead of
            trailing punctuation. */
-        .topbar-biz { display: inline-flex; align-items: center; gap: 6px; max-width: 230px; padding: 4px 11px 4px 9px; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-soft); border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .topbar-biz { display: inline-flex; align-items: center; gap: 6px; max-width: 230px; padding: 4px 11px 4px 9px; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-soft); border-radius: 999px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; }
         .topbar-biz svg { width: 13px; height: 13px; flex-shrink: 0; }
         .topbar-biz span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         /* Round 40. The shop's name now sits at the top of the rail, so on any
@@ -7014,9 +7014,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            there. It stays below 1000px, where the rail is a closed drawer and
            this is the only place the shop is named. */
         @media (min-width: 1001px) { .topbar-biz { display: none; } }
-        .topbar a { color: var(--accent); font-size: 12px; font-weight: 600; }
+        .topbar a { color: var(--accent); font-size: 12px; letter-spacing: 0.002em; font-weight: 600; }
         .topbar-right { display: flex; align-items: center; gap: 12px; }
-        .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+        .topbar-date-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; letter-spacing: 0.002em; font-weight: 500; color: var(--muted); white-space: nowrap; }
         .topbar-date-chip svg { width: 13px; height: 13px; flex-shrink: 0; }
         .theme-toggle { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .15s, color .15s, border-color .15s, transform .25s ease; }
         /* Every other hover in this dashboard is a 1-3px lift. An 18-degree
@@ -7034,7 +7034,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(34,26,20,0.42); z-index: 29; }
         .sidebar-backdrop.open { display: block; }
         button.mobile-back-btn.icon-btn { display: none; }
-        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; flex-shrink: 0; overflow: hidden; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
+        .topbar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; letter-spacing: -0.006em; font-weight: 600; flex-shrink: 0; overflow: hidden; box-shadow: 0 0 0 3px var(--accent-light), 0 2px 6px var(--accent-shadow); }
         /* A real profile card at the top of the sidebar -- who's logged
            in and what kind of seller they are, using only real fields
            already passed into dashboardHtml (never fabricated). This is
@@ -7054,19 +7054,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .spa-wrap::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 2px var(--surface-2); }
         [data-theme="dark"] .spa-wrap::after { box-shadow: 0 0 0 2px #100E0C; }
         .sidebar-profile-avatar.brandmark { background: var(--brand); }
-        .sidebar-profile-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; flex-shrink: 0; overflow: hidden; box-shadow: none; }
+        .sidebar-profile-avatar { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 14px; font-weight: 600; letter-spacing: -0.006em; flex-shrink: 0; overflow: hidden; box-shadow: none; }
         /* Once a shop has a picture it should be the shop everywhere, not just
            on Home. The accent glow is dropped when a real photo is in place --
            a coloured halo behind someone's own photograph looks like a mistake. */
         .sidebar-profile-avatar img, .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .sidebar-profile-avatar.has-photo, .topbar-avatar.has-photo { background: var(--surface-3); box-shadow: none; }
-        .sidebar-profile-name { font-family: var(--font-heading); font-size: 14px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-profile-name { font-family: var(--font-heading); font-size: 14px; font-weight: 600; letter-spacing: -0.006em; color: var(--text); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         /* Mono, tiny, uppercase, widely tracked. This is the one typographic
            move that separates a dashboard that looks designed from one that
            looks generated, and it costs nothing -- the mono face is already
            loaded for the money figures. */
-        .sidebar-profile-role { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .sidebar-vendor { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); padding: 2px 10px 0; }
+        .sidebar-profile-role { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-vendor { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); padding: 2px 10px 0; }
         .sidebar-vendor b { font-weight: 500; color: var(--accent); }
         /* An honest "yes, this is actually refreshing itself" cue -- the
            dashboard really does poll every few seconds (see setInterval
@@ -7074,7 +7074,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            realtime, it's a label for something that's already true. */
         /* Was a filled green pill. A pill is a thing you press; this is a
            status, so it is now a dot and a label and nothing else. */
-        .live-indicator { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 0; border-radius: 0; }
+        .live-indicator { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.004em; text-transform: uppercase; color: var(--muted); background: transparent; border: 0; padding: 0; border-radius: 0; }
         .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); animation: liveDotPulse 2s infinite; flex-shrink: 0; }
         @keyframes liveDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
@@ -7102,7 +7102,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            rail, with a hairline and a single-pixel shadow, so it reads as
            raised rather than painted. The icon chips are gone -- display:
            contents drops the wrapper without touching six pieces of markup. */
-        nav.tabs button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; color: var(--muted); padding: 0 10px; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 500; letter-spacing: -0.005em; cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        nav.tabs button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; color: var(--muted); padding: 0 10px; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 500; letter-spacing: 0; cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         nav.tabs button .nav-icon { display: contents; }
         nav.tabs button svg { width: 15px; height: 15px; flex-shrink: 0; }
         nav.tabs button:hover { background: var(--surface-3); color: var(--text); }
@@ -7121,7 +7121,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         [data-theme="dark"] nav.tabs button.active-tab { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); }
         .sidebar-footer { margin-top: auto; padding: 14px 12px 14px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; border-top: 1px solid var(--border); }
         .sidebar-footer .live-indicator { margin: 2px 10px 12px; align-self: flex-start; }
-        .sidebar-footer-link { display: flex; align-items: center; gap: 10px; padding: 0 10px; height: 32px; border-radius: 8px; color: var(--muted-2); font-size: 12px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s, transform .12s ease; }
+        .sidebar-footer-link { display: flex; align-items: center; gap: 10px; padding: 0 10px; height: 32px; border-radius: 8px; color: var(--muted-2); font-size: 12px; letter-spacing: 0.002em; font-weight: 500; text-decoration: none; transition: background .15s, color .15s, transform .12s ease; }
         .sidebar-footer-link svg { width: 14px; height: 14px; flex-shrink: 0; }
         .sidebar-footer-link:hover { background: var(--surface-3); color: var(--text); }
         .sidebar-divider { height: 1px; background: var(--border); margin: 10px 10px; }
@@ -7147,8 +7147,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .stat-tile::after { content: none; }
         .stat-tile > * { position: relative; z-index: 1; }
         .stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--tile); }
-        .stat-tile .stat-value { font-family: var(--font-heading); font-size: 25px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-        .stat-tile .stat-label { font-size: 12px; color: var(--muted); margin-top: 5px; white-space: nowrap; font-weight: 500; }
+        .stat-tile .stat-value { font-family: var(--font-heading); font-size: 26px; font-weight: 500; color: var(--text); line-height: 1.15; white-space: nowrap; letter-spacing: -0.026em; font-variant-numeric: tabular-nums; }
+        .stat-tile .stat-label { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 5px; white-space: nowrap; font-weight: 500; }
         .stat-tile .stat-icon { width: 42px; height: 42px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tile-bg); color: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-bg); transition: transform .2s ease; }
         .stat-tile:hover .stat-icon { transform: scale(1.06); }
         .stat-tile .stat-icon svg { width: 20px; height: 20px; }
@@ -7157,7 +7157,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .search-box { padding: 12px 12px 9px; }
         .search-box-inner { position: relative; display: flex; align-items: center; }
         .search-box-inner svg { position: absolute; left: 11px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
-        .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--text); transition: background .15s, border-color .15s, box-shadow .15s; }
+        .search-box input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; font-size: 13px; letter-spacing: 0; font-family: inherit; color: var(--text); transition: background .15s, border-color .15s, box-shadow .15s; }
         .search-box input::placeholder { color: var(--muted-2); }
         .search-box input:focus { outline: none; background: var(--surface); border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         /* Real filters, not decoration -- All/Active/Paused/Starred each map
@@ -7169,7 +7169,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            but only one word at a time -- descriptive without four labels
            competing above a list that's already full of text. */
         .list-tabs { display: flex; gap: 3px; margin: 0 12px 10px; padding: 3px; background: var(--surface-3); border-radius: 11px; }
-        .list-tab { flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 7px 9px; font-size: 12px; font-weight: 600; color: var(--muted); border-radius: 9px; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; white-space: nowrap; min-width: 0; }
+        .list-tab { flex: 0 1 auto; display: flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: none; padding: 7px 9px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted); border-radius: 9px; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; white-space: nowrap; min-width: 0; }
         .list-tab-icon { display: flex; flex-shrink: 0; }
         .list-tab-icon svg { width: 14px; height: 14px; }
         .list-tab-label { display: none; }
@@ -7177,12 +7177,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .list-tab.active-list-tab { flex: 1 1 auto; background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
         .list-tab.active-list-tab .list-tab-label { display: inline; }
         .list-tab.active-list-tab .list-tab-icon { color: var(--accent); }
-        .list-tab-count { font-size: 11px; font-weight: 700; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; text-align: center; }
+        .list-tab-count { font-size: 11px; letter-spacing: 0.004em; font-weight: 600; line-height: 1.45; padding: 0 5px; border-radius: 999px; background: var(--border); color: var(--muted); min-width: 17px; text-align: center; }
         .list-tab.active-list-tab .list-tab-count { background: var(--accent-light); color: var(--accent); }
         /* It still means "these people are waiting on you", so it still has
            to be seen -- but a red dot on a rail this quiet was a siren. Brand
            colour on a soft tint carries the same weight without the alarm. */
-        .nav-badge { margin-left: auto; background: var(--accent-light); color: var(--accent); font-family: var(--font-mono); font-size: 11px; font-weight: 600; font-feature-settings: "tnum" 1; padding: 2px 6px; border-radius: 6px; line-height: 1.4; flex-shrink: 0; }
+        .nav-badge { margin-left: auto; background: var(--accent-light); color: var(--accent); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.004em; font-weight: 600; font-feature-settings: "tnum" 1; padding: 2px 6px; border-radius: 6px; line-height: 1.45; flex-shrink: 0; }
         .list { flex: 1; overflow-y: auto; }
         /* The row you click to open a thread. The accent rail on the left is
            what makes "which conversation am I in" readable at a glance -- it
@@ -7220,12 +7220,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .status-dot.paused { background: var(--warning); }
         .list-item-body { min-width: 0; flex: 1; }
         .list-item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 13px; color: var(--text); letter-spacing: 0.1px; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; }
-        .row-time { font-size: 11.5px; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .list-item .phone { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 13px; color: var(--text); letter-spacing: 0; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; overflow: hidden; }
+        .row-time { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; }
         /* Second line: what was actually last said, one line, ellipsised --
            the thing that turns this from a table of counts into an inbox. */
         .list-item-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; }
-        .row-preview { font-size: 12.5px; color: var(--muted); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+        .row-preview { font-size: 13px; letter-spacing: 0; color: var(--muted); line-height: 1.55; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
         .list-item.active-row .row-preview { color: var(--text); }
         .row-faint { color: var(--muted-2); }
         /* The escalation reason reads in the same muted tone as any other
@@ -7241,7 +7241,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the label itself sits in ordinary text colour on a neutral pill.
            A row that needs a reply should read as informative, not as an
            alarm going off down the side of the screen. */
-        .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; padding: 2px 8px 2px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); line-height: 1.55; white-space: nowrap; flex-shrink: 0; }
+        .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; letter-spacing: 0.002em; font-weight: 500; padding: 2px 8px 2px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); line-height: 1.5; white-space: nowrap; flex-shrink: 0; }
         .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
         .badge.paused { color: var(--muted); }
         .badge.paused::before { background: var(--warning); }
@@ -7258,7 +7258,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            everything else, so it reads as "this one" not "danger". */
         .badge.waiting { color: var(--text); font-weight: 600; }
         .badge.waiting::before { background: var(--danger); }
-        .snippet { font-size: 12px; color: var(--muted); margin-top: 4px; }
+        .snippet { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 4px; }
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         /* Customer details column. Everything it shows is a field the
            dashboard genuinely stores -- see renderDetailPane. */
@@ -7270,35 +7270,35 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .detail-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px; padding: 4px 0 10px; border-bottom: 1px solid var(--border-light); }
         .detail-avatar { width: 56px; height: 56px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); }
         .detail-avatar svg { width: 28px; height: 28px; opacity: 0.95; }
-        .detail-phone { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+        .detail-phone { font-family: var(--font-heading); font-size: 16px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.014em; }
         .detail-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; }
-        .detail-card-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+        .detail-card-title { display: flex; align-items: center; gap: 6px; font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); margin-bottom: 8px; }
         .detail-card-title svg { width: 12px; height: 12px; color: var(--accent); flex-shrink: 0; }
         .detail-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 4px 0; }
         .detail-row + .detail-row { border-top: 1px solid var(--border-light); }
-        .detail-label { font-size: 12.5px; color: var(--muted); }
-        .detail-value { font-size: 12.5px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
-        .detail-muted { font-size: 12px; color: var(--muted); line-height: 1.5; }
-        .detail-amount { font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: var(--ok-fg); letter-spacing: -0.02em; line-height: 1.15; }
-        .detail-ref { font-size: 11.5px; color: var(--muted-2); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .detail-label { font-size: 13px; letter-spacing: 0; color: var(--muted); }
+        .detail-value { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+        .detail-muted { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); line-height: 1.5; }
+        .detail-amount { font-family: var(--font-heading); font-size: 20px; font-weight: 500; color: var(--ok-fg); letter-spacing: -0.02em; line-height: 1.25; }
+        .detail-ref { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .detail-card.paid-card { background: var(--ok-bg); border-color: var(--ok-border); }
         .detail-card.warn-card { background: var(--warn-bg); border-color: var(--warn-border); }
         .detail-card.warn-card .detail-card-title { color: var(--warn-fg); }
-        .detail-pane textarea { width: 100%; min-height: 74px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 12.5px; font-family: inherit; line-height: 1.45; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
+        .detail-pane textarea { width: 100%; min-height: 74px; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; letter-spacing: 0; font-family: inherit; line-height: 1.55; resize: vertical; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .detail-pane textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .icon-btn.active-toggle { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
-        .compose-hint { font-size: 11.5px; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
+        .compose-hint { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); padding: 0 24px 12px; background: var(--surface); }
         .thread-header { padding: 11px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .thread-header-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .thread-avatar { position: relative; width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.18); }
         .thread-avatar svg { width: 23px; height: 23px; opacity: 0.95; }
         .thread-avatar .status-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--surface); }
-        .thread-name { display: flex; align-items: center; gap: 6px; font-family: var(--font-heading); font-size: 16.5px; font-weight: 700; color: var(--text); letter-spacing: -0.015em; font-variant-numeric: tabular-nums; line-height: 1.25; min-width: 0; }
+        .thread-name { display: flex; align-items: center; gap: 6px; font-family: var(--font-heading); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.014em; font-variant-numeric: tabular-nums; line-height: 1.35; min-width: 0; }
         .thread-num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-        .detail-phone-sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -3px; }
+        .detail-phone-sub { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -3px; }
         /* Initials when the customer's WhatsApp name is known; the person
            mark stays for everyone else. */
-        .avatar-initials { font-family: var(--font-heading); font-weight: 700; letter-spacing: 0.3px; }
+        .avatar-initials { font-family: var(--font-heading); font-weight: 600; letter-spacing: 0.3px; }
         .list-avatar .avatar-initials { font-size: 14px; }
         .thread-avatar .avatar-initials { font-size: 15px; }
         .detail-avatar .avatar-initials { font-size: 19px; }
@@ -7310,7 +7310,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .thread-id-text { min-width: 0; }
         .thread-meta { display: flex; align-items: center; gap: 0 9px; margin-top: 2px; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
         .thread-meta > * { flex-shrink: 0; }
-        .tm-phone { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .tm-phone { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
         .thread-meta > * + *::before { content: "·"; margin-right: 9px; color: var(--muted-2); }
         /* The thread column is narrow whenever the details pane is open, and
            that has nothing to do with the viewport width -- a 1440px screen
@@ -7337,13 +7337,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            ground, with a ring on the dot, which is how every other state in
            this product is drawn. */
         .thread-status-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 9px;
-          border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+          border-radius: 999px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; white-space: nowrap;
           color: var(--ok-fg); background: var(--ok-bg); box-shadow: inset 0 0 0 1px var(--ok-border); }
         .thread-status-chip.is-paused { color: var(--warn-fg); background: var(--warn-bg);
           box-shadow: inset 0 0 0 1px var(--warn-border); }
         .thread-status-chip .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor;
           flex-shrink: 0; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
-        .thread-sub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
+        .thread-sub { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex-shrink: 1; }
         .thread-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; flex-shrink: 0; }
         .icon-btn svg { width: 16px; height: 16px; }
@@ -7352,7 +7352,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .more-menu { position: relative; }
         .more-menu-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 20px rgba(15,23,42,0.14); min-width: 190px; z-index: 20; overflow: hidden; }
         .more-menu-dropdown.open { display: block; }
-        .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; color: var(--text); cursor: pointer; font-family: inherit; }
+        .more-menu-dropdown button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: transparent; font-size: 13px; letter-spacing: 0; color: var(--text); cursor: pointer; font-family: inherit; }
         .more-menu-dropdown button { transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         .more-menu-dropdown button:hover { background: var(--surface-2); }
         .more-menu-dropdown button:active { transform: scale(0.98); }
@@ -7390,7 +7390,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            padding, a 14px radius and lines running to 68% of a wide screen.
            Tightened to WhatsApp's actual rhythm, the same words take about a
            fifth less vertical space at the same legibility. */
-        .bubble { position: relative; padding: 7px 11px 8px 12px; font-size: 14.5px; line-height: 1.42; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 12px; box-shadow: 0 1px 1px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.06); max-width: 100%; }
+        .bubble { position: relative; padding: 7px 11px 8px 12px; font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; word-wrap: break-word; overflow-wrap: anywhere; border-radius: 12px; box-shadow: 0 1px 1px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.06); max-width: 100%; }
         .bubble-text { white-space: pre-wrap; }
         .bubble.user { background: var(--surface); color: var(--text); }
         .bubble.assistant { background: var(--accent); color: var(--on-accent); }
@@ -7406,7 +7406,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            "by" field written by /api/send-message) -- an outgoing message
            without that field is left unlabelled rather than credited to
            Amara on a guess. */
-        .bubble-by { float: right; font-size: 11px; line-height: 1; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin: 5px -1px -2px 9px; color: rgba(255,255,255,0.92); }
+        .bubble-by { float: right; font-size: 11px; line-height: 1.45; font-weight: 600; letter-spacing: 0.004em; text-transform: uppercase; margin: 5px -1px -2px 9px; color: rgba(255,255,255,0.92); }
         .bubble-by + .bubble-time { margin-left: 5px; }
         /* Real per-message time -- only rendered when the stored message
            actually has one (see history.push's "at" field server-side).
@@ -7414,20 +7414,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            on purpose, rather than a guessed one. Floated so the message
            text wraps around it and it settles bottom-right in the bubble,
            exactly like WhatsApp, instead of adding another line of text. */
-        .bubble-time { float: right; font-size: 11.5px; line-height: 1; margin: 6px -1px -2px 10px; opacity: 0.72; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .bubble-time { float: right; font-size: 12px; letter-spacing: 0.002em; line-height: 1.5; margin: 6px -1px -2px 10px; opacity: 0.72; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .bubble.user .bubble-time { color: var(--muted-2); }
         .bubble.assistant .bubble-time { color: rgba(255,255,255,0.85); }
         .day-divider { display: flex; align-items: center; justify-content: center; margin: 14px 0; }
-        .day-divider span { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--surface); padding: 5px 14px; border-radius: 999px; box-shadow: var(--shadow-md); }
-        button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
+        .day-divider span { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted); background: var(--surface); padding: 5px 14px; border-radius: 999px; box-shadow: var(--shadow-md); }
+        button.takeover-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; letter-spacing: 0; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(15,23,42,0.12); transition: transform .15s ease; }
         button.takeover-btn:hover { transform: translateY(-1px); }
         button.takeover-btn.take { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
         button.takeover-btn.hand { background: linear-gradient(135deg, #16a34a, #15803d); color: white; }
-        .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: var(--muted-2); font-size: 14px; padding: 24px; text-align: center; }
+        .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: var(--muted-2); font-size: 14px; letter-spacing: -0.006em; padding: 24px; text-align: center; }
         .empty .empty-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; }
         .empty .empty-icon svg { width: 24px; height: 24px; }
-        .empty .empty-title { font-size: 14px; font-weight: 600; color: var(--text); }
-        .empty .empty-sub { font-size: 12px; color: var(--muted); max-width: 240px; line-height: 1.5; }
+        .empty .empty-title { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); }
+        .empty .empty-sub { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); max-width: 240px; line-height: 1.5; }
         /* The boot screen. It covers the gap between the page arriving and the
            first real data landing, which on a cold Render instance is the
            longest wait in the product. It is dismissed by the first successful
@@ -7464,7 +7464,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           100% { stroke-dasharray: 12 110; stroke-dashoffset: -122; }
         }
         .boot-mark span { position: relative; width: 46px; height: 46px; border-radius: 14px; display: flex;
-          align-items: center; justify-content: center; font-family: var(--font-heading); font-weight: 700;
+          align-items: center; justify-content: center; font-family: var(--font-heading); font-weight: 600;
           font-size: 21px; color: #fff; background: linear-gradient(140deg, #C9552F, #9E3D21);
           box-shadow: 0 12px 34px rgba(188,75,42,.42);
           animation: bootPop .6s var(--ease-out) both; }
@@ -7472,8 +7472,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            pop is a different product's vocabulary, and this one fires on every
            dashboard load. */
         @keyframes bootPop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
-        .boot-name { margin-top: 20px; font-family: var(--font-heading); font-size: 17px; font-weight: 620;
-          letter-spacing: -.02em; color: #fff; animation: riseUp .7s cubic-bezier(.22,1,.36,1) .18s both; }
+        .boot-name { margin-top: 20px; font-family: var(--font-heading); font-size: 16px; font-weight: 600;
+          letter-spacing: -0.014em; color: #fff; animation: riseUp .7s cubic-bezier(.22,1,.36,1) .18s both; }
         /* Round 49. Shadows across the dashboard were still cast in slate --
            rgba(15,23,42,...) -- which on a brown page reads as a cold grey
            halo rather than a shadow. One override, declared last so it wins
@@ -7495,7 +7495,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* A highlight mark was painting slate ink on the warn colour. */
         .bubble mark { color: #2A211A !important; }
 
-        .boot-step { margin-top: 7px; font-size: 12.5px; color: rgba(255,255,255,.52);
+        .boot-step { margin-top: 7px; font-size: 13px; letter-spacing: 0; color: rgba(255,255,255,.52);
           animation: riseUp .7s cubic-bezier(.22,1,.36,1) .3s both; transition: opacity .3s ease; }
         @keyframes riseUp { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
         @media (prefers-reduced-motion: reduce) {
@@ -7619,50 +7619,50 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            keeps the scrollbar honest in the meantime. */
         .catalog-view > .catalog-card { content-visibility: auto; contain-intrinsic-size: auto 320px; }
         .catalog-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.07); }
-        .catalog-card h2 { font-family: var(--font-heading); font-size: 15px; margin: 0 0 14px; }
+        .catalog-card h2 { font-family: var(--font-heading); font-size: 16px; letter-spacing: -0.014em; margin: 0 0 14px; }
         table.catalog-table { width: 100%; border-collapse: collapse; }
-        table.catalog-table td.num { font-family: var(--font-mono); font-feature-settings: "tnum" 1; font-size: 13px; }
-        table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-light); font-size: 13px; vertical-align: middle; }
-        table.catalog-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+        table.catalog-table td.num { font-family: var(--font-mono); font-feature-settings: "tnum" 1; font-size: 13px; letter-spacing: 0; }
+        table.catalog-table th, table.catalog-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-light); font-size: 13px; letter-spacing: 0; vertical-align: middle; }
+        table.catalog-table th { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0.002em; background: var(--surface-2); }
         table.catalog-table th:first-child { border-top-left-radius: 8px; }
         table.catalog-table th:last-child { border-top-right-radius: 8px; }
         table.catalog-table tbody tr { transition: background .15s; }
         table.catalog-table tbody tr:hover { background: var(--surface-2); }
         table.catalog-table img { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: var(--border-light); }
-        table.catalog-table td.booking-date-header { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 12px; padding-top: 14px; border-bottom: 1px solid var(--border); }
+        table.catalog-table td.booking-date-header { background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0.002em; padding-top: 14px; border-bottom: 1px solid var(--border); }
         .catalog-form { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; margin-top: 4px; }
-        .catalog-form label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
-        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; background: var(--surface); color: var(--text); font-family: inherit; }
+        .catalog-form label { font-size: 13px; letter-spacing: 0; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
+        .catalog-form input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; letter-spacing: 0; background: var(--surface); color: var(--text); font-family: inherit; }
         .catalog-form input:focus, .catalog-form select:focus, .catalog-form textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
-        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); }
-        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
+        .catalog-form textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; letter-spacing: 0; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text); }
+        .catalog-form select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; letter-spacing: 0; font-family: inherit; background: var(--surface); color: var(--text); }
         /* Native widgets (date pickers, scrollbars, select arrows) follow this. */
         [data-theme="dark"] { color-scheme: dark; }
-        .catalog-btn { background: var(--accent); color: var(--on-accent); border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px var(--accent-shadow); transition: box-shadow .15s, transform .15s; }
+        .catalog-btn { background: var(--accent); color: var(--on-accent); border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; letter-spacing: 0; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 5px var(--accent-shadow); transition: box-shadow .15s, transform .15s; }
         .catalog-btn:hover { box-shadow: 0 4px 10px var(--accent-shadow-strong); transform: translateY(-1px); }
         .catalog-btn.danger { background: transparent; color: var(--danger); font-weight: 500; padding: 4px 8px; box-shadow: none; }
-        .catalog-btn.small { padding: 6px 10px; font-size: 12px; }
+        .catalog-btn.small { padding: 6px 10px; font-size: 12px; letter-spacing: 0.002em; }
         /* Toasts. Until now a save either silently worked or wrote a line of
            small grey text next to the form -- which is invisible if you are
            looking anywhere else on the page, and absent entirely on a phone
            where the form has scrolled. Every real save now says so. */
         .toast-stack { position: fixed; z-index: 200; right: 22px; bottom: 22px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-        .toast { display: flex; align-items: flex-start; gap: 11px; min-width: 240px; max-width: 380px; padding: 13px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); font-size: 13.5px; line-height: 1.45; color: var(--text); pointer-events: auto; }
+        .toast { display: flex; align-items: flex-start; gap: 11px; min-width: 240px; max-width: 380px; padding: 13px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; color: var(--text); pointer-events: auto; }
         .toast-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
         .toast-icon svg { width: 12px; height: 12px; }
         .toast.ok .toast-icon { background: var(--ok-bg); color: var(--ok-fg); }
         .toast.bad .toast-icon { background: var(--danger-bg); color: var(--danger); }
         .toast.info .toast-icon { background: var(--accent-light); color: var(--accent); }
         .toast-body { min-width: 0; }
-        .toast-title { font-weight: 650; }
-        .toast-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+        .toast-title { font-weight: 600; }
+        .toast-sub { color: var(--muted); font-size: 13px; letter-spacing: 0; margin-top: 2px; }
         @media (max-width: 700px) {
           /* Bottom-anchored on a phone would sit under the composer and the
              home indicator, so they come down from the top instead. */
           .toast-stack { right: 12px; left: 12px; bottom: auto; top: calc(10px + env(safe-area-inset-top)); }
-          .toast { min-width: 0; max-width: none; padding: 12px 14px; font-size: 13px; }
+          .toast { min-width: 0; max-width: none; padding: 12px 14px; font-size: 13px; letter-spacing: 0; }
         }
-        .catalog-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+        .catalog-msg { font-size: 12px; letter-spacing: 0.002em; margin-top: 8px; min-height: 16px; }
         /* The min-height above reserves room so the card doesn't jump when a
            save message appears. Inside a card header that stacks on mobile,
            though, an empty status span becomes a visible blank row between the
@@ -7675,10 +7675,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            form permanently open underneath it. */
         .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
         .card-head h2 { margin: 0; }
-        .card-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+        .card-sub { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 4px; line-height: 1.55; }
         .catalog-btn svg { flex-shrink: 0; }
         .catalog-btn { display: inline-flex; align-items: center; gap: 7px; }
-        .btn-quiet { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s; }
+        .btn-quiet { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 13px; letter-spacing: 0; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s; }
         .btn-quiet:hover { background: var(--surface-2); color: var(--text); }
         .table-wrap { overflow-x: auto; }
         .card-head-products { align-items: center; }
@@ -7703,8 +7703,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
         .kpi-mark { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tint-bg); color: var(--tint); box-shadow: inset 0 0 0 1px var(--tint-bg); transition: transform .25s cubic-bezier(.22,1,.36,1); }
         .kpi-mark svg { width: 15px; height: 15px; }
-        .kpi-name { font-size: 11.5px; font-weight: 700; letter-spacing: 0.055em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-        .kpi-figure { font-family: var(--font-heading); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; color: var(--text); font-variant-numeric: tabular-nums; margin-top: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .kpi-name { font-size: 12px; font-weight: 600; letter-spacing: 0.002em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .kpi-figure { font-family: var(--font-heading); font-size: 26px; font-weight: 500; letter-spacing: -0.026em; line-height: 1.15; color: var(--text); font-variant-numeric: tabular-nums; margin-top: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .kpi-foot { margin-top: 10px; display: flex; align-items: center; min-height: 21px; min-width: 0; }
         .kpi-bottom { display: flex; flex-direction: column; min-width: 0; }
         /* Measured, not guessed: side-by-side, a 270px card could not hold
@@ -7713,14 +7713,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            to use the width instead. */
         @media (min-width: 1080px) {
           .kpi-card { padding: 17px 20px 16px; }
-          .kpi-bottom .kpi-figure { font-size: 30px; margin-top: 15px; }
+          .kpi-bottom .kpi-figure { font-size: 34px; letter-spacing: -0.03em; margin-top: 15px; }
           .kpi-bottom .kpi-foot { margin-top: 12px; }
         }
-        .kpi-sub { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; }
+        .kpi-sub { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-top: 3px; }
 
         /* ---- Analytics ---- */
         .an-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-        .an-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--text); }
+        .an-title { font-family: var(--font-heading); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; margin: 0; color: var(--text); }
         .an-range { flex-shrink: 0; }
         .an-range button { min-width: 46px; font-variant-numeric: tabular-nums; }
         #analyticsEmpty { margin-bottom: 18px; }
@@ -7730,7 +7730,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           align-items: center; justify-content: center; background: var(--surface); color: var(--accent);
           box-shadow: var(--shadow-sm); }
         .an-empty-mark svg { width: 16px; height: 16px; }
-        .an-empty-in p { font-size: 13px; line-height: 1.55; color: var(--text); margin: 0; }
+        .an-empty-in p { font-size: 13px; letter-spacing: 0; line-height: 1.55; color: var(--text); margin: 0; }
         .an-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
         .an-two > * { min-width: 0; }
 
@@ -7739,13 +7739,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* A pill, not loose red text. At 172px the old two-line "-37% vs last
            14 days" wrapped out of its own card; one line that can ellipsis
            cannot. */
-        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; font-size: 11.5px; font-weight: 650; line-height: 1.2; padding: 4px 9px 4px 7px; border-radius: 999px; white-space: nowrap; }
+        .kpi-delta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; line-height: 1.5; padding: 4px 9px 4px 7px; border-radius: 999px; white-space: nowrap; }
         .kpi-delta .d-txt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .kpi-delta svg { width: 11px; height: 11px; flex-shrink: 0; }
         .kpi-delta.up { color: var(--ok-fg); background: var(--ok-bg); }
         .kpi-delta.down { color: var(--danger); background: var(--danger-bg); }
         .kpi-delta.down svg { transform: scaleY(-1); }
-        .kpi-delta.flat, .kpi-delta.none { color: var(--muted-2); background: var(--surface-3); font-weight: 550; padding-left: 9px; }
+        .kpi-delta.flat, .kpi-delta.none { color: var(--muted-2); background: var(--surface-3); font-weight: 500; padding-left: 9px; }
 
         /* The slot used to carry its own grey fill, so a day with no orders
            read as a full-height empty box rather than as a zero. The slot is
@@ -7759,12 +7759,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .dow.is-best .dow-bar { background: linear-gradient(to top, var(--accent-dark), var(--accent)); box-shadow: 0 4px 12px var(--accent-shadow); }
         .dow:hover .dow-bar { transform: translateY(-3px); }
         .dow.is-zero:hover .dow-bar { transform: none; }
-        .dow-n { font-size: 12.5px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+        .dow-n { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.55; }
         .dow.is-zero .dow-n { color: var(--muted-2); font-weight: 600; }
         .dow.is-best .dow-n { color: var(--accent); }
-        .dow-name { font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-2); line-height: 1; }
+        .dow-name { font-size: 12px; font-weight: 600; letter-spacing: 0.002em; text-transform: uppercase; color: var(--muted-2); line-height: 1.5; }
         .dow.is-best .dow-name { color: var(--accent); }
-        .dow-note { position: absolute; left: 0; bottom: 0; font-size: 12.5px; color: var(--muted); }
+        .dow-note { position: absolute; left: 0; bottom: 0; font-size: 13px; letter-spacing: 0; color: var(--muted); }
         .dow-note b { color: var(--text); }
 
         .nr-bar { display: flex; gap: 3px; height: 14px; margin-top: 20px; }
@@ -7772,23 +7772,23 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .nr-seg.nr-new { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); box-shadow: 0 2px 8px var(--accent-shadow); }
         .nr-seg.nr-ret { background: linear-gradient(90deg, var(--ok-fg), var(--ok-fg)); }
         .nr-legend { display: flex; gap: 22px; margin-top: 16px; flex-wrap: wrap; }
-        .nr-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
-        .nr-item b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+        .nr-item { display: flex; align-items: center; gap: 7px; font-size: 13px; letter-spacing: 0; color: var(--muted); }
+        .nr-item b { font-family: var(--font-heading); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.014em; }
         .nr-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
         .nr-dot.nr-new { background: var(--accent); }
         .nr-dot.nr-ret { background: var(--ok-fg); }
-        .nr-foot { font-size: 12.5px; color: var(--muted); margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--border-light); line-height: 1.5; }
+        .nr-foot { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--border-light); line-height: 1.55; }
         .nr-foot b { color: var(--text); }
-        .period-chip { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; flex-shrink: 0; }
+        .period-chip { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; white-space: nowrap; flex-shrink: 0; }
         .seller-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
         .seller-row:last-child { border-bottom: none; }
-        .seller-rank { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-3); color: var(--muted); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .seller-rank { width: 22px; height: 22px; border-radius: 7px; background: var(--surface-3); color: var(--muted); font-size: 12px; letter-spacing: 0.002em; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
         .seller-row:first-child .seller-rank { background: var(--accent-light); color: var(--accent); }
         .seller-main { flex: 1; min-width: 0; }
         .seller-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-        .seller-name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .seller-rev { font-family: var(--font-heading); font-size: 13.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-        .seller-units { font-size: 12px; color: var(--muted); margin-top: 5px; }
+        .seller-name { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .seller-rev { font-family: var(--font-heading); font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .seller-units { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 5px; }
         .conversion-block { display: flex; flex-direction: column; gap: 10px; }
         .conversion-meter { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
         .conversion-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width var(--dur-slow) var(--ease-out); }
@@ -7796,70 +7796,74 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Products as cards led by their photo -- that photo is exactly what
            Amara sends a customer, so it's the thing worth recognising. */
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 16px; }
+        /* Round 78. The empty state was a grid ITEM, so "No products yet" sat
+           in the first 214px column with the rest of the card blank beside it.
+           The span rule existed, but only inside a narrow media query. */
+        .product-grid .empty { grid-column: 1 / -1; min-height: 220px; }
         /* Catalogue toolbar: search and sort sit above the category chips, so
            all three compose instead of each one resetting the others. */
         .cat-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
         .cat-search { position: relative; flex: 1; min-width: 190px; display: flex; align-items: center; }
         .cat-search svg { position: absolute; left: 12px; width: 15px; height: 15px; color: var(--muted-2); pointer-events: none; }
-        .cat-search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13.5px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
+        .cat-search input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 14px; letter-spacing: -0.006em; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .cat-search input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .cat-sort { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .cat-sort label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
-        .cat-sort select { padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); cursor: pointer; }
+        .cat-sort label { font-size: 13px; letter-spacing: 0; color: var(--muted); font-weight: 600; }
+        .cat-sort select { padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; letter-spacing: 0; font-family: inherit; background: var(--surface); color: var(--text); cursor: pointer; }
         .cat-sort select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         /* ---- Bookings & services ----
            Both were six-column tables, which is unusable on a phone and not
            much better on a laptop for rows that carry five different kinds of
            fact. Cards, with the one thing you scan for -- the time, the name --
            given the weight. */
-        .bk-daygroup { font-family: var(--font-heading); font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 18px 0 9px; padding-bottom: 7px; border-bottom: 1px solid var(--border-light); }
+        .bk-daygroup { font-family: var(--font-heading); font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--muted); margin: 18px 0 9px; padding-bottom: 7px; border-bottom: 1px solid var(--border-light); }
         .bk-daygroup:first-child { margin-top: 4px; }
         .bk-card { display: flex; align-items: center; gap: 14px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 9px; transition: border-color .15s ease, box-shadow .15s ease; }
         .bk-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
         .bk-time { flex-shrink: 0; width: 66px; display: flex; flex-direction: column; gap: 2px; padding-right: 14px; border-right: 1px solid var(--border-light); }
-        .bk-time b { font-family: var(--font-heading); font-size: 16px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
-        .bk-time span { font-size: 11.5px; color: var(--muted-2); }
+        .bk-time b { font-family: var(--font-heading); font-size: 16px; font-weight: 600; letter-spacing: -0.014em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .bk-time span { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
         .bk-main { flex: 1; min-width: 0; }
-        .bk-service { font-size: 14px; font-weight: 650; color: var(--text); }
-        .bk-who { font-size: 12.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bk-service { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); }
+        .bk-who { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .bk-phone { color: var(--muted-2); font-variant-numeric: tabular-nums; }
-        .bk-ref { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+        .bk-ref { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
         .bk-actions { display: flex; gap: 7px; flex-shrink: 0; }
         .bk-reschedule { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); padding: 14px; margin: -4px 0 12px; }
         .bk-resched-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
-        .bk-slots { margin-top: 10px; font-size: 13px; color: var(--muted); }
+        .bk-slots { margin-top: 10px; font-size: 13px; letter-spacing: 0; color: var(--muted); }
 
         .svc-card { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 9px; transition: border-color .15s ease, box-shadow .15s ease; }
         .svc-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
         .svc-card.needs-work { border-color: var(--warn-border); }
         .svc-main { flex: 1; min-width: 0; }
-        .svc-name { font-size: 14.5px; font-weight: 650; color: var(--text); }
-        .svc-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; margin-top: 5px; font-size: 12.5px; color: var(--muted); }
+        .svc-name { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); }
+        .svc-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; margin-top: 5px; font-size: 13px; letter-spacing: 0; color: var(--muted); }
         .svc-meta > span { padding-right: 12px; border-right: 1px solid var(--border); }
         .svc-meta > span:last-child { border-right: none; padding-right: 0; }
-        .svc-price { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-        .svc-mode.warn, .svc-price.warn { color: var(--warn-fg); font-weight: 650; }
-        .svc-key { font-size: 11.5px; color: var(--muted-2); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .svc-price { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+        .svc-mode.warn, .svc-price.warn { color: var(--warn-fg); font-weight: 600; }
+        .svc-key { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .svc-actions { display: flex; gap: 7px; flex-shrink: 0; }
 
-        .cat-summary { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); font-size: 12px; color: var(--muted-2); }
+        .cat-summary { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
         .cat-summary span { display: inline-flex; align-items: center; padding-right: 16px; border-right: 1px solid var(--border); }
         .cat-summary span:last-child { border-right: none; padding-right: 0; }
-        .cat-summary .sum-warn { color: var(--warn-fg); font-weight: 650; }
-        .cat-summary .sum-ok { color: var(--ok-fg); font-weight: 650; }
+        .cat-summary .sum-warn { color: var(--warn-fg); font-weight: 600; }
+        .cat-summary .sum-ok { color: var(--ok-fg); font-weight: 600; }
 
         .product-card { position: relative; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
         /* A product Amara can't quote properly is worth pointing at, quietly. */
         .product-card.needs-work { border-color: var(--warn-border); }
-        .thumb-cat, .thumb-sold { position: absolute; z-index: 2; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.01em; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .thumb-cat, .thumb-sold { position: absolute; z-index: 2; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.002em; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
         .thumb-cat { left: 9px; top: 9px; background: rgba(255,255,255,0.9); color: #111827; }
         .thumb-sold { right: 9px; top: 9px; background: rgba(17,24,39,0.78); color: #fff; }
-        .product-flag { display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--warn-fg); margin-top: 7px; }
+        .product-flag { display: flex; align-items: center; gap: 5px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--warn-fg); margin-top: 7px; }
         .product-flag svg { width: 12px; height: 12px; flex-shrink: 0; }
-        .price-missing { color: var(--warn-fg); font-weight: 600; font-size: 13px; }
+        .price-missing { color: var(--warn-fg); font-weight: 600; font-size: 13px; letter-spacing: 0; }
         /* Actions read as controls now, not two words of body text. */
         .product-actions { display: flex; align-items: center; gap: 7px; padding: 0 12px 12px; }
-        .pact { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); color: var(--text); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, border-color .15s, color .15s, transform .12s ease; }
+        .pact { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); color: var(--text); font-size: 13px; letter-spacing: 0; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, border-color .15s, color .15s, transform .12s ease; }
         .pact svg { width: 13px; height: 13px; }
         .pact:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
         .pact:active { transform: scale(0.96); }
@@ -7878,39 +7882,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .product-thumb.no-photo::after { content: ""; position: absolute; inset: 0; background-repeat: no-repeat; background-position: center; background-size: 30px 30px; opacity: 0.32;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2.5'/%3E%3Ccircle cx='8.5' cy='10' r='1.6'/%3E%3Cpath d='m3.6 17.5 4.9-4.4a2 2 0 0 1 2.7 0l3.4 3.1a2 2 0 0 0 2.7 0l3.1-2.8'/%3E%3C/svg%3E"); }
         .product-body { padding: 11px 12px 4px; flex: 1; }
-        .product-cat { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-soft); padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
-        .product-name { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
-        .product-price { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums; }
-        .product-desc { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .product-cat { display: inline-block; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent-soft); padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
+        .product-name { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); line-height: 1.45; }
+        .product-price { font-family: var(--font-heading); font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums; }
+        .product-desc { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .product-actions { display: flex; gap: 6px; padding: 10px 12px 12px; }
-        .btn-tiny { padding: 5px 10px; font-size: 12px; }
+        .btn-tiny { padding: 5px 10px; font-size: 12px; letter-spacing: 0.002em; }
         .danger-quiet:hover { background: var(--dang-bg); color: var(--dang-fg); border-color: var(--dang-border); }
         /* Category chips, built from the categories actually in use. */
         .cat-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
         .cat-filter:empty { display: none; }
-        .cat-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+        .cat-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font-size: 12px; letter-spacing: 0.002em; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
         .cat-chip:hover { color: var(--text); border-color: var(--border-strong); }
         .cat-chip-active { background: var(--accent-light); color: var(--accent); border-color: var(--accent-soft); }
-        .cat-chip-count { font-size: 11px; font-weight: 700; opacity: 0.75; }
+        .cat-chip-count { font-size: 11px; letter-spacing: 0.004em; font-weight: 600; opacity: 0.75; }
         /* A real drop target with a preview, instead of a bare file input. */
         .dropzone { border: 1.5px dashed var(--border-strong); border-radius: 12px; background: var(--surface); padding: 18px; text-align: center; cursor: pointer; transition: border-color .18s ease, background .18s ease; }
         .dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: var(--accent-light); }
         .dropzone.dragging { border-color: var(--accent); background: var(--accent-light); }
         .dropzone-empty svg { width: 28px; height: 28px; color: var(--muted-2); }
-        .dropzone-title { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 8px; }
-        .dropzone-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+        .dropzone-title { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); margin-top: 8px; }
+        .dropzone-sub { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 3px; }
         .dropzone-preview img { max-height: 150px; max-width: 100%; border-radius: 10px; display: block; margin: 0 auto; box-shadow: var(--shadow-md); }
-        .dropzone-meta { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+        .dropzone-meta { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; font-size: 12px; letter-spacing: 0.002em; color: var(--muted); }
         /* The add/edit form, revealed on demand, as one coherent grid rather
            than three stacked half-grids. */
         .inline-panel { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); animation: panelIn .18s ease-out; }
         @keyframes panelIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-        .inline-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+        .inline-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); margin-bottom: 12px; }
         .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
         .field-full { grid-column: 1 / -1; }
-        .field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
-        .field-hint { font-size: 12px; color: var(--muted); margin: -2px 0 6px; line-height: 1.45; }
-        .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
+        .field label { display: block; font-size: 13px; letter-spacing: 0; font-weight: 500; color: var(--text); margin-bottom: 5px; }
+        .field-hint { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin: -2px 0 6px; line-height: 1.5; }
+        .field input, .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; letter-spacing: 0; font-family: inherit; background: var(--surface); color: var(--text); resize: vertical; }
         .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         .inline-panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
@@ -7919,24 +7923,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            nowhere to start. Three numbered groups give it somewhere. */
         .form-step { padding: 15px 0; border-top: 1px solid var(--border); }
         .form-step:first-of-type { border-top: none; padding-top: 4px; }
-        .form-step-label { display: flex; align-items: center; gap: 9px; font-family: var(--font-heading); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 11px; letter-spacing: -0.005em; }
-        .form-step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-sans); }
-        .edit-note { font-size: 12.5px; color: var(--muted); background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 9px; padding: 8px 11px; margin-bottom: 13px; }
+        .form-step-label { display: flex; align-items: center; gap: 9px; font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 11px; letter-spacing: 0; }
+        .form-step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-size: 12px; letter-spacing: 0.002em; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: var(--font-sans); }
+        .edit-note { font-size: 13px; letter-spacing: 0; color: var(--muted); background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 9px; padding: 8px 11px; margin-bottom: 13px; }
         .edit-note b { color: var(--text); }
 
         /* A unit that belongs to a field belongs inside it, not in the label. */
         .input-prefix, .input-suffix { display: flex; align-items: stretch; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
         .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
-        .input-prefix span, .input-suffix span { display: flex; align-items: center; padding: 0 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); background: var(--surface-2); flex-shrink: 0; }
+        .input-prefix span, .input-suffix span { display: flex; align-items: center; padding: 0 10px; font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--muted); background: var(--surface-2); flex-shrink: 0; }
         .input-prefix span { border-right: 1px solid var(--border); }
         .input-suffix span { border-left: 1px solid var(--border); }
-        .input-prefix input, .input-suffix input { flex: 1; min-width: 0; border: none; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 13px; font-family: inherit; color: var(--text); }
+        .input-prefix input, .input-suffix input { flex: 1; min-width: 0; border: none; border-radius: 0; background: transparent; padding: 8px 10px; font-size: 13px; letter-spacing: 0; font-family: inherit; color: var(--text); }
         .input-prefix input:focus, .input-suffix input:focus { outline: none; box-shadow: none; }
 
         /* Four options is a row of buttons, not a dropdown you have to open to
            discover what is in it. The <select> stays as the value's home. */
         .choice-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        .choice { padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .12s ease; }
+        .choice { padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 13px; letter-spacing: 0; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .12s ease; }
         .choice:hover { border-color: var(--accent); color: var(--accent); }
         .choice:active { transform: scale(0.96); }
         .choice.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 2px 8px var(--accent-shadow); }
@@ -7947,12 +7951,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
         .setting-row:last-of-type { border-bottom: none; }
         .setting-text { min-width: 0; }
-        .setting-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
-        .setting-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
-        .setting-static { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; flex-shrink: 0; }
-        .setting-note { font-size: 12px; color: var(--muted); line-height: 1.55; margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+        .setting-name { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); }
+        .setting-desc { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+        .setting-static { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); text-align: right; flex-shrink: 0; }
+        .setting-note { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); line-height: 1.5; margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
         .seg-control { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-3); border-radius: 10px; flex-shrink: 0; }
-        .seg-control button { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: background .15s, color .15s, box-shadow .15s, transform var(--dur-press) var(--ease-out); }
+        .seg-control button { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit; transition: background .15s, color .15s, box-shadow .15s, transform var(--dur-press) var(--ease-out); }
         .seg-control button:hover { color: var(--text); }
         .seg-control button.seg-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); }
         .swatches { display: flex; gap: 7px; flex-shrink: 0; }
@@ -7968,7 +7972,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Compact density now reaches the messages themselves, so it is a real
            lever on how dense a thread reads rather than only page padding. */
         [data-density="compact"] .thread { padding: 12px 18px 16px; }
-        [data-density="compact"] .bubble { font-size: 13.5px; line-height: 1.36; padding: 6px 10px 7px 11px; }
+        [data-density="compact"] .bubble { font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; padding: 6px 10px 7px 11px; }
         [data-density="compact"] .msg-row.group-end { margin-bottom: 8px; }
         [data-density="compact"] .bubble-col { max-width: 70%; }
         [data-density="compact"] .msg-row.group-end { margin-bottom: 10px; }
@@ -7983,15 +7987,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* These fields sit outside .catalog-form, so they were rendering with
            browser-default label sizing and unstyled inputs -- the one place
            on the page that still looked like a raw HTML form. */
-        .fees-row label { font-size: 12.5px; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
-        .fees-row input, .fees-row select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); }
+        .fees-row label { font-size: 13px; letter-spacing: 0; font-weight: 500; color: var(--text); display: block; margin-bottom: 5px; }
+        .fees-row input, .fees-row select { width: 100%; padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; letter-spacing: 0; font-family: inherit; background: var(--surface); color: var(--text); }
         .fees-row input:focus, .fees-row select:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
         /* Real search over the messages already on the page -- no server
            round trip, no separate index, just a substring match. */
         .thread-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 24px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
-        .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; }
+        .thread-search-bar input { flex: 1; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; letter-spacing: 0; }
         .thread-search-bar input:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
-        .thread-search-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+        .thread-search-count { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); white-space: nowrap; }
         .bubble mark { background: var(--warn-border); color: #1e293b; border-radius: 3px; padding: 0 1px; }
         .msg-row.search-hidden { display: none; }
         /* The format controls live inside the composer pill, so they line up
@@ -7999,20 +8003,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            separate strip on a different left edge. */
         .compose-tools { display: flex; align-items: center; gap: 2px; margin-top: 2px; }
         .toolbar-divider { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
-        .icon-btn.small-icon-btn { width: 27px; height: 27px; border-radius: 6px; font-size: 12px; border: none; background: transparent; color: var(--text); }
+        .icon-btn.small-icon-btn { width: 27px; height: 27px; border-radius: 6px; font-size: 12px; letter-spacing: 0.002em; border: none; background: transparent; color: var(--text); }
         .icon-btn.small-icon-btn:hover { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
         .icon-btn.small-icon-btn svg { width: 14px; height: 14px; }
         .emoji-picker-wrap { position: relative; }
         .emoji-picker-dropdown { display: none; position: absolute; left: 0; bottom: calc(100% + 8px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.16); padding: 10px; z-index: 20; width: 232px; }
         .emoji-picker-dropdown.open { display: block; }
-        .emoji-picker-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 7px; padding: 0 2px; }
+        .emoji-picker-label { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted); margin-bottom: 7px; padding: 0 2px; }
         .emoji-picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
         .emoji-picker-grid button { border: none; background: transparent; font-size: 18px; padding: 5px; border-radius: 6px; cursor: pointer; line-height: 1; }
         .emoji-picker-grid button:hover { background: var(--accent-light); }
         .msg-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 24px 14px; border-top: 1px solid var(--border); background: var(--surface); }
         .msg-compose-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; border: 1.5px solid var(--border); border-radius: 18px; padding: 6px 10px 6px 14px; background: var(--surface-2); transition: border-color .15s, box-shadow .15s, background .15s; }
         .msg-compose-inner:focus-within { border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); background: var(--surface); }
-        .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
+        .msg-compose textarea { width: 100%; border: none; background: transparent; resize: none; font-size: 14px; letter-spacing: -0.006em; font-family: inherit; line-height: 1.45; padding: 6px 0 2px; max-height: 120px; }
         .msg-compose textarea:focus { outline: none; }
         .msg-send-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 6px var(--accent-shadow); transition: transform .15s ease, box-shadow .15s ease; }
         .msg-send-btn svg { width: 17px; height: 17px; }
@@ -8028,8 +8032,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (min-width: 1080px) { .trend-chart-wrap { height: 300px; } }
         .best-seller-bar-track { background: var(--accent-light); border-radius: 999px; height: 6px; width: 100%; margin-top: 5px; overflow: hidden; }
         .best-seller-bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); height: 100%; border-radius: 999px; }
-        .conversion-stat { font-family: var(--font-heading); font-size: 32px; font-weight: 700; color: var(--text); }
-        .conversion-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+        .conversion-stat { font-family: var(--font-heading); font-size: 34px; letter-spacing: -0.03em; font-weight: 500; color: var(--text); }
+        .conversion-sub { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 4px; }
 
         /* ---------- Responsive ----------
            Below 1000px the fixed-width sidebar becomes an off-canvas drawer
@@ -8127,15 +8131,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hero-text { flex: 1; min-width: 0; }
         /* Mono, tiny, tracked -- the same label style the rail uses, so the two
            surfaces are speaking one language. */
-        .hero-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted-2); }
+        .hero-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); }
         /* 38px/700 was shouting. A display face at 600 and -0.03em tracking is
            the same size on the page and reads as composed rather than loud --
            the weight was doing the work that hierarchy should do. */
-        .hero-name { font-family: var(--font-heading); font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; color: var(--text); margin: 11px 0 0; }
-        .hero-tag { font-size: 14px; line-height: 1.5; color: var(--muted); margin-top: 9px; max-width: 46ch; }
+        .hero-name { font-family: var(--font-heading); font-size: 34px; font-weight: 500; letter-spacing: -0.03em; line-height: 1.08; color: var(--text); margin: 11px 0 0; }
+        .hero-tag { font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; color: var(--muted); margin-top: 9px; max-width: 46ch; }
         .hero-tag button { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .hero-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-        .hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; margin-top: 16px; font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted-2); }
+        .hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; margin-top: 16px; font-family: var(--font-sans); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted-2); }
         .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
         .hero-meta svg { width: 12px; height: 12px; flex-shrink: 0; }
 
@@ -8151,7 +8155,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Frosted, because it sits over whatever the seller uploaded. */
         .hero-cover-btn { position: absolute; top: 16px; right: 16px; z-index: 2;
           display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 0; border-radius: 999px; cursor: pointer;
-          font-family: inherit; font-size: 12px; font-weight: 600;
+          font-family: inherit; font-size: 12px; letter-spacing: 0.002em; font-weight: 600;
           background: rgba(255,255,255,0.58); color: var(--text);
           box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 2px 10px rgba(28,27,25,0.10);
           -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
@@ -8167,7 +8171,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .hero { flex-direction: column-reverse; align-items: flex-start; gap: 20px; padding: 22px 20px 22px; border-radius: 18px; }
           .hero-ring { width: 92px; height: 92px; padding: 7px; }
           .hero-avatar { font-size: 32px; }
-          .hero-name { font-size: 27px; }
+          .hero-name { font-size: 26px; letter-spacing: -0.026em; }
           .hero-cover-btn { top: 12px; right: 12px; }
         }
 
@@ -8196,7 +8200,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            under an animating ancestor has to be recomposited every frame --
            it measured as jank on Home. The fill is 92% opaque anyway, so the
            blur was costing frames for something almost invisible. */
-        .photo-btn { position: absolute; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.92); color: #111827; border: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 650; font-family: inherit; cursor: pointer; z-index: 3; box-shadow: 0 2px 10px rgba(0,0,0,0.20); transition: background .15s, transform .12s ease; }
+        .photo-btn { position: absolute; display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.92); color: #111827; border: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; font-family: inherit; cursor: pointer; z-index: 3; box-shadow: 0 2px 10px rgba(0,0,0,0.20); transition: background .15s, transform .12s ease; }
         .photo-btn:hover { background: #fff; }
         .photo-btn:active { transform: scale(0.96); }
         .photo-btn svg { width: 14px; height: 14px; }
@@ -8206,7 +8210,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .brand-avatar-wrap { position: relative; width: 96px; margin-top: -48px; margin-bottom: 15px; }
         /* The ring is the card's own background, so the avatar reads as
            mounted on the card rather than pasted over the cover. */
-        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 700; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(28,27,25,0.20); }
+        .brand-avatar { width: 96px; height: 96px; border-radius: 26px; border: 4px solid var(--surface); background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 36px; font-weight: 600; letter-spacing: -0.02em; overflow: hidden; box-shadow: 0 6px 18px rgba(28,27,25,0.20); }
         /* With a real photograph in it, an accent-coloured glow reads as a
            rendering fault rather than depth. A neutral drop shadow is what a
            photo actually wants. */
@@ -8228,36 +8232,36 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .brand-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; }
         .brand-text { min-width: 0; flex: 1; }
         .brand-title-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .brand-name { font-family: var(--font-heading); font-size: 30px; font-weight: 800; letter-spacing: -0.025em; color: var(--text); margin: 0; line-height: 1.12; }
+        .brand-name { font-family: var(--font-heading); font-size: 34px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); margin: 0; line-height: 1.08; }
         /* Real state, not decoration: this only says live when the number is
            actually connected (see the connected flag from /api/home). */
-        .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); white-space: nowrap; }
+        .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); white-space: nowrap; }
         .live-pill.off { background: var(--warn-bg); color: var(--warn-fg); }
         .live-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
-        .brand-tagline { font-size: 15px; color: var(--muted); margin-top: 7px; line-height: 1.5; max-width: 56ch; }
-        .brand-empty-hint { font-size: 14px; color: var(--muted-2); margin-top: 7px; }
+        .brand-tagline { font-size: 16px; letter-spacing: -0.014em; color: var(--muted); margin-top: 7px; line-height: 1.35; max-width: 56ch; }
+        .brand-empty-hint { font-size: 14px; letter-spacing: -0.006em; color: var(--muted-2); margin-top: 7px; }
         .brand-empty-hint button { background: none; border: none; padding: 0; font: inherit; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         /* Meta reads as a row of facts separated by hairlines, which is why it
            doesn't blur into the tagline above it. */
-        .brand-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 14px; margin-top: 14px; font-size: 12.5px; color: var(--muted-2); }
+        .brand-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 14px; margin-top: 14px; font-size: 13px; letter-spacing: 0; color: var(--muted-2); }
         .brand-meta span { display: inline-flex; align-items: center; gap: 6px; padding-right: 14px; border-right: 1px solid var(--border); }
         .brand-meta span:last-child { border-right: none; padding-right: 0; }
         .brand-meta svg { width: 13.5px; height: 13.5px; opacity: 0.85; }
-        .brand-about { font-size: 14px; color: var(--text); line-height: 1.65; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-light); max-width: 68ch; white-space: pre-wrap; }
+        .brand-about { font-size: 14px; letter-spacing: -0.006em; color: var(--text); line-height: 1.45; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-light); max-width: 68ch; white-space: pre-wrap; }
         .brand-edit-btn { flex-shrink: 0; }
 
         /* Setup prompt */
         .setup-card { position: relative; overflow: hidden; background: var(--surface); border-radius: 18px; padding: 20px 22px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
         .setup-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(to bottom, var(--accent), var(--accent-dark)); }
         .setup-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-        .setup-title { font-family: var(--font-heading); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-        .setup-sub { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.55; max-width: 60ch; }
+        .setup-title { font-family: var(--font-heading); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.014em; }
+        .setup-sub { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 5px; line-height: 1.55; max-width: 60ch; }
         .setup-progress { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
         .setup-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
         .setup-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); transition: width var(--dur-slow) var(--ease-out); }
-        .setup-progress-text { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .setup-progress-text { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
         .setup-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-top: 15px; }
-        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); padding: 9px 11px; border: 1px solid transparent; border-radius: 11px; background: var(--surface-2); transition: border-color .15s, background .15s, transform .12s ease; }
+        .setup-step { display: flex; align-items: center; gap: 10px; font-size: 14px; letter-spacing: -0.006em; color: var(--text); padding: 9px 11px; border: 1px solid transparent; border-radius: 11px; background: var(--surface-2); transition: border-color .15s, background .15s, transform .12s ease; }
         .setup-step:not(.done) { cursor: pointer; }
         .setup-step:not(.done):hover { border-color: var(--accent); background: var(--accent-light); }
         .setup-step:not(.done):active { transform: scale(0.985); }
@@ -8268,15 +8272,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .setup-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 
         /* Alerts */
-        .home-alert { display: flex; align-items: flex-start; gap: 12px; border-radius: 16px; padding: 15px 18px; margin-bottom: 20px; font-size: 13.5px; line-height: 1.55; border: 1px solid; }
+        .home-alert { display: flex; align-items: flex-start; gap: 12px; border-radius: 16px; padding: 15px 18px; margin-bottom: 20px; font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; border: 1px solid; }
         .home-alert svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
         .home-alert.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-fg); }
         .home-alert.bad { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
-        .home-alert b { font-weight: 750; }
+        .home-alert b { font-weight: 600; }
 
         .home-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 12px; }
-        .home-section-label { display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); font-size: 13px; font-weight: 700; letter-spacing: -0.005em; color: var(--text); }
-        .home-section-note { font-size: 12px; color: var(--muted-2); }
+        .home-section-label { display: flex; align-items: center; gap: 8px; font-family: var(--font-heading); font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--text); }
+        .home-section-note { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
         .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); box-shadow: 0 0 0 3px var(--ok-bg); }
 
         /* Home's own tiles. The analytics tile is a number with an icon beside
@@ -8302,9 +8306,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .htile-top { display: flex; align-items: center; gap: 10px; }
         .htile-icon { width: 32px; height: 32px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--tint-bg); color: var(--tint); }
         .htile-icon svg { width: 16px; height: 16px; }
-        .htile-value { font-family: var(--font-heading); font-size: 26px; font-weight: 800; letter-spacing: -0.03em; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .htile-label { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 12px; }
-        .htile-context { font-size: 12px; color: var(--muted-2); margin-top: 3px; line-height: 1.35; }
+        .htile-value { font-family: var(--font-heading); font-size: 26px; font-weight: 500; letter-spacing: -0.026em; color: var(--text); line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .htile-label { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); margin-top: 12px; }
+        .htile-context { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-top: 3px; line-height: 1.5; }
 
         .home-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
@@ -8314,13 +8318,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-bar-slot { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
         .wk-bar { width: 100%; border-radius: 8px; background: linear-gradient(to top, var(--accent-dark), var(--accent)); transition: height var(--dur-slow) var(--ease-out); }
         .wk-col.is-today .wk-bar-slot { box-shadow: inset 0 0 0 1.5px var(--accent-soft); }
-        .wk-day { font-size: 11.5px; font-weight: 600; color: var(--muted-2); }
+        .wk-day { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted-2); }
         .wk-col.is-today .wk-day { color: var(--accent); }
         .wk-foot { display: flex; gap: 0; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
         .wk-stat { flex: 1; display: flex; flex-direction: column; gap: 2px; padding-right: 12px; border-right: 1px solid var(--border-light); }
         .wk-stat:last-child { border-right: none; padding-right: 0; }
-        .wk-stat b { font-family: var(--font-heading); font-size: 17px; font-weight: 750; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
-        .wk-stat span { font-size: 11.5px; color: var(--muted-2); }
+        .wk-stat b { font-family: var(--font-heading); font-size: 16px; font-weight: 600; letter-spacing: -0.014em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .wk-stat span { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
 
         /* The catalogue card. The point of it is the products, so they get the
            space: the price sits on the image rather than on a line of its own,
@@ -8330,8 +8334,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .ring-badge svg { width: 44px; height: 44px; transform: rotate(-90deg); }
         .ring-badge .track { fill: none; stroke: var(--surface-3); stroke-width: 4.5; }
         .ring-badge .fill { fill: none; stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
-        .ring-badge b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 12.5px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
-        .ring-badge b i { font-style: normal; font-size: 11px; margin-left: 0.5px; color: var(--muted-2); }
+        .ring-badge b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0; }
+        .ring-badge b i { font-style: normal; font-size: 11px; letter-spacing: 0.004em; margin-left: 0.5px; color: var(--muted-2); }
 
         .ptile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; margin-top: 18px; }
         .ptile { min-width: 0; cursor: pointer; }
@@ -8346,14 +8350,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* The price rides up out of the image on hover; the veil is what keeps
            it readable over a photograph of any brightness. */
         .ptile-veil { position: absolute; left: 0; right: 0; bottom: 0; height: 54%; background: linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0)); opacity: 0; transition: opacity .25s ease; pointer-events: none; }
-        .ptile-price { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 12px; font-weight: 750; color: #fff; letter-spacing: -0.01em; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ptile-price { position: absolute; left: 8px; bottom: 7px; right: 8px; font-size: 12px; font-weight: 600; color: #fff; letter-spacing: 0.002em; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .28s cubic-bezier(.22,1,.36,1); pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .ptile:hover .ptile-veil { opacity: 1; }
         .ptile:hover .ptile-price { opacity: 1; transform: none; }
-        .ptile-sold { position: absolute; right: 7px; top: 7px; font-size: 11px; font-weight: 750; padding: 2.5px 7px; border-radius: 999px; background: rgba(17,24,39,0.82); color: #fff; }
-        .ptile-name { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ptile-sold { position: absolute; right: 7px; top: 7px; font-size: 11px; letter-spacing: 0.004em; font-weight: 600; padding: 2.5px 7px; border-radius: 999px; background: rgba(17,24,39,0.82); color: #fff; }
+        .ptile-name { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--text); margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .gap-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border-light); }
-        .gchip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); }
+        .gchip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); }
         .gchip.ok { background: var(--ok-bg); color: var(--ok-fg); }
         .gchip svg { width: 11px; height: 11px; }
         /* min-width:0 on the tracks. A grid item defaults to min-content
@@ -8365,9 +8369,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Home's own cards, a step softer and rounder than the catalogue's. */
         .home-card { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; box-shadow: var(--shadow-sm); }
         .home-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
-        .home-card h3 { font-family: var(--font-heading); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; margin: 0; color: var(--text); }
-        .home-card-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
-        .home-count-chip { font-size: 12px; font-weight: 750; padding: 3px 10px; border-radius: 999px; background: var(--accent-light); color: var(--accent); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .home-card h3 { font-family: var(--font-heading); font-size: 16px; font-weight: 600; letter-spacing: -0.014em; margin: 0; color: var(--text); }
+        .home-card-sub { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 4px; line-height: 1.55; }
+        .home-count-chip { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--accent-light); color: var(--accent); flex-shrink: 0; font-variant-numeric: tabular-nums; }
         .home-count-chip.calm { background: var(--surface-3); color: var(--muted); }
 
         .waiting-list { margin-top: 14px; }
@@ -8375,13 +8379,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .waiting-row + .waiting-row { border-top: 1px solid var(--border-light); }
         .waiting-row:hover { background: var(--surface-2); }
         .waiting-row:active { background: var(--surface-3); }
-        .waiting-avatar { width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .waiting-avatar { width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: #fff; flex-shrink: 0; }
         .waiting-main { min-width: 0; flex: 1; }
         .waiting-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .waiting-name { font-size: 14px; font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .waiting-when { font-size: 12px; color: var(--muted-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
-        .waiting-preview { font-size: 13px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .waiting-flag { font-size: 11px; font-weight: 750; padding: 2.5px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; letter-spacing: 0.01em; }
+        .waiting-name { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .waiting-when { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .waiting-preview { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .waiting-flag { font-size: 11px; font-weight: 600; padding: 2.5px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-fg); flex-shrink: 0; letter-spacing: 0.004em; }
         .waiting-chev { color: var(--muted-2); flex-shrink: 0; display: flex; }
         .waiting-chev svg { width: 16px; height: 16px; }
 
@@ -8393,22 +8397,22 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .health-ring .track { fill: none; stroke: var(--surface-3); stroke-width: 8; }
         .health-ring .fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .health-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .health-num b { font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
-        .health-num span { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
+        .health-num b { font-family: var(--font-heading); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.014em; line-height: 1.35; }
+        .health-num span { font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2); margin-top: 2px; }
         .gap-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-        .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+        .gap-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; letter-spacing: 0; }
         .gap-label { color: var(--muted); }
-        .gap-count { font-weight: 700; font-size: 12.5px; font-variant-numeric: tabular-nums; padding: 2px 9px; border-radius: 999px; }
+        .gap-count { font-weight: 600; font-size: 13px; letter-spacing: 0; font-variant-numeric: tabular-nums; padding: 2px 9px; border-radius: 999px; }
         .gap-count.zero { color: var(--ok-fg); background: var(--ok-bg); }
         .gap-count.some { color: var(--warn-fg); background: var(--warn-bg); }
-        .home-empty { font-size: 13.5px; color: var(--muted); padding: 22px 0 18px; text-align: center; line-height: 1.6; }
+        .home-empty { font-size: 14px; letter-spacing: -0.006em; color: var(--muted); padding: 22px 0 18px; text-align: center; line-height: 1.45; }
         .home-empty-icon { display: flex; justify-content: center; margin-bottom: 10px; color: var(--muted-2); }
         .home-empty-icon svg { width: 26px; height: 26px; }
 
         /* Edit-profile form */
         .profile-form { display: grid; gap: 15px; margin-top: 16px; }
-        .profile-field label { font-size: 12.5px; font-weight: 650; color: var(--text); display: block; margin-bottom: 6px; }
-        .profile-field input, .profile-field textarea { width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong); border-radius: 11px; font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
+        .profile-field label { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); display: block; margin-bottom: 6px; }
+        .profile-field input, .profile-field textarea { width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong); border-radius: 11px; font-size: 14px; letter-spacing: -0.006em; font-family: inherit; background: var(--surface); color: var(--text); transition: border-color .15s, box-shadow .15s; }
         .profile-field textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
         .profile-field input:focus, .profile-field textarea:focus { outline: none; border-color: var(--focus-edge); box-shadow: 0 0 0 2px var(--focus-ring); }
 
@@ -8424,7 +8428,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .an-two { grid-template-columns: minmax(0, 1fr); }
           .home-grid { grid-template-columns: 1fr; }
           .stat-tile { min-width: 0; }
-          .brand-name { font-size: 26px; }
+          .brand-name { font-size: 26px; letter-spacing: -0.026em; }
           .trend-chart-wrap { height: 210px; }
         }
 
@@ -8458,9 +8462,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .htile-top { flex-direction: column; align-items: flex-start; gap: 9px; }
           .htile-icon { width: 30px; height: 30px; border-radius: 10px; }
           .htile-icon svg { width: 15px; height: 15px; }
-          .htile-value { font-size: 25px; }
-          .htile-label { font-size: 12px; margin-top: 8px; }
-          .htile-context { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .htile-value { font-size: 26px; letter-spacing: -0.026em; }
+          .htile-label { font-size: 12px; letter-spacing: 0.002em; margin-top: 8px; }
+          .htile-context { font-size: 12px; letter-spacing: 0.002em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .htile::after { width: 82px; height: 82px; right: -30px; top: -38px; }
           /* A thin accent rule at the top of each tile, so the four read as a
              set of distinct things at a glance rather than four grey boxes. */
@@ -8468,25 +8472,25 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .home-col { gap: 14px; }
           .wk-chart { height: 76px; gap: 5px; margin-top: 14px; }
           .wk-foot { margin-top: 13px; padding-top: 12px; }
-          .wk-stat b { font-size: 15.5px; }
-          .wk-stat span { font-size: 11.5px; }
+          .wk-stat b { font-size: 16px; letter-spacing: -0.014em; }
+          .wk-stat span { font-size: 12px; letter-spacing: 0.002em; }
           /* Two across on a phone, bigger than four squeezed ones, and the
              price stays visible rather than waiting for a hover that a touch
              screen never delivers. */
           .ptile-row { grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
           .ptile-img { border-radius: 12px; }
           .ptile-veil, .ptile-price { opacity: 1; transform: none; }
-          .ptile-name { font-size: 12px; margin-top: 7px; }
+          .ptile-name { font-size: 12px; letter-spacing: 0.002em; margin-top: 7px; }
           .ring-badge, .ring-badge svg { width: 40px; height: 40px; }
           .gap-chips { gap: 6px; margin-top: 14px; padding-top: 13px; }
-          .gchip { font-size: 11.5px; padding: 4px 9px; }
+          .gchip { font-size: 12px; letter-spacing: 0.002em; padding: 4px 9px; }
           .stat-tile { min-width: 0; padding: 10px 11px; border-radius: 12px; flex-direction: row-reverse; align-items: center; gap: 9px; }
           .stat-tile::before { height: 0; }
           .stat-tile::after { display: none; }
           .stat-tile .stat-icon { width: 29px; height: 29px; border-radius: 9px; flex-shrink: 0; }
           .stat-tile .stat-icon svg { width: 14px; height: 14px; }
-          .stat-tile .stat-value { font-size: 15.5px; letter-spacing: -0.2px; }
-          .stat-tile .stat-label { font-size: 11.5px; margin-top: 1px; }
+          .stat-tile .stat-value { font-size: 16px; letter-spacing: -0.014em; }
+          .stat-tile .stat-label { font-size: 12px; letter-spacing: 0.002em; margin-top: 1px; }
           .stat-tile:hover { transform: none; box-shadow: var(--shadow-sm); }
           /* Home on a phone. The masthead keeps its proportions -- a smaller
              cover and avatar, the same relationship between them -- so it
@@ -8498,32 +8502,32 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .brand-body { padding: 0 17px 18px; }
           .brand-avatar-wrap { width: 78px; margin-top: -39px; margin-bottom: 13px; }
           .brand-avatar { width: 78px; height: 78px; border-radius: 24px; font-size: 29px; border-width: 4px; }
-          .brand-name { font-size: 23px; }
+          .brand-name { font-size: 20px; letter-spacing: -0.02em; }
           .brand-title-line { gap: 8px; }
-          .live-pill { font-size: 11.5px; padding: 3px 9px 3px 7px; }
-          .brand-tagline { font-size: 14px; margin-top: 6px; }
+          .live-pill { font-size: 12px; letter-spacing: 0.002em; padding: 3px 9px 3px 7px; }
+          .brand-tagline { font-size: 14px; letter-spacing: -0.006em; margin-top: 6px; }
           /* The hairline separators only work on a single line. Once the row
              wraps -- which it does on a phone -- the last item on each line
              leaves a divider hanging in empty space, so spacing carries the
              separation here instead. */
-          .brand-meta { gap: 6px 16px; margin-top: 12px; font-size: 12px; }
+          .brand-meta { gap: 6px 16px; margin-top: 12px; font-size: 12px; letter-spacing: 0.002em; }
           .brand-meta span { padding-right: 0; border-right: none; }
-          .brand-about { font-size: 13.5px; margin-top: 15px; padding-top: 15px; }
+          .brand-about { font-size: 14px; letter-spacing: -0.006em; margin-top: 15px; padding-top: 15px; }
           .brand-head-row { flex-direction: column; gap: 0; }
           .brand-edit-btn { width: 100%; text-align: center; margin-top: 16px; padding: 10px 14px; }
-          .cover-photo-btn { right: 11px; bottom: 11px; padding: 6px 11px; font-size: 12px; }
+          .cover-photo-btn { right: 11px; bottom: 11px; padding: 6px 11px; font-size: 12px; letter-spacing: 0.002em; }
           .setup-card { padding: 16px 16px; border-radius: 16px; margin-bottom: 16px; }
           /* One per row. Two columns squeezed "Profile picture" and left the
              completed rows floating in half-width boxes with nothing in them. */
           .setup-steps { grid-template-columns: 1fr; gap: 6px; }
-          .setup-step { font-size: 13px; padding: 10px 12px; gap: 10px; border-radius: 12px; }
+          .setup-step { font-size: 13px; letter-spacing: 0; padding: 10px 12px; gap: 10px; border-radius: 12px; }
           .setup-step .tick { width: 19px; height: 19px; }
           .setup-step.done { padding: 8px 12px; }
-          .setup-title { font-size: 15px; }
-          .setup-sub { font-size: 12.5px; }
+          .setup-title { font-size: 16px; letter-spacing: -0.014em; }
+          .setup-sub { font-size: 13px; letter-spacing: 0; }
           .setup-progress { margin-top: 13px; }
           .home-card { padding: 17px 16px; border-radius: 16px; }
-          .home-alert { padding: 13px 15px; border-radius: 14px; font-size: 13px; }
+          .home-alert { padding: 13px 15px; border-radius: 14px; font-size: 13px; letter-spacing: 0; }
           .cat-health { gap: 14px; }
           .health-ring, .health-ring svg { width: 74px; height: 74px; }
           .waiting-row { padding: 10px 8px; margin: 0 -8px; }
@@ -8550,11 +8554,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .msg-compose { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
           .sidebar { padding-top: env(safe-area-inset-top); }
           .topbar-left { gap: 8px; flex: 1; min-width: 0; }
-          .topbar h1 { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
-          .topbar-biz { max-width: 40vw; padding: 3px 9px 3px 8px; font-size: 12px; }
+          .topbar h1 { font-size: 16px; letter-spacing: -0.014em; overflow: hidden; text-overflow: ellipsis; }
+          .topbar-biz { max-width: 40vw; padding: 3px 9px 3px 8px; font-size: 12px; letter-spacing: 0.002em; }
           .topbar-right { gap: 8px; flex-shrink: 0; }
           .theme-toggle { width: 32px; height: 32px; }
-          .topbar-avatar { width: 30px; height: 30px; font-size: 12.5px; box-shadow: 0 2px 6px var(--accent-shadow); }
+          .topbar-avatar { width: 30px; height: 30px; font-size: 13px; letter-spacing: 0; box-shadow: 0 2px 6px var(--accent-shadow); }
           /* Thread header: identity on one line, one primary action beside it.
              Search, star and details move into the ⋮ menu rather than wrapping
              onto a second row. */
@@ -8574,31 +8578,31 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .thread-meta .tm-phone { display: none; }
           .thread-meta .thread-status-chip .lbl-full { display: inline; }
           .thread-meta .thread-status-chip .lbl-short { display: none; }
-          .thread-status-chip { font-size: 12px; }
+          .thread-status-chip { font-size: 12px; letter-spacing: 0.002em; }
           .thread-meta { gap: 0 8px; margin-top: 1px; }
           /* One item on the line, so no separator. A display:none sibling is
              still a sibling to "* + *", which is why a stray middot was
              floating on its own between the avatar and the status. */
           .thread-meta > * + *::before { content: none; margin-right: 0; }
-          .thread-name { font-size: 15.5px; }
+          .thread-name { font-size: 16px; letter-spacing: -0.014em; }
           .bubble-col { max-width: 84%; }
-          .bubble { font-size: 14px; line-height: 1.41; padding: 7px 10px 8px 11px; }
+          .bubble { font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; padding: 7px 10px 8px 11px; }
           .thread { padding: 10px 14px 14px; }
           .day-divider { margin: 11px 0; }
           .thread-sub { display: none; }
           .thread-actions { gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
           .thread-actions .icon-btn.hide-sm { display: none; }
           .more-menu-dropdown button.menu-sm-only { display: block; }
-          button.takeover-btn { padding: 7px 10px; font-size: 12.5px; max-width: 34vw; }
+          button.takeover-btn { padding: 7px 10px; font-size: 13px; letter-spacing: 0; max-width: 34vw; }
           .lbl-full { display: none; }
           .lbl-short { display: inline; }
-          .thread-name { font-size: 15px; }
+          .thread-name { font-size: 16px; letter-spacing: -0.014em; }
           .thread-header-id > div:last-child { min-width: 0; overflow: hidden; }
           .compose-hint { display: none; }
           /* Settings on a phone: label above, control below at full width,
              instead of a squeezed control fighting its own label. */
           .setting-row { flex-direction: column; align-items: stretch; gap: 10px; padding: 13px 0; }
-          .setting-static { text-align: left; font-size: 14px; }
+          .setting-static { text-align: left; font-size: 14px; letter-spacing: -0.006em; }
           .seg-control { width: 100%; }
           .seg-control button { flex: 1; padding: 8px 4px; }
           .swatches { justify-content: flex-start; }
@@ -8617,7 +8621,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              button. Now a two-column grid with square thumbs -- the same
              shape a phone shopping app uses -- and a header that stacks. */
           .catalog-card { padding: 15px 13px; margin-bottom: 14px; border-radius: 13px; }
-          .catalog-card h2 { font-size: 14.5px; margin-bottom: 11px; }
+          .catalog-card h2 { font-size: 14px; letter-spacing: -0.006em; margin-bottom: 11px; }
           /* Stacked, but only the action button stretches -- align-items on
              stretch made every child full width, which turned the "14 days"
              chip into a full-width bar. */
@@ -8637,9 +8641,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .product-thumb { aspect-ratio: 1 / 1; }
           .product-thumb.no-photo::after { background-size: 24px 24px; }
           .product-body { padding: 9px 10px 10px; gap: 3px; }
-          .product-name { font-size: 13px; line-height: 1.3; }
-          .product-price { font-size: 13.5px; }
-          .product-cat { font-size: 11px; padding: 2px 7px; }
+          .product-name { font-size: 13px; letter-spacing: 0; line-height: 1.55; }
+          .product-price { font-size: 14px; letter-spacing: -0.006em; }
+          .product-cat { font-size: 11px; letter-spacing: 0.004em; padding: 2px 7px; }
           /* Bookings and services stack on a phone: the actions go full width
              under the detail rather than being squeezed beside it. */
           .bk-card, .svc-card { flex-wrap: wrap; gap: 10px 12px; padding: 12px 13px; }
@@ -8657,11 +8661,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .cat-search { min-width: 0; flex: 1 1 100%; }
           .cat-sort { flex: 1 1 100%; }
           .cat-sort select { flex: 1; }
-          .cat-summary { gap: 4px 12px; font-size: 12px; }
+          .cat-summary { gap: 4px 12px; font-size: 12px; letter-spacing: 0.002em; }
           .cat-summary span { padding-right: 12px; }
           .product-actions { gap: 6px; padding: 0 10px 10px; }
-          .pact { padding: 6px 8px; font-size: 12px; gap: 5px; }
-          .thumb-cat, .thumb-sold { font-size: 11px; padding: 2px 7px; }
+          .pact { padding: 6px 8px; font-size: 12px; letter-spacing: 0.002em; gap: 5px; }
+          .thumb-cat, .thumb-sold { font-size: 11px; letter-spacing: 0.004em; padding: 2px 7px; }
           .dropzone { padding: 14px; }
           .dropzone-preview img { max-height: 110px; }
 
@@ -8671,13 +8675,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              started. Halved in height, two per row. */
           .kpi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-bottom: 16px; }
           .an-head { gap: 12px; margin-bottom: 13px; }
-          .an-title { font-size: 18px; }
+          .an-title { font-size: 20px; letter-spacing: -0.02em; }
           .an-range { width: 100%; }
           .an-range button { flex: 1; }
           .an-two { grid-template-columns: minmax(0, 1fr); gap: 14px; }
           .dow-row { gap: 5px; margin-top: 15px; }
           .dow-slot { height: 68px; border-radius: 7px; }
-          .dow-n { font-size: 11.5px; }
+          .dow-n { font-size: 12px; letter-spacing: 0.002em; }
           .nr-legend { gap: 16px; }
           /* Same card, phone proportions: the mark shrinks, the figure stays
              the biggest thing in the card, and the pill gets its own line
@@ -8688,21 +8692,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .kpi-top { gap: 7px; }
           .kpi-mark { width: 25px; height: 25px; border-radius: 8px; }
           .kpi-mark svg { width: 13px; height: 13px; }
-          .kpi-name { font-size: 11px; letter-spacing: 0.045em; }
-          .kpi-figure { font-size: 19px; margin-top: 9px; letter-spacing: -0.025em; }
+          .kpi-name { font-size: 11px; letter-spacing: 0.004em; }
+          .kpi-figure { font-size: 20px; margin-top: 9px; letter-spacing: -0.02em; }
           .kpi-foot { margin-top: 7px; min-height: 18px; }
-          .kpi-delta { font-size: 11px; padding: 3px 7px 3px 6px; gap: 3px; }
+          .kpi-delta { font-size: 11px; letter-spacing: 0.004em; padding: 3px 7px 3px 6px; gap: 3px; }
           .kpi-delta svg { width: 9px; height: 9px; }
           .trend-chart-wrap { height: 190px; padding-top: 4px; }
           .seller-row { padding: 10px 0; gap: 10px; }
-          .seller-name { font-size: 13px; }
-          .seller-rev { font-size: 13px; }
-          .seller-units { font-size: 11.5px; }
-          .conversion-stat { font-size: 30px; }
+          .seller-name { font-size: 13px; letter-spacing: 0; }
+          .seller-rev { font-size: 13px; letter-spacing: 0; }
+          .seller-units { font-size: 12px; letter-spacing: 0.002em; }
+          .conversion-stat { font-size: 34px; letter-spacing: -0.03em; }
         }
         @media (max-width: 480px) {
           .topbar-date-chip { display: none; }
-          .topbar h1 { font-size: 14px; }
+          .topbar h1 { font-size: 14px; letter-spacing: -0.006em; }
         }
 
         /* ==================================================================
@@ -8722,9 +8726,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .htile-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .htile-icon { width: auto; height: auto; border-radius: 0; background: none; color: var(--muted-2); }
         .htile-icon svg { width: 14px; height: 14px; }
-        .htile-label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.11em; color: var(--muted-2); margin: 0; }
-        .htile-value { font-family: var(--font-heading); font-size: 34px; font-weight: 600; letter-spacing: -0.035em; line-height: 1; margin-top: 15px; display: block; }
-        .htile-context { font-size: 12px; color: var(--muted); margin-top: 8px; }
+        .htile-label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); margin: 0; }
+        .htile-value { font-family: var(--font-heading); font-size: 34px; font-weight: 500; letter-spacing: -0.03em; line-height: 1.08; margin-top: 15px; display: block; }
+        .htile-context { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 8px; }
 
         /* --- the setup checklist ------------------------------------------
            The clay stripe down its left edge was the only element of its kind
@@ -8735,13 +8739,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .setup-card::before { content: none; }
         .setup-card { padding: 22px 24px 20px; }
         .setup-steps { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 2px; margin-top: 14px; }
-        .setup-step { background: transparent; padding: 9px 10px; border-radius: 9px; font-size: 13px; }
+        .setup-step { background: transparent; padding: 9px 10px; border-radius: 9px; font-size: 13px; letter-spacing: 0; }
         .setup-step:not(.done):hover { background: var(--surface-2); border-color: transparent; }
-        .setup-progress-text { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2); }
+        .setup-progress-text { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); }
         .setup-bar { height: 4px; background: var(--surface-3); }
         .setup-bar-fill { background: var(--accent); }
-        .setup-title { font-size: 15px; font-weight: 650; }
-        .setup-sub { font-size: 12.5px; max-width: 54ch; }
+        .setup-title { font-size: 16px; letter-spacing: -0.014em; font-weight: 600; }
+        .setup-sub { font-size: 13px; letter-spacing: 0; max-width: 54ch; }
 
         /* --- the week chart -----------------------------------------------
            Every bar was a full-strength clay gradient, including the ones
@@ -8753,7 +8757,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-bar-slot { background: transparent; border-radius: 0; }
         .wk-bar { background: var(--accent); border-radius: 5px 5px 0 0; opacity: 0.38; transition: opacity var(--dur-base) ease; }
         .wk-col.is-today .wk-bar { opacity: 1; }
-        .wk-day { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--muted-2); }
+        .wk-day { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2); }
         .wk-col.is-today .wk-day { color: var(--accent); }
         /* The ring around today's column was drawn back when the slot had a
            filled track behind it. With the track gone it was an empty box
@@ -8761,23 +8765,23 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            totals go for the same reason: gap already separates them. */
         .wk-col.is-today .wk-bar-slot { box-shadow: none; }
         .wk-stat { border-right: 0; padding-right: 0; gap: 5px; }
-        .wk-stat b { font-family: var(--font-heading); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
-        .wk-stat span { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); }
+        .wk-stat b { font-family: var(--font-heading); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+        .wk-stat span { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); }
 
         /* --- the waiting list ---------------------------------------------
            Times and counts are figures, so they are set in the mono face and
            tabular, which is what stops a list from jittering as the numbers
            change under the five-second poll. */
-        .home-count-chip { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; font-feature-settings: "tnum" 1; letter-spacing: 0.04em; }
-        .waiting-when, .waiting-flag { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; }
+        .home-count-chip { font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-feature-settings: "tnum" 1; letter-spacing: 0.002em; }
+        .waiting-when, .waiting-flag { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; }
         .waiting-row { border-radius: 11px; }
         .waiting-row + .waiting-row { box-shadow: inset 0 1px 0 var(--border-light); }
         .waiting-chev { color: var(--muted-2); }
         .home-card h3 { letter-spacing: -0.02em; }
-        .home-card-sub { font-size: 12.5px; }
+        .home-card-sub { font-size: 13px; letter-spacing: 0; }
 
         @media (max-width: 760px) {
-          .htile-value { font-size: 27px; margin-top: 12px; }
+          .htile-value { font-size: 26px; letter-spacing: -0.026em; margin-top: 12px; }
           .setup-card { padding: 18px 18px 16px; }
         }
 
@@ -8791,15 +8795,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            else is type on a page, which is what makes the rhythm readable.
            ================================================================== */
         .home-masthead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
-        .home-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
-        .home-eyebrow-note { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); }
+        .home-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted); }
+        .home-eyebrow-note { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); }
         .hair { height: 1px; background: var(--border); border: 0; margin: 0; }
         .home-sec { padding: 34px 0 6px; }
         .home-sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
         .home-sec-head .home-eyebrow-note { margin-left: auto; }
         /* "2 WAITING" -- the count and its unit in one chip, tabular so the
            row does not shift when the number changes under the poll. */
-        .sec-count { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-feature-settings: "tnum" 1; color: var(--accent); background: var(--accent-light); padding: 3px 8px; border-radius: 6px; }
+        .sec-count { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.004em; font-feature-settings: "tnum" 1; color: var(--accent); background: var(--accent-light); padding: 3px 8px; border-radius: 6px; }
         .sec-count.calm { color: var(--muted-2); background: var(--surface-2); }
         .home-split { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start; }
         .home-split.flip { grid-template-columns: 5fr 7fr; }
@@ -8819,13 +8823,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .act-row.amara .act-mark { background: var(--ok-fg); }
         .act-main { flex: 1; min-width: 0; }
         .act-top { display: flex; align-items: baseline; gap: 10px; }
-        .act-who { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .act-when { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; }
-        .act-line { font-size: 12.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .act-who { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .act-when { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); white-space: nowrap; flex-shrink: 0; }
+        .act-line { font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .act-line b { font-weight: 500; color: var(--muted-2); }
         .act-row:hover .act-who { color: var(--accent); }
 
-        .home-footline { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 22px 0 4px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-2); }
+        .home-footline { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 22px 0 4px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); }
 
         /* overflow:hidden was there for the clay stripe down the card's left
            edge, which no longer exists. With the card landing on a fractional
@@ -8881,7 +8885,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* --- the chart gets a scale ---------------------------------------
            Seven bars with no number anywhere is a shape, not a measurement.
            The top of the axis is labelled, so a bar means something. */
-        .wk-scale { display: flex; align-items: baseline; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); margin-bottom: var(--s2); }
+        .wk-scale { display: flex; align-items: baseline; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.004em; text-transform: uppercase; color: var(--muted-2); margin-bottom: var(--s2); }
         .wk-chart { margin-top: 0; }
         /* Three totals on three columns rather than three flex items that
            happen to be equal: the labels start on the same x every time. */
@@ -8894,7 +8898,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            from the same helpers the conversation list uses, so a customer is
            the same colour everywhere in the product. */
         .act-row { gap: var(--s3); padding: var(--s3) 0; align-items: center; }
-        .act-avatar { position: relative; width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 650; color: #fff; }
+        .act-avatar { position: relative; width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: #fff; }
         .act-avatar .act-mark { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; margin: 0; box-shadow: 0 0 0 2px var(--bg); }
         .act-line { margin-top: 2px; }
 
@@ -8917,7 +8921,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (max-width: 700px) {
           .home-sec { padding: var(--s5) 0 var(--s5); }
           .home-sec-head { margin-bottom: var(--s4); }
-          .act-avatar { width: 30px; height: 30px; font-size: 11.5px; }
+          .act-avatar { width: 30px; height: 30px; font-size: 12px; letter-spacing: 0.002em; }
         }
 
         /* ==================================================================
@@ -8937,14 +8941,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-col { justify-content: flex-end; gap: 0; }
         /* Every bar prints its own count. Seven bars and no number anywhere is
            a shape; the number is what makes it a measurement. */
-        .wk-n { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; font-feature-settings: "tnum" 1; color: var(--muted-2); margin-bottom: 7px; transition: color var(--dur-fast) ease; }
+        .wk-n { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.002em; font-weight: 500; font-feature-settings: "tnum" 1; color: var(--muted-2); margin-bottom: 7px; transition: color var(--dur-fast) ease; }
         .wk-bar-slot { flex: 1; align-items: flex-end; }
         .wk-bar { background: var(--border-strong); border-radius: 3px 3px 0 0; opacity: 1; transition: background var(--dur-base) ease; }
         .wk-col.is-today .wk-bar { background: var(--accent); }
         .wk-col:hover .wk-bar { background: var(--accent-dark); }
         .wk-col.is-today .wk-n, .wk-col:hover .wk-n { color: var(--text); font-weight: 600; }
         .wk-days { display: flex; gap: 10px; margin-top: 11px; }
-        .wk-day { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); }
+        .wk-day { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.004em; text-transform: uppercase; color: var(--muted-2); }
         .wk-day.today { color: var(--accent); font-weight: 600; }
 
         /* --- lists get a panel back ---------------------------------------
@@ -8954,11 +8958,11 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the level the page was missing. */
         .list-panel { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
         .list-panel > * + * { box-shadow: inset 0 1px 0 var(--border-light); }
-        .list-panel-note { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface-2); font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+        .list-panel-note { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface-2); font-size: 12px; letter-spacing: 0.002em; line-height: 1.5; color: var(--muted); }
         .list-panel-note svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--muted-2); }
         /* "…takeover queue0 waiting" -- the count was butting straight into
            the end of the label. It is its own chip now, with its own space. */
-        .sec-count { font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+        .sec-count { font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.004em;
           text-transform: none; color: var(--muted); background: var(--surface-2);
           padding: 3px 8px; border-radius: 6px; margin-left: 10px; white-space: nowrap; font-feature-settings: "tnum" 1; }
         .sec-count.hot { color: var(--accent); background: var(--accent-light); }
@@ -8967,18 +8971,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* rows */
         .q-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; transition: background var(--dur-fast) ease; }
         .q-row:hover { background: var(--surface-2); }
-        .q-av { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 650; color: #fff; }
+        .q-av { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: #fff; }
         .q-main { flex: 1; min-width: 0; }
         .q-top { display: flex; align-items: center; gap: 8px; }
-        .q-name { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .q-wait { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; font-feature-settings: "tnum" 1; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-2); }
+        .q-name { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-wait { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; font-feature-settings: "tnum" 1; letter-spacing: 0.004em; text-transform: uppercase; color: var(--muted-2); }
         .q-wait svg { width: 11px; height: 11px; }
         .q-wait.mine { color: var(--accent); }
-        .q-line { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .q-btn { flex-shrink: 0; height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
+        .q-line { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-btn { flex-shrink: 0; height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-family: inherit; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; cursor: pointer; transition: background var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         .q-btn:hover { background: var(--accent-dark); }
         .q-btn:active { transform: scale(0.96); }
-        .list-empty { display: flex; align-items: center; gap: 10px; padding: 18px 16px; font-size: 12.5px; color: var(--muted); }
+        .list-empty { display: flex; align-items: center; gap: 10px; padding: 18px 16px; font-size: 13px; letter-spacing: 0; color: var(--muted); }
         .list-empty svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ok-fg); }
 
         /* the activity feed joins the same panel so the two columns balance */
@@ -8998,7 +9002,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            ================================================================== */
         .crumb-mid { display: inline-flex; align-items: center; gap: 7px; }
         .crumb-link { background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font-heading);
-          font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: var(--muted-2); white-space: nowrap;
+          font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--muted-2); white-space: nowrap;
           transition: color var(--dur-fast) ease; }
         .crumb-link:hover { color: var(--accent); }
         .crumb-mid .crumb-sep svg { width: 13px; height: 13px; display: block; }
@@ -9013,9 +9017,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .peditor-thumb.has img { display: block; }
         .peditor-thumb.has { background: var(--surface-3); }
         .peditor-thumb i { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-          font-style: normal; font-family: var(--font-heading); font-size: 21px; font-weight: 700; color: #fff; }
+          font-style: normal; font-family: var(--font-heading); font-size: 21px; font-weight: 600; color: #fff; }
         .peditor-thumb.has i { display: none; }
-        .peditor-meta { font-size: 12.5px; color: var(--muted-2); margin-top: 4px; font-feature-settings: "tnum" 1; }
+        .peditor-meta { font-size: 13px; letter-spacing: 0; color: var(--muted-2); margin-top: 4px; font-feature-settings: "tnum" 1; }
 
         /* A little colour on the section labels, so a card announces itself
            rather than starting with grey text in the corner. */
@@ -9045,7 +9049,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* 3. The toolbar was a heavy band across the middle of the card. */
         .peditor .rte { box-shadow: inset 0 0 0 1px var(--border-strong); }
         .peditor .rte-bar { background: var(--surface-2); border-bottom-color: var(--border); padding: 6px 8px; }
-        .peditor .rte-note { font-size: 10.5px; }
+        .peditor .rte-note { font-size: 11px; letter-spacing: 0.004em; }
 
         /* The gallery: two slots under the main frame, the shape the reference
            uses. An empty slot is an invitation, not a placeholder. */
@@ -9064,7 +9068,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .pgal-slot.busy { opacity: .55; pointer-events: none; }
         .pgal.locked .pgal-slot { cursor: default; opacity: .5; }
         .pgal.locked .pgal-slot:hover { border-color: var(--border-strong); background: var(--surface-2); }
-        .pgal-note { font-size: 11.5px; color: var(--muted-2); margin-top: 8px; }
+        .pgal-note { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-top: 8px; }
 
         /* ==================================================================
            Round 55 -- the photo card, and the Products submenu.
@@ -9082,7 +9086,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* Pasting a URL is the rarer path; it folds away rather than sitting
            open beside the thing most people will use. */
         .pshot-url { margin-top: 14px; }
-        .pshot-url summary { cursor: pointer; font-size: 12px; color: var(--muted-2); list-style: none; padding: 4px 0; transition: color var(--dur-fast) ease; }
+        .pshot-url summary { cursor: pointer; font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); list-style: none; padding: 4px 0; transition: color var(--dur-fast) ease; }
         .pshot-url summary::-webkit-details-marker { display: none; }
         .pshot-url summary::before { content: "+ "; font-weight: 600; }
         .pshot-url[open] summary::before { content: "- "; }
@@ -9136,17 +9140,17 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            sample, not a placeholder -- the first listed state and its own
            number, so the seller reads the sentence the customer reads. */
         .dquote { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: var(--chat-bg);
-          box-shadow: inset 0 0 0 1px var(--border-light); font-size: 13px; line-height: 1.6; color: var(--text); }
+          box-shadow: inset 0 0 0 1px var(--border-light); font-size: 13px; letter-spacing: 0; line-height: 1.55; color: var(--text); }
         .dquote:empty { display: none; }
         .dquote b { font-weight: 600; }
-        .dquote-who { display: block; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
-          text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted-2); margin-bottom: 6px; }
+        .dquote-who { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+          text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted-2); margin-bottom: 6px; }
         .peditor { margin-top: 4px; }
         .peditor-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
           flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
-        .peditor-title h2 { font-family: var(--font-heading); font-size: 22px; font-weight: 700; letter-spacing: -0.025em; color: var(--text); margin: 0; }
+        .peditor-title h2 { font-family: var(--font-heading); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); margin: 0; }
         .peditor-crumb { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0;
-          background: none; border: 0; cursor: pointer; font-family: inherit; font-size: 12.5px; color: var(--muted-2); transition: color var(--dur-fast) ease; }
+          background: none; border: 0; cursor: pointer; font-family: inherit; font-size: 13px; letter-spacing: 0; color: var(--muted-2); transition: color var(--dur-fast) ease; }
         .peditor-crumb:hover { color: var(--accent); }
         .peditor-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
@@ -9168,27 +9172,27 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .rte:focus-within { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--focus-ring); }
         .rte-bar { display: flex; align-items: center; gap: 2px; padding: 7px 9px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
         .rte-btn { width: 30px; height: 30px; border: 0; background: transparent; border-radius: 7px; cursor: pointer;
-          display: flex; align-items: center; justify-content: center; color: var(--muted); font-family: inherit; font-size: 13px;
+          display: flex; align-items: center; justify-content: center; color: var(--muted); font-family: inherit; font-size: 13px; letter-spacing: 0;
           transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
-        .rte-btn.wide { width: auto; padding: 0 10px; font-size: 12px; font-weight: 600; }
+        .rte-btn.wide { width: auto; padding: 0 10px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; }
         .rte-btn:hover { background: var(--surface-3); color: var(--text); }
         .rte-btn:active { transform: scale(0.94); }
         .rte-sep { width: 1px; height: 18px; background: var(--border); margin: 0 6px; }
-        .rte-note { margin-left: auto; font-size: 11px; color: var(--muted-2); }
+        .rte-note { margin-left: auto; font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2); }
         .rte textarea { width: 100%; border: 0; background: var(--surface); padding: 14px 15px; font-family: inherit;
-          font-size: 13.5px; line-height: 1.6; color: var(--text); resize: vertical; outline: none; display: block; }
+          font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; color: var(--text); resize: vertical; outline: none; display: block; }
 
         .perf-row { display: flex; align-items: baseline; gap: 9px; padding: 9px 0; }
         .perf-row + .perf-row { box-shadow: inset 0 1px 0 var(--border-light); }
-        .perf-row b { font-family: var(--font-heading); font-size: 24px; font-weight: 600; letter-spacing: -0.03em; color: var(--text); font-feature-settings: "tnum" 1; }
-        .perf-row span { font-size: 12.5px; color: var(--muted-2); }
+        .perf-row b { font-family: var(--font-heading); font-size: 26px; font-weight: 500; letter-spacing: -0.026em; color: var(--text); font-feature-settings: "tnum" 1; }
+        .perf-row span { font-size: 13px; letter-spacing: 0; color: var(--muted-2); }
 
         @media (max-width: 1040px) {
           .pform { grid-template-columns: minmax(0,1fr); }
         }
         @media (max-width: 700px) {
           .peditor-bar { padding-bottom: 14px; margin-bottom: 16px; }
-          .peditor-title h2 { font-size: 19px; }
+          .peditor-title h2 { font-size: 20px; letter-spacing: -0.02em; }
           .peditor-actions { width: 100%; }
           .pform-sec { padding: 18px 16px 20px; }
         }
@@ -9200,9 +9204,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            axis to read any value against. What it needed was anatomy.
            ================================================================== */
         .wk-hero { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
-        .wk-hero b { font-family: var(--font-heading); font-size: 34px; font-weight: 600; letter-spacing: -0.035em; color: var(--text); line-height: 1; font-feature-settings: "tnum" 1; }
-        .wk-hero-unit { font-size: 12.5px; color: var(--muted); }
-        .wk-delta { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-sans); font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; font-feature-settings: "tnum" 1; }
+        .wk-hero b { font-family: var(--font-heading); font-size: 34px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); line-height: 1.08; font-feature-settings: "tnum" 1; }
+        .wk-hero-unit { font-size: 13px; letter-spacing: 0; color: var(--muted); }
+        .wk-delta { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.002em; font-weight: 600; padding: 3px 8px; border-radius: 6px; font-feature-settings: "tnum" 1; }
         .wk-delta.up { color: var(--ok-fg); background: var(--ok-bg); }
         .wk-delta.down { color: var(--accent); background: var(--accent-light); }
         .wk-delta.flat { color: var(--muted-2); background: var(--surface-2); }
@@ -9215,7 +9219,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-gridlines { position: absolute; inset: 0 0 0 26px; pointer-events: none; }
         .wk-gridlines i { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: .62; }
         .wk-gridlines i.base { opacity: 1; background: var(--border-strong); }
-        .wk-ylab { position: absolute; left: 0; transform: translateY(-50%); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted-2); font-feature-settings: "tnum" 1; }
+        .wk-ylab { position: absolute; left: 0; transform: translateY(-50%); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2); font-feature-settings: "tnum" 1; }
         .wk-chart { position: relative; height: 150px; align-items: stretch; gap: 10px; border-bottom: 0; margin-top: 0; }
         .wk-col { position: relative; justify-content: flex-end; gap: 0; cursor: default; }
         .wk-bar-slot { flex: 1; align-items: flex-end; }
@@ -9224,7 +9228,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-col:hover .wk-bar { background: var(--accent-dark); }
         /* Selective labels only: the peak and today. A number over every bar
            is noise, and the grid is there to read the rest against. */
-        .wk-n { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text); font-feature-settings: "tnum" 1; opacity: 0; transition: opacity var(--dur-fast) ease; pointer-events: none; margin-bottom: 0; }
+        .wk-n { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.004em; font-weight: 600; color: var(--text); font-feature-settings: "tnum" 1; opacity: 0; transition: opacity var(--dur-fast) ease; pointer-events: none; margin-bottom: 0; }
         .wk-n.show { opacity: 1; }
         .wk-col:hover .wk-n { opacity: 1; }
 
@@ -9240,8 +9244,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-col:first-child:hover .wk-tip { transform: translateX(0) translateY(0) scale(1); }
         .wk-col:last-child .wk-tip { left: auto; right: 0; transform: translateX(0) translateY(3px) scale(.97); }
         .wk-col:last-child:hover .wk-tip { transform: translateX(0) translateY(0) scale(1); }
-        .wk-tip b { display: block; font-family: var(--font-heading); font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
-        .wk-tip span { display: block; font-size: 11px; opacity: .72; margin-top: 1px; }
+        .wk-tip b { display: block; font-family: var(--font-heading); font-size: 13px; font-weight: 600; letter-spacing: 0; }
+        .wk-tip span { display: block; font-size: 11px; letter-spacing: 0.004em; opacity: .72; margin-top: 1px; }
         .wk-days { padding-left: 26px; }
 
         @media (hover: none), (pointer: coarse) {
@@ -9249,7 +9253,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .wk-n { opacity: 1; }
         }
         @media (max-width: 700px) {
-          .wk-hero b { font-size: 27px; }
+          .wk-hero b { font-size: 26px; letter-spacing: -0.026em; }
           .wk-chart { height: 118px; gap: 6px; }
           .wk-plot, .wk-days { padding-left: 22px; }
           .wk-gridlines { inset: 0 0 0 22px; }
@@ -9276,33 +9280,33 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .live-indicator, .wk-day, .wk-stat span, .waiting-flag, .wk-scale,
         #settingsView .catalog-card > h2, #catalogView .catalog-card > h2, .rail-group-label {
           font-family: var(--font-sans);
-          letter-spacing: 0.055em;
+          letter-spacing: 0.06em;
           font-weight: 600;
         }
-        .home-eyebrow, #settingsView .catalog-card > h2, #catalogView .catalog-card > h2 { font-size: 11.5px; color: var(--muted); }
-        .htile-label { font-size: 11px; }
+        .home-eyebrow, #settingsView .catalog-card > h2, #catalogView .catalog-card > h2 { font-size: 12px; letter-spacing: 0.002em; color: var(--muted); }
+        .htile-label { font-size: 11px; letter-spacing: 0.004em; }
         .home-eyebrow-note, .an-note {
           font-family: var(--font-sans); font-size: 12px; font-weight: 400;
-          letter-spacing: 0; text-transform: none; color: var(--muted-2); }
+          letter-spacing: 0.002em; text-transform: none; color: var(--muted-2); }
         /* Figures keep the mono, and keep tabular so columns line up. */
         .htile-value, .wk-n, .wk-stat b, .home-count-chip, .kpi-value,
         .cat-line b, .conversion-stat, .hero-name { font-feature-settings: "tnum" 1; }
-        .wk-n, .home-count-chip, .q-wait, .act-when { font-family: var(--font-mono); letter-spacing: 0.02em; }
+        .wk-n, .home-count-chip, .q-wait, .act-when { font-family: var(--font-mono); letter-spacing: 0.06em; }
 
         /* --- breadcrumb ------------------------------------------------------
            The topbar said "Live Dashboard" on every screen in the product,
            which tells you nothing about where you are. It is a trail now. */
         .crumbs { display: flex; align-items: center; gap: 7px; min-width: 0; }
-        .crumb-root { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--muted-2); letter-spacing: -0.01em; white-space: nowrap; }
+        .crumb-root { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--muted-2); letter-spacing: 0; white-space: nowrap; }
         .crumb-sep { color: var(--muted-2); opacity: .6; flex-shrink: 0; }
         .crumb-sep svg { width: 13px; height: 13px; display: block; }
-        .crumb-here { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .crumb-here { font-family: var(--font-heading); font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.014em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         /* --- rail groups and submenus --------------------------------------- */
-        .rail-group-label { padding: 16px 22px 7px; font-size: 10.5px; text-transform: uppercase; color: var(--muted-2); }
+        .rail-group-label { padding: 16px 22px 7px; font-size: 11px; letter-spacing: 0.004em; text-transform: uppercase; color: var(--muted-2); }
         .subtabs { display: flex; flex-direction: column; gap: 1px; padding: 2px 12px 4px 34px; overflow: hidden; }
         .subtabs button { display: flex; align-items: center; width: 100%; text-align: left; background: transparent; border: 0;
-          color: var(--muted-2); padding: 0 10px; height: 30px; border-radius: 7px; font-family: inherit; font-size: 12.5px;
+          color: var(--muted-2); padding: 0 10px; height: 30px; border-radius: 7px; font-family: inherit; font-size: 13px; letter-spacing: 0;
           font-weight: 500; cursor: pointer; transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out); }
         .subtabs button:hover { background: var(--surface-3); color: var(--text); }
         .subtabs button:active { transform: scale(0.98); }
@@ -9318,7 +9322,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* A channel that is not built yet says so, and cannot be pressed. */
         nav.tabs button.soon { cursor: default; color: var(--muted-2); }
         nav.tabs button.soon:hover { background: transparent; color: var(--muted-2); }
-        .soon-tag { margin-left: auto; font-family: var(--font-sans); font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-2); background: var(--surface-3); padding: 2px 6px; border-radius: 5px; }
+        .soon-tag { margin-left: auto; font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.004em; text-transform: uppercase; color: var(--muted-2); background: var(--surface-3); padding: 2px 6px; border-radius: 5px; }
         .live-tag { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--ok-fg); flex-shrink: 0; }
 
         /* --- the account row at the foot of the rail -------------------------
@@ -9328,18 +9332,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .rail-account { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; margin: 2px 0 0; cursor: pointer; transition: background var(--dur-fast) ease; }
         .rail-account:hover { background: var(--surface-3); }
         [data-theme="dark"] .rail-account:hover { background: rgba(255,255,255,0.04); }
-        .rail-account-name { font-family: var(--font-heading); font-size: 12.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .rail-account-mail { font-size: 11px; color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+        .rail-account-name { font-family: var(--font-heading); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rail-account-mail { font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
         .rail-chev { margin-left: auto; width: 14px; height: 14px; color: var(--muted-2); flex-shrink: 0; }
 
         /* --- welcome line ---------------------------------------------------- */
-        .home-hello { font-family: var(--font-heading); font-size: 22px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin: 0 0 3px; }
+        .home-hello { font-family: var(--font-heading); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); margin: 0 0 3px; }
         .home-hello span { color: var(--muted-2); }
 
         @media (max-width: 700px) {
           .crumb-root, .crumb-sep { display: none; }
-          .crumb-here { font-size: 15px; }
-          .home-hello { font-size: 19px; }
+          .crumb-here { font-size: 16px; letter-spacing: -0.014em; }
+          .home-hello { font-size: 20px; letter-spacing: -0.02em; }
         }
         /* ==================================================================
            Round 49 -- the pass on how it FEELS.
@@ -9378,7 +9382,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .wk-blank-art { flex-shrink: 0; width: 76px; height: 46px; opacity: 0.55; }
         .wk-blank-art rect { fill: var(--border-strong); }
         .wk-blank-art .lead { fill: var(--accent); opacity: 0.5; }
-        .wk-blank-text { font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 40ch; }
+        .wk-blank-text { font-size: 13px; letter-spacing: 0; color: var(--muted); line-height: 1.55; max-width: 40ch; }
         .wk-blank-text b { color: var(--text); font-weight: 600; }
 
         /* --- the completion ring -------------------------------------------
@@ -9431,13 +9435,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         #settingsView .catalog-card { padding: 22px 24px 20px; margin-bottom: 22px; border: 0; }
         #catalogView .catalog-card > h2, #settingsView .catalog-card > h2 {
           font-family: var(--font-mono); font-size: 11px; font-weight: 500;
-          text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
-          margin: 0 0 4px; line-height: 1.4; }
+          text-transform: uppercase; letter-spacing: 0.004em; color: var(--muted);
+          margin: 0 0 4px; line-height: 1.45; }
         #settingsView .setting-row { padding: 16px 0; gap: 24px; }
         #settingsView .setting-row:first-of-type { padding-top: 14px; }
         #settingsView .setting-row:last-child { padding-bottom: 2px; }
-        #settingsView .setting-name { font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em; }
-        #settingsView .setting-desc { font-size: 12.5px; margin-top: 4px; max-width: 54ch; }
+        #settingsView .setting-name { font-size: 14px; font-weight: 600; letter-spacing: -0.006em; }
+        #settingsView .setting-desc { font-size: 13px; letter-spacing: 0; margin-top: 4px; max-width: 54ch; }
         @media (max-width: 760px) {
           #settingsView .catalog-card { padding: 18px 16px 16px; margin-bottom: 16px; }
           #settingsView .setting-row { padding: 14px 0; gap: 14px; }
@@ -9445,8 +9449,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
 
         /* --- catalogue ------------------------------------------------------ */
         .cat-line { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
-        .cat-line b { font-family: var(--font-heading); font-size: 27px; font-weight: 600; letter-spacing: -0.03em; color: var(--text); }
-        .cat-line span { font-size: 12.5px; color: var(--muted); }
+        .cat-line b { font-family: var(--font-heading); font-size: 26px; font-weight: 500; letter-spacing: -0.026em; color: var(--text); }
+        .cat-line span { font-size: 13px; letter-spacing: 0; color: var(--muted); }
 
         /* Home arrives in one movement with a short stagger. 40ms between
            bands: long enough to read as deliberate, short enough that the
@@ -9472,7 +9476,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            page feel scattered. */
         .an-head2 { margin-bottom: 18px; }
         .an-head2 .home-eyebrow { display: block; white-space: normal; }
-        .an-note { display: block; font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+        .an-note { display: block; font-size: 13px; letter-spacing: 0; color: var(--muted); margin-top: 6px; line-height: 1.55; }
         /* Room to breathe between cards, and inside them. */
         #analyticsView .catalog-card { padding: 22px 24px 24px; margin-bottom: 22px; border: 0; }
         #analyticsView .an-two { gap: 22px; margin-bottom: 0; }
@@ -9512,7 +9516,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (max-width: 700px) {
           .wk-chart { height: 132px; gap: 6px; }
           .wk-days { gap: 6px; }
-          .wk-n { font-size: 11px; }
+          .wk-n { font-size: 11px; letter-spacing: 0.004em; }
           .q-row, .act-row { padding: 11px 13px; }
           .q-btn { display: none; }
         }
@@ -9609,10 +9613,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sidebar-profile-role, .sidebar-vendor, .wk-day, .wk-stat span, .act-when,
         .waiting-when, .waiting-flag, .home-footline, .wk-scale, .sec-count,
         .setup-progress-text, .dquote-who, .q-wait {
-          letter-spacing: 0.075em; font-weight: 600;
+          letter-spacing: 0.06em; font-weight: 600;
         }
-        .home-eyebrow, .an-eyebrow, .htile-label { font-weight: 650; }
-        table.catalog-table td.num { font-size: 13.5px; font-weight: 550; letter-spacing: 0; }
+        .home-eyebrow, .an-eyebrow, .htile-label { font-weight: 600; }
+        table.catalog-table td.num { font-size: 14px; font-weight: 500; letter-spacing: -0.006em; }
 
         /* ================================================================
            Round 61. Adding a product was a page swap: the catalogue vanished,
@@ -9811,7 +9815,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              icon stacked and centred while the figure under them stayed left.
              The row layout is right on a phone too: label left, icon right. */
           .htile-top { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
-          .htile-label { margin-top: 0; font-size: 11px; }
+          .htile-label { margin-top: 0; font-size: 11px; letter-spacing: 0.004em; }
           .htile-icon { width: auto; height: auto; background: none; border-radius: 0; }
           .htile-icon svg { width: 14px; height: 14px; }
 
@@ -9821,8 +9825,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .hero { padding: 18px 16px 16px; gap: 14px; }
           .hero-ring { width: 76px; height: 76px; padding: 5px; }
           .hero-avatar { font-size: 26px; }
-          .hero-name, .hero h1 { font-size: 24px; }
-          .hero-meta { gap: 12px; margin-top: 12px; font-size: 12px; }
+          .hero-name, .hero h1 { font-size: 26px; letter-spacing: -0.026em; }
+          .hero-meta { gap: 12px; margin-top: 12px; font-size: 12px; letter-spacing: 0.002em; }
           .hero .btn-quiet, .hero .catalog-btn { width: auto; }
         }
 
@@ -9863,8 +9867,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           /* The thumbnail is identity for a wide panel. At 390px it is 52px of
              a 358px row, spent on something the title already says. */
           #productView .peditor-thumb { display: none; }
-          #productView .peditor-title h2 { font-size: 17px; }
-          #productView .peditor-meta { font-size: 12px; margin-top: 1px; }
+          #productView .peditor-title h2 { font-size: 16px; letter-spacing: -0.014em; }
+          #productView .peditor-meta { font-size: 12px; letter-spacing: 0.002em; margin-top: 1px; }
 
           /* Actions leave the header for a bar at the bottom. Save is the
              wide one because it is the thing you came to do. */
@@ -9875,7 +9879,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             background: var(--surface-2);
             border-top: 1px solid var(--border);
           }
-          #productView .peditor-actions .catalog-btn { flex: 1; justify-content: center; height: 46px; font-size: 14.5px; }
+          #productView .peditor-actions .catalog-btn { flex: 1; justify-content: center; height: 46px; font-size: 14px; letter-spacing: -0.006em; }
           #productView .peditor-actions .btn-quiet { height: 46px; padding: 0 18px; }
           #productView .peditor-actions .catalog-msg { display: none; }
           /* Room for that bar, so the last field is never under it. */
@@ -9941,7 +9945,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             z-index: 40; display: none; align-items: center; gap: 8px;
             height: 50px; padding: 0 20px; border: 0; border-radius: 999px;
             background: var(--accent); color: var(--on-accent); font-family: inherit;
-            font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; cursor: pointer;
+            font-size: 14px; font-weight: 600; letter-spacing: -0.006em; cursor: pointer;
             box-shadow: 0 10px 24px -8px rgba(188,75,42,0.55), 0 2px 6px rgba(28,27,25,0.18);
             transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-fast) ease;
           }
@@ -10000,7 +10004,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .wk-stat { flex-direction: row; align-items: baseline; justify-content: space-between;
             gap: 12px; padding: 9px 0; border-right: 0; }
           .wk-stat + .wk-stat { box-shadow: inset 0 1px 0 var(--border-light); }
-          .wk-stat b { font-size: 17px; order: 2; }
+          .wk-stat b { font-size: 16px; letter-spacing: -0.014em; order: 2; }
           .wk-stat span { order: 1; }
         }
 
@@ -10035,14 +10039,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .htile:nth-child(3) { box-shadow: inset 0 1px 0 var(--border-light), inset -1px 0 0 var(--border-light); }
           .htile:hover, .htile:active { transform: none; }
           .htile::after { display: none; }
-          .htile-value { font-size: 26px; margin-top: 10px; }
-          .htile-context { font-size: 11.5px; margin-top: 6px; }
+          .htile-value { font-size: 26px; letter-spacing: -0.026em; margin-top: 10px; }
+          .htile-context { font-size: 12px; letter-spacing: 0.002em; margin-top: 6px; }
 
           /* A section heading and the note beside it were the same size, so a
              note read as a second heading. The heading leads; the note is an
              aside and now looks like one. */
-          .home-sec-head .home-eyebrow, .home-eyebrow { font-size: 11px; }
-          .home-sec-head .an-note, .home-eyebrow-note, .an-note { font-size: 11.5px; opacity: .9; }
+          .home-sec-head .home-eyebrow, .home-eyebrow { font-size: 11px; letter-spacing: 0.004em; }
+          .home-sec-head .an-note, .home-eyebrow-note, .an-note { font-size: 12px; letter-spacing: 0.002em; opacity: .9; }
 
           /* Onboarding is not the subject of this page. It reads as a quieter
              surface than the numbers above it, and its dismiss stops being a
@@ -10056,7 +10060,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .setup-steps { grid-template-columns: 1fr; gap: 2px; }
           .setup-step { padding: 7px 0; }
           .setup-actions { margin-top: 10px; }
-          .setup-actions .btn-quiet { width: auto; padding: 6px 12px; font-size: 12.5px;
+          .setup-actions .btn-quiet { width: auto; padding: 6px 12px; font-size: 13px; letter-spacing: 0;
             background: transparent; box-shadow: none; color: var(--muted); }
           .setup-steps { gap: 8px 12px; }
 
@@ -10074,8 +10078,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            things -- what it is, what it is now, how that compares with the
            period before, and the shape of the seven days behind it.
            ================================================================== */
-        .home-summary { font-size: 13.5px; line-height: 1.55; color: var(--muted); margin: 5px 0 0; max-width: 62ch; }
-        .home-summary b { font-weight: 650; color: var(--text); }
+        .home-summary { font-size: 14px; letter-spacing: -0.006em; line-height: 1.45; color: var(--muted); margin: 5px 0 0; max-width: 62ch; }
+        .home-summary b { font-weight: 600; color: var(--text); }
         .home-head-actions { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
         .home-head-actions .btn-quiet,
         .home-head-actions .catalog-btn { display: inline-flex; align-items: center; gap: 7px; }
@@ -10093,16 +10097,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-icon { width: 27px; height: 27px; flex: none; display: grid; place-items: center;
           border-radius: 9px; background: var(--accent-light); color: var(--accent-dark); }
         .kpi-icon svg { width: 14px; height: 14px; }
-        .kpi-label { font-size: 12.5px; font-weight: 600; color: var(--muted); letter-spacing: -0.005em; }
-        .kpi-value { font-family: var(--font-heading); font-size: 27px; font-weight: 650;
-          letter-spacing: -0.032em; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+        .kpi-label { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+        .kpi-value { font-family: var(--font-heading); font-size: 26px; font-weight: 500;
+          letter-spacing: -0.026em; line-height: 1.15; color: var(--text); font-variant-numeric: tabular-nums; }
         .kpi-meta { display: flex; align-items: center; gap: 8px; margin-top: 9px; min-height: 20px; flex-wrap: wrap; }
-        .kpi-note { font-size: 11.5px; color: var(--muted-2); }
+        .kpi-note { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
         .kpi-spark { position: absolute; left: 0; right: 0; bottom: 0; height: 40px;
           opacity: .45; pointer-events: none; }
 
         .delta { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px;
-          border-radius: 999px; font-size: 11.5px; font-weight: 650;
+          border-radius: 999px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600;
           font-variant-numeric: tabular-nums; white-space: nowrap; }
         .delta svg { width: 11px; height: 11px; }
         .delta.up { background: var(--ok-bg); color: var(--ok-fg); }
@@ -10112,10 +10116,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (max-width: 760px) {
           .home-head-actions { width: 100%; }
           .home-head-actions .catalog-btn { flex: 1; justify-content: center; }
-          .home-summary { font-size: 13px; }
+          .home-summary { font-size: 13px; letter-spacing: 0; }
           .kpi { padding: 15px 15px 14px; }
           .kpi.has-spark { padding-bottom: 40px; }
-          .kpi-value { font-size: 23px; }
+          .kpi-value { font-size: 20px; letter-spacing: -0.02em; }
           /* The merged-card treatment from Round 67 applied to .htile, which
              these replace. */
           .home-stats { background: none; box-shadow: none; gap: 10px; border-radius: 0; overflow: visible; }
@@ -10135,13 +10139,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hcard-head { display: flex; align-items: flex-start; gap: 14px;
           padding: 17px 20px 0; }
         .hcard-headtext { min-width: 0; flex: 1; }
-        .hcard-title { font-family: var(--font-heading); font-size: 15.5px; font-weight: 650;
-          letter-spacing: -0.018em; color: var(--text); margin: 0; }
-        .hcard-sub { font-size: 12.5px; color: var(--muted-2); margin: 3px 0 0; line-height: 1.45; }
+        .hcard-title { font-family: var(--font-heading); font-size: 16px; font-weight: 600;
+          letter-spacing: -0.014em; color: var(--text); margin: 0; }
+        .hcard-sub { font-size: 13px; letter-spacing: 0; color: var(--muted-2); margin: 3px 0 0; line-height: 1.55; }
         .hcard-aside { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
         .hcard-body { padding: 16px 20px 19px; flex: 1; min-width: 0; }
-        .hcard-note { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 14px 0 0; }
-        .hcard-note b { font-weight: 650; color: var(--text); }
+        .hcard-note { font-size: 13px; letter-spacing: 0; color: var(--muted); line-height: 1.55; margin: 14px 0 0; }
+        .hcard-note b { font-weight: 600; color: var(--text); }
 
         .home-grid { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 18px; align-items: start; }
         .home-stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
@@ -10151,7 +10155,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hseg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px;
           background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
         .hseg-btn { border: 0; background: transparent; border-radius: 7px; cursor: pointer;
-          padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--muted-2);
+          padding: 4px 10px; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted-2);
           font-variant-numeric: tabular-nums;
           transition: background var(--dur-fast) ease, color var(--dur-fast) ease; }
         .hseg-btn:hover { color: var(--text); }
@@ -10161,15 +10165,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hempty-mark { display: inline-flex; width: 42px; height: 42px; border-radius: 13px;
           align-items: center; justify-content: center; background: var(--accent-light); color: var(--accent); }
         .hempty-mark svg { width: 19px; height: 19px; }
-        .hempty-title { font-size: 13.5px; font-weight: 650; color: var(--text); margin-top: 11px; }
-        .hempty-sub { font-size: 12.5px; color: var(--muted-2); margin-top: 4px; line-height: 1.5; max-width: 34ch;
+        .hempty-title { font-size: 14px; letter-spacing: -0.006em; font-weight: 600; color: var(--text); margin-top: 11px; }
+        .hempty-sub { font-size: 13px; letter-spacing: 0; color: var(--muted-2); margin-top: 4px; line-height: 1.55; max-width: 34ch;
           margin-left: auto; margin-right: auto; }
         .hskel { border-radius: 12px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
           background-size: 200% 100%; animation: hsk 1.3s linear infinite; }
         @keyframes hsk { to { background-position: -200% 0; } }
 
         /* Revenue and orders */
-        .ht-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted-2); margin-bottom: 12px; }
+        .ht-legend { display: flex; gap: 16px; font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); margin-bottom: 12px; }
         .ht-legend span { display: inline-flex; align-items: center; gap: 6px; }
         .ht-sw { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
         .ht-sw.rev { background: var(--accent); }
@@ -10181,33 +10185,33 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .ht-line { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round;
           stroke-linecap: round; vector-effect: non-scaling-stroke; }
         .ht-labs { position: relative; height: 16px; margin-top: 7px; }
-        .ht-lab { position: absolute; transform: translateX(-50%); font-size: 10.5px; color: var(--muted-2);
+        .ht-lab { position: absolute; transform: translateX(-50%); font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2);
           white-space: nowrap; font-variant-numeric: tabular-nums; }
         .ht-foot { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px;
           margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-light); }
         .ht-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        .ht-stat b { font-family: var(--font-heading); font-size: 18px; font-weight: 650;
-          letter-spacing: -0.024em; color: var(--text); font-variant-numeric: tabular-nums; }
-        .ht-stat span { font-size: 11.5px; color: var(--muted-2); }
+        .ht-stat b { font-family: var(--font-heading); font-size: 20px; font-weight: 500;
+          letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .ht-stat span { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
 
         /* What's selling */
         .hbars { display: flex; flex-direction: column; gap: 11px; }
         .hbar-row { display: grid; grid-template-columns: minmax(0,1fr) 120px 34px; align-items: center; gap: 12px; }
-        .hbar-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hbar-name { font-size: 13px; letter-spacing: 0; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .hbar-track { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
         .hbar-track i { display: block; height: 100%; border-radius: 99px;
           background: linear-gradient(90deg, var(--accent-dark), var(--accent)); }
-        .hbar-val { font-size: 12.5px; font-weight: 650; color: var(--text); text-align: right;
+        .hbar-val { font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--text); text-align: right;
           font-variant-numeric: tabular-nums; }
 
         /* Rhythm of the week */
         .heat { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 7px; }
         .heat-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-        .heat-dow { font-size: 11px; font-weight: 600; color: var(--muted-2); }
+        .heat-dow { font-size: 11px; letter-spacing: 0.004em; font-weight: 600; color: var(--muted-2); }
         .heat-cell { width: 100%; aspect-ratio: 1; border-radius: 9px;
           background: color-mix(in srgb, var(--accent) calc(18% + var(--a) * 74%), var(--surface-2)); }
         .heat-cell.zero { background: var(--surface-2); }
-        .heat-val { font-size: 11.5px; font-weight: 600; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+        .heat-val { font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted-2); font-variant-numeric: tabular-nums; }
 
         /* Chat to order */
         .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
@@ -10216,26 +10220,26 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .donut-fill { fill: none; stroke: var(--accent); stroke-width: 13; stroke-linecap: round;
           transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
         .donut-n { transform: rotate(90deg); transform-origin: 64px 64px; text-anchor: middle;
-          font-family: var(--font-heading); font-size: 25px; font-weight: 650; fill: var(--text);
+          font-family: var(--font-heading); font-size: 25px; font-weight: 600; fill: var(--text);
           letter-spacing: -0.03em; }
         .donut-c { transform: rotate(90deg); transform-origin: 64px 64px; text-anchor: middle;
-          font-size: 10px; fill: var(--muted-2); }
+          font-size: 11px; letter-spacing: 0.004em; fill: var(--muted-2); }
         .donut-legend { display: flex; flex-direction: column; gap: 9px; min-width: 120px; flex: 1; }
-        .donut-legend div { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); }
-        .donut-legend b { margin-left: auto; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+        .donut-legend div { display: flex; align-items: center; gap: 9px; font-size: 13px; letter-spacing: 0; color: var(--muted); }
+        .donut-legend b { margin-left: auto; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
         .donut-legend .sw { width: 9px; height: 9px; border-radius: 3px; background: var(--surface-3); flex: none; }
         .donut-legend .sw.on { background: var(--accent); }
 
         /* Amara right now */
         .alist { display: flex; flex-direction: column; gap: 11px; }
-        .arow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .arow { display: flex; align-items: center; gap: 10px; font-size: 13px; letter-spacing: 0; }
         .adot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--border-strong); }
         .adot.live { background: var(--ok-fg); }
         .adot.bad { background: var(--dang-fg); }
         .adot.warn { background: var(--warn-fg); }
         .adot.ok { background: var(--border-strong); }
         .ak { color: var(--muted); }
-        .av { margin-left: auto; font-weight: 650; color: var(--text); text-align: right; }
+        .av { margin-left: auto; font-weight: 600; color: var(--text); text-align: right; }
 
         @media (max-width: 1100px) {
           .home-grid { grid-template-columns: minmax(0,1fr); }
@@ -10245,7 +10249,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .home-pair { grid-template-columns: minmax(0,1fr); }
           .hcard-head { padding: 15px 16px 0; }
           .hcard-body { padding: 14px 16px 17px; }
-          .hcard-title { font-size: 15px; }
+          .hcard-title { font-size: 16px; letter-spacing: -0.014em; }
           .hbar-row { grid-template-columns: minmax(0,1fr) 84px 30px; gap: 10px; }
           .ht-svg { height: 130px; }
           .donut { width: 102px; height: 102px; }
@@ -10259,21 +10263,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         #homeView .home-sec-head .home-eyebrow,
         #homeView .card-head .home-eyebrow,
         #homeView .an-head2 .home-eyebrow {
-          font-family: var(--font-heading); font-size: 15.5px; font-weight: 650;
-          text-transform: none; letter-spacing: -0.018em; color: var(--text);
+          font-family: var(--font-heading); font-size: 16px; font-weight: 600;
+          text-transform: none; letter-spacing: -0.014em; color: var(--text);
         }
         #homeView .home-sec-head .an-note,
         #homeView .home-sec-head .home-eyebrow-note,
         #homeView .card-head .an-note {
           text-transform: none; letter-spacing: 0; font-weight: 400;
-          font-size: 12.5px; color: var(--muted-2);
+          font-size: 13px; color: var(--muted-2);
         }
         /* The pulse dot was sized against 11px type. */
         #homeView .home-eyebrow .pulse-dot { width: 7px; height: 7px; }
         /* The footline is the one place a small tracked label still belongs --
            it is a caption on the whole page, not a heading -- but it was the
            same weight as the titles above it. */
-        #homeView .home-footline { font-size: 10.5px; letter-spacing: 0.07em; font-weight: 500; opacity: .85; }
+        #homeView .home-footline { font-size: 11px; letter-spacing: 0.004em; font-weight: 500; opacity: .85; }
 
         /* ==================================================================
            Round 70. The profile page.
@@ -10310,7 +10314,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .pf-av { width: 104px; height: 104px; border-radius: 26px; overflow: hidden;
           display: flex; align-items: center; justify-content: center;
           background: var(--accent); color: #fff;
-          font-family: var(--font-heading); font-size: 38px; font-weight: 650; letter-spacing: -0.03em;
+          font-family: var(--font-heading); font-size: 38px; font-weight: 600; letter-spacing: -0.03em;
           box-shadow: 0 0 0 5px var(--bg), 0 10px 26px -12px rgba(28,27,25,.5); }
         .pf-av.has-photo { background: var(--surface-3); }
         .pf-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -10318,19 +10322,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .pf-avwrap .photo-btn { right: -4px; bottom: -4px; padding: 8px; border-radius: 50%; }
         .pf-avwrap .photo-btn svg { width: 14px; height: 14px; }
         .pf-idtext { flex: 1 1 220px; min-width: 0; padding-bottom: 6px; }
-        .pf-name { font-family: var(--font-heading); font-size: 27px; font-weight: 650;
-          letter-spacing: -0.032em; color: var(--text); margin: 0; }
-        .pf-tag { font-size: 13.5px; color: var(--muted); margin: 4px 0 0; }
+        .pf-name { font-family: var(--font-heading); font-size: 26px; font-weight: 500;
+          letter-spacing: -0.026em; color: var(--text); margin: 0; }
+        .pf-tag { font-size: 14px; letter-spacing: -0.006em; color: var(--muted); margin: 4px 0 0; }
         .pf-idrow .live-pill { margin-bottom: 8px; flex-shrink: 0; }
 
         .pf-stats { display: flex; gap: 0; margin: 20px 28px 22px;
           background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
         .pf-stat { flex: 1; min-width: 0; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; }
         .pf-stat + .pf-stat { box-shadow: inset 1px 0 0 var(--border-light); }
-        .pf-stat b { font-family: var(--font-heading); font-size: 20px; font-weight: 650;
-          letter-spacing: -0.028em; color: var(--text); font-variant-numeric: tabular-nums;
+        .pf-stat b { font-family: var(--font-heading); font-size: 20px; font-weight: 500;
+          letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .pf-stat span { font-size: 11.5px; color: var(--muted-2); }
+        .pf-stat span { font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2); }
 
         .pf-grid { padding: 0 28px; }
         .pf-save { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
@@ -10343,7 +10347,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .pf-cover { height: 118px; border-radius: 0 0 16px 16px; }
           .pf-idrow { padding: 0 16px; margin-top: -36px; gap: 14px; }
           .pf-av { width: 82px; height: 82px; border-radius: 22px; font-size: 30px; box-shadow: 0 0 0 4px var(--bg); }
-          .pf-name { font-size: 22px; }
+          .pf-name { font-size: 20px; letter-spacing: -0.02em; }
           .pf-idrow .live-pill { margin-bottom: 0; }
           .pf-stats { margin: 16px 16px 16px; flex-direction: column; }
           .pf-stat { flex-direction: row; align-items: baseline; justify-content: space-between; padding: 12px 16px; }
@@ -10368,15 +10372,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-icon { width: 40px; height: 40px; border-radius: 13px; flex: none;
           display: grid; place-items: center; background: var(--accent-light); color: var(--accent-dark); }
         .kpi-icon svg { width: 18px; height: 18px; }
-        .kpi-label { font-size: 13.5px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+        .kpi-label { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.006em; }
         /* The delta sits ON the figure's line. Underneath it, it was a fourth
            string down the card; beside it, it is part of the number. */
         .kpi-figure { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
           padding: 13px 16px 15px; }
-        .kpi-value { font-family: var(--font-heading); font-size: 26px; font-weight: 650;
-          letter-spacing: -0.034em; line-height: 1.05; color: var(--text); font-variant-numeric: tabular-nums; }
+        .kpi-value { font-family: var(--font-heading); font-size: 26px; font-weight: 500;
+          letter-spacing: -0.026em; line-height: 1.15; color: var(--text); font-variant-numeric: tabular-nums; }
         .kpi-foot { display: flex; align-items: center; gap: 10px; padding: 11px 16px;
-          border-top: 1px solid var(--border-light); font-size: 12px; color: var(--muted-2);
+          border-top: 1px solid var(--border-light); font-size: 12px; letter-spacing: 0.002em; color: var(--muted-2);
           transition: color var(--dur-fast) ease; }
         .kpi-foot span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .kpi-foot svg { width: 14px; height: 14px; margin-left: auto; flex: none;
@@ -10397,7 +10401,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-primary .kpi-icon { background: rgba(255,255,255,0.18); color: #fff; }
         .kpi-primary .kpi-foot { color: rgba(255,255,255,0.78); border-top-color: rgba(255,255,255,0.16); }
         .kpi-primary .delta.up, .kpi-primary .delta.down, .kpi-primary .delta.flat {
-          background: rgba(255,255,255,0.22); color: #fff; font-weight: 700; }
+          background: rgba(255,255,255,0.22); color: #fff; font-weight: 600; }
         .kpi-primary .kpi-spark { opacity: .55; }
         .kpi-primary .kpi-spark path[fill] { fill: rgba(255,255,255,.22); }
         .kpi-primary .kpi-spark path[stroke] { stroke: rgba(255,255,255,.7); }
@@ -10409,7 +10413,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* ---- the chart ------------------------------------------------- */
         .cf { display: flex; gap: 12px; }
         .cf-axis { display: flex; flex-direction: column; justify-content: space-between;
-          height: 186px; flex: none; font-size: 10.5px; color: var(--muted-2);
+          height: 186px; flex: none; font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2);
           font-variant-numeric: tabular-nums; text-align: right; min-width: 26px; }
         .cf-plot { position: relative; flex: 1; min-width: 0; height: 186px; }
         .cf-grid { position: absolute; inset: 0 0 22px; display: flex; flex-direction: column;
@@ -10426,12 +10430,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .cf-col.on .cf-bar, .cf-cols:not(:hover) .cf-col.is-last .cf-bar {
           background: linear-gradient(to top, var(--accent-dark), var(--accent)); }
         .cf-col.on .cf-bar { transform: scaleY(1.012); transform-origin: bottom; }
-        .cf-dow { font-size: 10.5px; color: var(--muted-2); height: 14px; line-height: 14px;
+        .cf-dow { font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2); height: 14px; line-height: 14px;
           overflow: hidden; white-space: nowrap; }
         .cf-col.on .cf-dow { color: var(--accent); font-weight: 600; }
         .cf-tip { position: absolute; left: 0; top: -6px; z-index: 2; pointer-events: none;
           padding: 7px 11px; border-radius: 10px; background: var(--navy); color: #F4EEE5;
-          font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap;
+          font-size: 12px; letter-spacing: 0.002em; font-variant-numeric: tabular-nums; white-space: nowrap;
           box-shadow: 0 10px 26px -12px rgba(28,27,25,.55);
           opacity: 0; transform: translate(0, 0) scale(0.97);
           transition: opacity 125ms var(--ease-out), transform 125ms var(--ease-out); }
@@ -10443,8 +10447,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .kpi-icon { width: 34px; height: 34px; border-radius: 11px; }
           .kpi-icon svg { width: 16px; height: 16px; }
           .kpi-figure { padding: 11px 14px 13px; }
-          .kpi-value { font-size: 22px; }
-          .kpi-foot { padding: 10px 14px; font-size: 11.5px; }
+          .kpi-value { font-size: 20px; letter-spacing: -0.02em; }
+          .kpi-foot { padding: 10px 14px; font-size: 12px; letter-spacing: 0.002em; }
           .kpi-spark { bottom: 38px; height: 28px; }
           .cf-axis, .cf-plot { height: 150px; }
           .cf { gap: 9px; }
@@ -10467,15 +10471,15 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .hcard-icon { width: 38px; height: 38px; border-radius: 12px; flex: none;
           display: grid; place-items: center; background: var(--accent-light); color: var(--accent-dark); }
         .hcard-icon svg { width: 17px; height: 17px; }
-        .hcard-title { font-size: 16px; font-weight: 650; letter-spacing: -0.02em; }
-        .hcard-sub { font-size: 12.5px; margin-top: 2px; }
+        .hcard-title { font-size: 16px; font-weight: 600; letter-spacing: -0.014em; }
+        .hcard-sub { font-size: 13px; letter-spacing: 0; margin-top: 2px; }
         .hcard-body { padding: 4px 20px 18px; }
-        .hcard-note { font-size: 12.5px; }
+        .hcard-note { font-size: 13px; letter-spacing: 0; }
         /* The footing. Same component as the KPI card's, so a card anywhere on
            this page ends the same way. */
         .hcard-foot { display: flex; align-items: center; gap: 10px; width: 100%;
           padding: 12px 20px; border: 0; border-top: 1px solid var(--border-light);
-          background: transparent; font-family: inherit; font-size: 12.5px; color: var(--muted-2);
+          background: transparent; font-family: inherit; font-size: 13px; letter-spacing: 0; color: var(--muted-2);
           cursor: pointer; text-align: left;
           transition: color var(--dur-fast) ease, background var(--dur-fast) ease; }
         .hcard-foot svg { width: 14px; height: 14px; margin-left: auto; flex: none;
@@ -10498,19 +10502,19 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .sell-fill { position: absolute; left: 0; top: 0; bottom: 0; z-index: 0;
           background: var(--accent-light); border-radius: 12px; }
         .sell-row > *:not(.sell-fill) { position: relative; z-index: 1; }
-        .sell-rank { width: 16px; flex: none; font-size: 11.5px; font-weight: 650; color: var(--muted-2);
+        .sell-rank { width: 16px; flex: none; font-size: 12px; letter-spacing: 0.002em; font-weight: 600; color: var(--muted-2);
           font-variant-numeric: tabular-nums; }
         .sell-thumb { width: 34px; height: 34px; flex: none; border-radius: 10px; overflow: hidden;
           background: var(--surface-3); display: grid; place-items: center; }
         .sell-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .sell-thumb i { font-style: normal; font-family: var(--font-heading); font-size: 14px;
-          font-weight: 650; color: var(--muted); }
-        .sell-name { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text);
+        .sell-thumb i { font-style: normal; font-family: var(--font-heading); font-size: 14px; letter-spacing: -0.006em;
+          font-weight: 600; color: var(--muted); }
+        .sell-name { flex: 1; min-width: 0; font-size: 14px; letter-spacing: -0.006em; color: var(--text);
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sell-figs { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-        .sell-figs b { font-family: var(--font-heading); font-size: 15px; font-weight: 650;
-          letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
-        .sell-figs em { font-style: normal; font-size: 11px; color: var(--muted-2);
+        .sell-figs b { font-family: var(--font-heading); font-size: 16px; font-weight: 600;
+          letter-spacing: -0.014em; color: var(--text); font-variant-numeric: tabular-nums; }
+        .sell-figs em { font-style: normal; font-size: 11px; letter-spacing: 0.004em; color: var(--muted-2);
           font-variant-numeric: tabular-nums; }
 
         /* ---- Amara right now -------------------------------------------
@@ -10518,7 +10522,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            pretending to be a card. The rows get their own ground and the dot
            gets a ring, so a state reads at a glance instead of being read. */
         .alist { gap: 4px; }
-        .arow { padding: 9px 12px; border-radius: 11px; background: var(--surface-2); font-size: 13px; }
+        .arow { padding: 9px 12px; border-radius: 11px; background: var(--surface-2); font-size: 13px; letter-spacing: 0; }
         .adot { width: 8px; height: 8px; box-shadow: 0 0 0 3px var(--surface); }
         .adot.live { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok-fg) 22%, var(--surface)); }
         .adot.bad { box-shadow: 0 0 0 3px color-mix(in srgb, var(--dang-fg) 22%, var(--surface)); }
@@ -10645,8 +10649,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            it says "You have it" rather than shouting it.
            ================================================================== */
         #homeView .q-wait, .q-wait {
-          font-family: var(--font-sans); font-size: 11.5px; font-weight: 500;
-          text-transform: none; letter-spacing: 0; color: var(--muted-2);
+          font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+          text-transform: none; letter-spacing: 0.002em; color: var(--muted-2);
           padding: 0; background: none; gap: 5px;
         }
         #homeView .q-wait.mine, .q-wait.mine {
@@ -10657,20 +10661,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .q-wait svg { width: 12px; height: 12px; opacity: .8; }
         /* The name leads its own row again. */
         .q-top { gap: 8px; }
-        .q-name { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; }
+        .q-name { font-size: 14px; font-weight: 600; letter-spacing: -0.006em; }
 
         /* The same treatment on the list, where the flag had the same fault. */
         #homeView .waiting-flag, .waiting-flag {
           font-family: var(--font-sans); font-size: 11px; font-weight: 600;
-          text-transform: none; letter-spacing: 0;
+          text-transform: none; letter-spacing: 0.004em;
         }
         #homeView .waiting-when, .waiting-when {
-          font-family: var(--font-sans); font-size: 11.5px; font-weight: 500;
-          text-transform: none; letter-spacing: 0; color: var(--muted-2);
+          font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+          text-transform: none; letter-spacing: 0.002em; color: var(--muted-2);
         }
         /* And in the thread list, where "Needs reply" was doing the same. */
         .list-badge, .needs-reply-badge {
-          text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px;
+          text-transform: none; letter-spacing: 0.004em; font-weight: 600; font-size: 11px;
         }
 
         /* A phone showing a conversation shows one header, not two. */
@@ -10712,8 +10716,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           --bdg-hue: var(--muted);
           display: inline-flex; align-items: center; justify-content: center; gap: 6px;
           height: 22px; padding: 0 9px; border-radius: 999px;
-          font-family: var(--font-sans); font-size: 11.5px; font-weight: 600;
-          letter-spacing: -0.005em; text-transform: none; white-space: nowrap;
+          font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+          letter-spacing: 0.002em; text-transform: none; white-space: nowrap;
           font-variant-numeric: tabular-nums;
           color: color-mix(in srgb, var(--bdg-hue) 82%, var(--text));
           background: color-mix(in srgb, var(--bdg-hue) 13%, var(--surface));
@@ -10769,12 +10773,12 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         }
 
         /* The counts are numbers, so they get the tighter box a number wants. */
-        .list-tab-count, .nav-badge { min-width: 21px; height: 20px; padding: 0 6px; font-size: 11px; }
+        .list-tab-count, .nav-badge { min-width: 21px; height: 20px; padding: 0 6px; font-size: 11px; letter-spacing: 0.004em; }
         .sec-count { height: 20px; padding: 0 8px; }
-        .q-wait.mine { height: 20px; padding: 0 8px 0 7px; font-size: 11px; }
+        .q-wait.mine { height: 20px; padding: 0 8px 0 7px; font-size: 11px; letter-spacing: 0.004em; }
         /* The product flag is a line of text, not a pill -- but it was using
            the same shouting weight. */
-        .product-flag { font-size: 11.5px; font-weight: 550; color: var(--warn-fg); }
+        .product-flag { font-size: 12px; letter-spacing: 0.002em; font-weight: 500; color: var(--warn-fg); }
 
         /* ==================================================================
            Round 75. Take over.
@@ -10792,7 +10796,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         button.takeover-btn {
           display: inline-flex; align-items: center; justify-content: center; gap: 7px;
           height: 36px; padding: 0 15px; border-radius: 10px; border: 0;
-          font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+          font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0;
           cursor: pointer; box-shadow: none;
           transition: background var(--dur-fast) ease, color var(--dur-fast) ease,
             box-shadow var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
@@ -10948,20 +10952,20 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            a step and lets the content it annotates stay the larger thing. */
         .badge, .live-pill, .waiting-flag, .q-wait.mine, .thread-status-chip,
         .sec-count, .nav-badge, .list-tab-count, .soon-tag, .delta {
-          height: 19px; padding: 0 8px; font-size: 11px; gap: 5px;
+          height: 19px; padding: 0 8px; font-size: 11px; letter-spacing: 0.004em; gap: 5px;
         }
         .badge svg, .live-pill svg, .waiting-flag svg, .q-wait.mine svg,
         .thread-status-chip svg, .delta svg { width: 11px; height: 11px; }
         .badge .dot, .live-pill .live-dot, .thread-status-chip .chip-dot { width: 5px; height: 5px; }
-        .list-tab-count, .nav-badge { min-width: 19px; height: 18px; padding: 0 5px; font-size: 10.5px; }
-        .sec-count, .q-wait.mine { height: 18px; padding: 0 7px; font-size: 10.5px; }
+        .list-tab-count, .nav-badge { min-width: 19px; height: 18px; padding: 0 5px; font-size: 11px; letter-spacing: 0.004em; }
+        .sec-count, .q-wait.mine { height: 18px; padding: 0 7px; font-size: 11px; letter-spacing: 0.004em; }
 
         /* The two coming-soon channels, on one row instead of two. */
         .soon-row { display: flex; align-items: center; gap: 10px; height: 34px;
           padding: 0 10px; margin: 0 2px; border-radius: 9px; opacity: .62; }
         .soon-marks { display: inline-flex; align-items: center; gap: 4px; color: var(--rail-muted-2); }
         .soon-marks svg { width: 15px; height: 15px; }
-        .soon-text { font-size: 12.5px; font-weight: 500; color: var(--rail-muted-2);
+        .soon-text { font-size: 13px; letter-spacing: 0; font-weight: 500; color: var(--rail-muted-2);
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
         .soon-row .soon-tag { flex: none; }
 
@@ -10983,7 +10987,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           width: 28px; height: 28px; border-radius: 50%;
           display: grid; place-items: center;
           background: var(--accent); color: #fff;
-          font-family: var(--font-heading); font-size: 12px; font-weight: 650; letter-spacing: -0.02em;
+          font-family: var(--font-heading); font-size: 12px; font-weight: 600; letter-spacing: 0.002em;
         }
         .topbar-avatar::after {
           content: ""; flex: none; width: 9px; height: 9px; margin-right: 1px;
@@ -18110,7 +18114,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 77";
+const BUILD_ROUND = "Round 78";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
