@@ -11146,6 +11146,56 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (hover: hover) and (pointer: fine) {
           .q-btn:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--muted-2); }
         }
+
+        /* ================================================================
+           ROUND 80 - THE DASHBOARD ANSWERS
+           ================================================================ */
+        /* An empty card is one sentence, not a drawing plus a headline plus
+           a two-line apology. Five of those down a page is the whole of what
+           reads as machine-made: space filled with explanations of its own
+           emptiness. */
+        .hempty {
+          margin: 0; padding: 2px 2px 4px;
+          font-size: 13px; letter-spacing: 0; line-height: 1.55;
+          color: var(--muted-2); text-align: left;
+        }
+        .hempty-mark, .hempty-title, .hempty-sub { display: none; }
+        /* A card with nothing in it should not be as tall as one with
+           something in it. */
+        .hcard:has(.hempty) .hcard-body { min-height: 0; }
+
+        /* The readout under the chart. It carries the period until the
+           cursor is on a day, then it carries that day. The caption swapping
+           from "taken" to a date is what tells you the number changed -- a
+           figure that silently becomes a different figure is worse than no
+           interaction at all. */
+        #htRev, #htOrd, #htAvg, #htRevC, #htOrdC {
+          transition: color var(--dur-fast) ease;
+        }
+        .ht-foot.is-reading #htRevC, .ht-foot.is-reading #htOrdC { color: var(--accent); }
+        .cf-col { cursor: default; }
+        .cf-col .cf-bar { transition: background var(--dur-fast) ease, filter var(--dur-fast) ease; }
+        /* Everything that is not under the cursor steps back, so the one
+           that is does not need to shout to be found. */
+        .cf-cols:hover .cf-col:not(.on) .cf-bar { filter: saturate(0.5) opacity(0.55); }
+        .cf-col.on .cf-dow { color: var(--accent); }
+        .cf-tip { display: none; }
+
+        /* Rows answer the cursor by taking their own ground, and the figure
+           they are ranked by leads. */
+        @media (hover: hover) and (pointer: fine) {
+          .sell-row { transition: background var(--dur-fast) ease; }
+          .sell-row:hover { background: var(--surface-2); }
+          .sell-row:hover .sell-fill { filter: none; }
+          .sell-row .sell-fill { transition: filter var(--dur-fast) ease, width var(--dur-slow) var(--ease-out); }
+          .sell:hover .sell-row:not(:hover) .sell-fill { filter: opacity(0.45); }
+          .act-row { transition: background var(--dur-fast) ease; }
+          .act-row:hover { background: var(--surface-2); }
+          .heat-col { transition: transform var(--dur-press) var(--ease-out); }
+          .heat-col:hover { transform: translateY(-2px); }
+          .heat-cell { transition: box-shadow var(--dur-fast) ease; }
+          .heat-col:hover .heat-cell { box-shadow: inset 0 0 0 1.5px var(--accent); }
+        }
       </style>
     </head>
     <body>
@@ -14465,10 +14515,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="home-sec-head">' +
                 '<span class="hcard-icon">' + ICON_CHAT + '</span>' +
                 '<span class="home-eyebrow">Live activity</span>' +
-                '<span class="home-eyebrow-note">Newest first</span>' +
               '</div>' +
               '<div class="act-list">' +
-                (rows || '<div class="list-empty">' + ICON_TICK_CIRCLE + 'Nothing yet. The moment someone messages your WhatsApp number it shows up here.</div>') +
+                (rows || '<p class="hempty">Nothing yet.</p>') +
               '</div>' +
             '</div>';
         }
@@ -14690,10 +14739,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           '</section>';
         }
 
-        function hEmpty(icon, title, sub) {
-          return '<div class="hempty"><span class="hempty-mark">' + icon + '</span>' +
-            '<div class="hempty-title">' + escapeHtml(title) + '</div>' +
-            '<div class="hempty-sub">' + escapeHtml(sub) + '</div></div>';
+        // Round 80. This used to be a 200px-tall drawing, a bold headline and
+        // a two-line apology. Five of those stacked down the page, each one
+        // announcing that a card had nothing to say, and that is what Miji
+        // has been calling the AI look: a layout that fills space with
+        // explanations of its own emptiness. A card with no data should take
+        // up the room of one sentence. The second argument is now optional
+        // and is dropped entirely -- if the title is not enough, the title is
+        // wrong.
+        function hEmpty(icon, title) {
+          return '<p class="hempty">' + escapeHtml(title) + '</p>';
         }
 
         // ---- Revenue & orders --------------------------------------------
@@ -14718,8 +14773,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (!total && !orders) {
             return hcard({ title: "Revenue and orders", cls: "hcard-wide", aside: aside, icon: ICON_TREND,
               sub: "Last " + homeRange + " days",
-              body: hEmpty(ICON_TREND, "Nothing banked yet",
-                "The moment a customer pays, the day they paid shows up here.") });
+              body: hEmpty(ICON_TREND, "Nothing banked in the last " + homeRange + " days.") });
           }
           // Round 71. Rebuilt on the chart in the dashboard Miji sent.
           //
@@ -14754,8 +14808,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const o = Number(d.orders) || 0;
             const h = top ? (v / top) * 100 : 0;
             return '<button type="button" class="cf-col' + (i === series.length - 1 ? " is-last" : "") +
-              '" data-tip="' + escapeHtml(fmtDay(d.date) + "\u2004\u00b7\u2004" + money0(v) +
-                "\u2004\u00b7\u2004" + o + (o === 1 ? " order" : " orders")) + '">' +
+              '" data-day="' + escapeHtml(fmtDay(d.date)) + '" data-rev="' + money0(v) +
+              '" data-ord="' + o + '" data-avg="' + (o ? money0(Math.round(v / o)) : "\u2014") + '">' +
               '<span class="cf-bar" style="height:' + Math.max(h, v ? 2 : 0.8).toFixed(2) + '%"></span>' +
               '<span class="cf-dow">' + new Date(d.date + "T00:00:00").getDate() + '</span>' +
             '</button>';
@@ -14770,12 +14824,22 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div class="cf-tip" id="cfTip" aria-hidden="true"></div>' +
               '</div>' +
             '</div>' +
-            '<div class="ht-foot">' +
-              '<div class="ht-stat"><b>' + money(total) + '</b><span>taken</span></div>' +
-              '<div class="ht-stat"><b>' + orders + '</b><span>order' + (orders === 1 ? "" : "s") + '</span></div>' +
-              '<div class="ht-stat"><b>' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average order</span></div>' +
+            // Round 80. The chart drives the summary row that was already
+            // sitting under it, instead of spawning a floating box on top of
+            // itself. Move across the days and the three figures follow the
+            // cursor; the caption changes from "taken" to the date, so the
+            // row says what it is showing. Leave the plot and it falls back
+            // to the period. A tooltip is a patch over a readout that is not
+            // there. This chart has one, so it uses it.
+            '<div class="ht-foot" id="htFoot"' +
+              ' data-rev="' + money(total) + '" data-ord="' + orders +
+              '" data-ordc="order' + (orders === 1 ? "" : "s") +
+              '" data-avg="' + (orders ? money(Math.round(total / orders)) : "\u2014") + '">' +
+              '<div class="ht-stat"><b id="htRev">' + money(total) + '</b><span id="htRevC">taken</span></div>' +
+              '<div class="ht-stat"><b id="htOrd">' + orders + '</b><span id="htOrdC">order' + (orders === 1 ? "" : "s") + '</span></div>' +
+              '<div class="ht-stat"><b id="htAvg">' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average order</span></div>' +
             '</div>';
-          return hcard({ title: "Revenue and orders", sub: "Last " + homeRange + " days, from your own records",
+          return hcard({ title: "Revenue and orders", sub: "Last " + homeRange + " days",
             aside: aside, cls: "hcard-wide", icon: ICON_TREND, body: body,
             foot: "See the full breakdown in Analytics", footAction: "go-analytics" });
         }
@@ -14785,9 +14849,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const rows = ((d.catalogue || {}).topProducts || []).slice(0, 5);
           const aside = '<button type="button" class="btn-quiet btn-tiny" data-home-action="go-catalog">Catalogue</button>';
           if (!rows.length) {
-            return hcard({ title: "What's selling", sub: "Units and revenue, all time", aside: aside, icon: ICON_BOX,
-              body: hEmpty(ICON_BOX, "Nothing sold yet",
-                "Once Amara closes a sale the product shows up here, ranked.") });
+            return hcard({ title: "What's selling", aside: aside, icon: ICON_BOX,
+              body: hEmpty(ICON_BOX, "Nothing sold yet.") });
           }
           const max = Math.max.apply(null, rows.map((r) => Number(r.sold) || 0).concat([1]));
           const body = '<ol class="sell">' + rows.map((r, i) => {
@@ -14806,7 +14869,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 (rev ? '<em>\u20A6' + rev.toLocaleString() + '</em>' : '<em>sold</em>') + '</span>' +
             '</li>';
           }).join("") + '</ol>';
-          return hcard({ title: "What's selling", sub: "Units sold, all time", aside: aside, icon: ICON_BOX,
+          return hcard({ title: "What's selling", aside: aside, icon: ICON_BOX,
             body: body, foot: "Open the catalogue", footAction: "go-catalog" });
         }
 
@@ -14817,9 +14880,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const total = vals.reduce((a, b) => a + (Number(b) || 0), 0);
           const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
           if (!total) {
-            return hcard({ title: "Rhythm of the week", sub: "Orders by weekday", icon: ICON_CALENDAR,
-              body: hEmpty(ICON_TREND, "No pattern yet",
-                "After a few orders this shows which days your shop is busiest.") });
+            return hcard({ title: "Rhythm of the week", icon: ICON_CALENDAR,
+              body: hEmpty(ICON_TREND, "Not enough orders to see a pattern.") });
           }
           const max = Math.max.apply(null, vals.concat([1]));
           const order = [1, 2, 3, 4, 5, 6, 0];
@@ -14835,7 +14897,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }).join("") + '</div>' +
           '<p class="hcard-note">Busiest day is <b>' + escapeHtml(best) + '</b>, from ' + total +
             ' order' + (total === 1 ? "" : "s") + ' on record.</p>';
-          return hcard({ title: "Rhythm of the week", sub: "Orders by weekday", icon: ICON_CALENDAR, body: body });
+          return hcard({ title: "Rhythm of the week", icon: ICON_CALENDAR, body: body });
         }
 
         // ---- Chat to order -----------------------------------------------
@@ -14845,9 +14907,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const totalC = Number(conv.totalCustomers) || 0;
           const paid = Number(conv.paidCustomers) || 0;
           if (!totalC) {
-            return hcard({ title: "Chat to order", sub: "Everyone who has ever written in", icon: ICON_USERS,
-              body: hEmpty(ICON_USERS, "No conversations yet",
-                "This fills in once people start messaging your WhatsApp number.") });
+            return hcard({ title: "Chat to order", icon: ICON_USERS,
+              body: hEmpty(ICON_USERS, "Nobody has written in yet.") });
           }
           const pct = Math.round((paid / totalC) * 100);
           const r = 52, circ = 2 * Math.PI * r;
@@ -14866,7 +14927,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div><i class="sw"></i>Have not<b>' + Math.max(0, totalC - paid) + '</b></div>' +
               '</div>' +
             '</div>';
-          return hcard({ title: "Chat to order", sub: "Everyone who has ever written in", icon: ICON_USERS, body: body });
+          return hcard({ title: "Chat to order", icon: ICON_USERS, body: body });
         }
 
         // ---- Amara right now ---------------------------------------------
@@ -14895,7 +14956,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               : (gaps.total
                 ? "Your catalogue is complete \u2014 every product has a photo, a category and a price."
                 : "Add a product and Amara can start quoting it.")) + '</p>';
-          return hcard({ title: "Amara right now", sub: "What your assistant is working with", icon: ICON_CHAT,
+          return hcard({ title: "Amara right now", icon: ICON_CHAT,
             body: body, foot: "Change what Amara knows", footAction: "go-catalog" });
         }
 
@@ -14921,33 +14982,44 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // does not push the card off its own edge. Touch gets it on tap --
         // a coarse pointer has no hover, and a chart that only answers a
         // mouse is a chart half the sellers cannot read.
-        (function wireChartTip() {
+        (function wireChartReadout() {
+          const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+          const restore = () => {
+            const f = document.getElementById("htFoot");
+            if (!f) return;
+            set("htRev", f.getAttribute("data-rev"));
+            set("htRevC", "taken");
+            set("htOrd", f.getAttribute("data-ord"));
+            set("htOrdC", f.getAttribute("data-ordc"));
+            set("htAvg", f.getAttribute("data-avg"));
+            f.classList.remove("is-reading");
+            document.querySelectorAll(".cf-col.on").forEach((c) => c.classList.remove("on"));
+          };
           const move = (e) => {
+            if (!e.target.closest) return;
             const col = e.target.closest(".cf-col");
-            const plot = document.querySelector(".cf-plot");
-            const tip = document.getElementById("cfTip");
-            if (!plot || !tip) return;
-            if (!col) { tip.classList.remove("on"); return; }
-            tip.textContent = col.getAttribute("data-tip") || "";
-            tip.classList.add("on");
-            const pr = plot.getBoundingClientRect();
-            const cr = col.getBoundingClientRect();
-            const w = tip.offsetWidth || 160;
-            let x = cr.left - pr.left + cr.width / 2 - w / 2;
-            x = Math.max(0, Math.min(x, pr.width - w));
-            tip.style.transform = "translate(" + Math.round(x) + "px, 0)";
+            if (!col) return;
+            const f = document.getElementById("htFoot");
+            if (!f) return;
+            const o = Number(col.getAttribute("data-ord")) || 0;
+            set("htRev", col.getAttribute("data-rev"));
+            set("htRevC", col.getAttribute("data-day"));
+            set("htOrd", String(o));
+            set("htOrdC", o === 1 ? "order" : "orders");
+            set("htAvg", col.getAttribute("data-avg"));
+            f.classList.add("is-reading");
             document.querySelectorAll(".cf-col.on").forEach((c) => c.classList.remove("on"));
             col.classList.add("on");
           };
           document.addEventListener("pointerover", move);
+          // A coarse pointer has no hover, and a chart only a mouse can read
+          // is a chart half the sellers cannot read.
           document.addEventListener("pointerdown", move);
           document.addEventListener("pointerleave", (e) => {
             if (!e.target.closest || !e.target.closest(".cf-plot")) return;
-            const tip = document.getElementById("cfTip");
-            if (tip) tip.classList.remove("on");
-            document.querySelectorAll(".cf-col.on").forEach((c) => c.classList.remove("on"));
+            restore();
           }, true);
-        })();
+                })();
 
         function renderProfile() {
           const host = document.getElementById("profileView");
@@ -18258,7 +18330,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 79";
+const BUILD_ROUND = "Round 80";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
