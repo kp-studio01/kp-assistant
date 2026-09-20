@@ -11196,6 +11196,108 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           .heat-cell { transition: box-shadow var(--dur-fast) ease; }
           .heat-col:hover .heat-cell { box-shadow: inset 0 0 0 1.5px var(--accent); }
         }
+
+        /* ================================================================
+           ROUND 81 - THE SHELL, REBUILT FROM THE TWO SCREENSHOTS
+           ================================================================
+           Miji put Equals and Tasklify beside this build and asked what the
+           difference is. It is not the typeface. Laid side by side, four
+           things separate them from what was here, and all four are
+           structural.
+
+           1. BOTH REFERENCE RAILS ARE LIGHT. A near-black rail against a
+              light page is an admin-template silhouette, and it was the
+              heaviest thing on the screen. Her original note -- the rail and
+              the content must not be the same colour -- is satisfied by a
+              warm grey rail against a white panel just as well as by a black
+              one, and without the weight.
+
+           2. TASKLIFY FLOATS THE CONTENT. The working area is a white card
+              with a radius, inset from a tinted page, not a surface running
+              edge to edge into the browser chrome. That one move is most of
+              what reads as "neat": the page has a margin, so the content has
+              a shape.
+
+           3. AIR. Their nav rows are 44px against our 36. Their card padding
+              is 24 against our 16. Their body text is 14 against our 13.
+              Nothing in either reference is cramped, and everything here was.
+
+           4. THE FIGURE LEADS. Their stat cards go icon, then number, then
+              label. Ours put the label up beside the icon and the number
+              underneath, which buries the only part anyone reads.
+           ================================================================ */
+
+        /* --- 1. The rail --------------------------------------------- */
+        /* Round 82. The light rail is reverted. Both references run a pale
+           sidebar and that is why it was tried, but Miji sent them as
+           inspiration, not as a specification, and the dark rail is a
+           decision she made herself back in Round 62. Borrowing a reference's
+           silhouette over the top of her own choice is not taking inspiration
+           from it. The rail tokens from Round 64 stand. */
+
+        /* --- 2. The content is a panel, not the page ------------------- */
+        .app-shell { background: var(--bg); }
+        .main-column { padding: 0 14px 14px; gap: 0; }
+        .topbar { background: transparent; border-bottom: 0; padding: 14px 10px 12px; }
+        #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
+        #supportView, #profileView, #servicesView, #bookingsView, #conversationsView {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+        }
+        /* The conversation split already paints its own two grounds, so the
+           panel only supplies the outline and clips the corners. */
+        #conversationsView { overflow: hidden; }
+        @media (max-width: 1000px) {
+          /* On a phone the margin is the whole screen width, so the panel
+             goes back to being the page. */
+          .main-column { padding: 0; }
+          #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
+          #supportView, #profileView, #servicesView, #bookingsView, #conversationsView {
+            border: 0; border-radius: 0; background: transparent;
+          }
+        }
+
+        /* --- 3. Air ---------------------------------------------------- */
+        nav.tabs button { height: 42px; font-size: 14px; letter-spacing: -0.006em; padding: 0 12px; }
+        .subtabs button { height: 36px; font-size: 13px; letter-spacing: 0; }
+        .sidebar-footer-link { height: 40px; font-size: 14px; letter-spacing: -0.006em; }
+        .hcard-body { padding: 18px 24px 22px; }
+        .hcard-head { padding: 20px 24px 0; }
+        /* .kpi carries a border:0 further up and Round 79 took its shadow
+           away, so on a white panel it had nothing left to be seen by. The
+           border is what defines it now, same as every other surface. */
+        .kpi { padding: 20px 22px 18px; border: 1px solid var(--border); }
+        .kpi-primary { border-color: transparent; }
+        .kpi-labelrow, .kpi-foot, .kpi-figure { position: relative; z-index: 1; }
+        /* A note that has to fit inside a quarter of the row wraps rather
+           than getting cut off mid-word. */
+        .kpi-foot { white-space: normal; line-height: 1.45; }
+        .kpi-foot span { overflow: visible; text-overflow: clip; white-space: normal; }
+        /* The delta sat beside the figure and wrapped on whichever card had
+           the longest number, so the four cards in the row disagreed about
+           where their label sits. It gets its own line on all four, and the
+           row lines up. */
+        .kpi-figure { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; white-space: normal; overflow: visible; }
+        .kpi-figure .delta { margin-left: 0; }
+        .list-item, .sell-row, .act-row, .nr-item { min-height: 54px; }
+
+        /* --- 4. The four cards --------------------------------------- */
+        /* Round 82. The reordered stat card is reverted too -- label beside
+           the icon, figure under it, the note and the arrow along the bottom.
+           One thing is kept, and only because the card cannot be seen
+           without it: .kpi carries border: 0 from further up and Round 79
+           took its shadow away, so on the white panel it had no edge at all.
+           The border is what draws it now. */
+        .kpi { border: 1px solid var(--border); }
+        /* "New customers" wraps to two lines where the other three labels do
+           not, which pushed that card's figure a line lower than its
+           neighbours and made the row of four read as crooked. The top row
+           reserves the height either way, so all four figures start level. */
+        .kpi-top { min-height: 38px; align-items: center; }
+        .kpi-primary { border-color: transparent; }
+        .kpi-foot { white-space: normal; line-height: 1.45; }
+        .kpi-foot span { overflow: visible; text-overflow: clip; white-space: normal; }
       </style>
     </head>
     <body>
@@ -18330,7 +18432,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 80";
+const BUILD_ROUND = "Round 82";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
