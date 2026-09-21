@@ -3930,6 +3930,13 @@ const BRAND_TOKENS_CSS = `
     --focus-edge: rgba(188,75,42,0.38);
     --focus-ring: rgba(188,75,42,0.10);
     --chat-doodle: %23cfc5b5;
+    /* Round 99. The view and the cards inside it were both --surface. On white
+       paper that is fine: the page behind them is grey, so the step is
+       obvious. On a near-black page it left three levels sitting within 0.005
+       of each other in luminance, and dark mode read as one flat field.
+       --panel names the level the view sits on, so the ladder can be spaced
+       differently in each theme instead of both sharing one token. */
+    --panel: #FFFFFF;
   }
   /* Dark theme. Applied by setting data-theme="dark" on <html>; every colour
      below is a token override, so no component needs a dark-specific rule. */
@@ -3949,14 +3956,24 @@ const BRAND_TOKENS_CSS = `
     --accent-soft: #3A241A;
     /* Round 64. Neutralised alongside light. A warm dark under a neutral
        light is two products, not two themes. */
-    --bg: #131312;
-    --surface: #1B1B19;
-    --surface-2: #232220;
-    --surface-3: #2C2B28;
-    --chat-bg: #151514;
-    --border: #302F2C;
-    --border-light: #282725;
-    --border-strong: #454340;
+    /* Round 99. Measured before changing anything: page 0.0065, view 0.0109,
+       card 0.0109 -- the view and the card were the same colour, and the whole
+       ladder lived inside 0.018 of luminance. Nothing sat above anything, and
+       the shadows that carry depth in light mode are black on near-black here,
+       so they carry nothing.
+       The ladder is re-spaced so every step up is one the eye can see, and the
+       card has a level of its own above the view. */
+    --bg: #0D0D0C;
+    --panel: #161615;
+    --surface: #1F1E1C;
+    --surface-2: #272624;
+    --surface-3: #312F2C;
+    --chat-bg: #121211;
+    /* A border does the work here that a shadow does in light mode, so it has
+       to be visible: #302F2C on the old surface measured 1.29:1. */
+    --border: #3A3835;
+    --border-light: #2C2B28;
+    --border-strong: #4E4C48;
     --muted: #9D9A94;
     --muted-2: #8B8883;
     --text: #F1F0ED;
@@ -8331,7 +8348,7 @@ const DASHBOARD_CSS_BODY = `
         .topbar { background: transparent; border-bottom: 0; }
         #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
         #supportView, #profileView, #servicesView, #bookingsView, #conversationsView {
-          background: var(--surface);
+          background: var(--panel);
           border: 1px solid var(--border);
           border-radius: 16px;
         }
@@ -8884,7 +8901,7 @@ const DASHBOARD_CSS_BODY = `
         .topbar { background: transparent; border-bottom: 0; }
         #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
         #supportView, #profileView, #servicesView, #bookingsView, #conversationsView {
-          background: var(--surface);
+          background: var(--panel);
           border: 1px solid var(--border);
           border-radius: 16px;
         }
@@ -9016,6 +9033,61 @@ const DASHBOARD_CSS_BODY = `
         }
 
         .hcard, .home-card, .setup-card { border-radius: 14px; border-color: color-mix(in srgb, var(--border) 88%, var(--accent) 12%); }
+
+        /* --- 6. Dark: depth, and an accent that knows where it is ------ */
+        /* Round 99. Everything below is scoped to dark and sits beside the
+           rule it moderates, so the pair can be read together.
+
+           TWO things go wrong when a light theme is recoloured rather than
+           redesigned. First, depth: a drop shadow is dark paint, and dark
+           paint on a dark page is nothing, so every card that floats in light
+           mode lies flat here. A raised surface in the dark is lit from above
+           instead -- one hairline of light along the top edge, which is what
+           a real edge catching a light source looks like.
+
+           Second, temperature: a tint of the accent that is invisible on
+           white is brown mud on near-black, and a fill that reads as warm on
+           white glows on black. The same 6% wash, the same gradient and the
+           same 12% border tint were painting every card, every card header
+           and the whole workspace. Measured at the pixel: the dashboard had
+           no neutral ground left anywhere on the screen. Dark gets a
+           quieter dose of all of them. */
+        [data-theme="dark"] .hcard,
+        [data-theme="dark"] .home-card,
+        [data-theme="dark"] .setup-card,
+        [data-theme="dark"] .kpi,
+        [data-theme="dark"] .catalog-card,
+        [data-theme="dark"] .an-card,
+        [data-theme="dark"] .kpi-card { box-shadow: inset 0 1px 0 rgba(255,255,255,0.045); }
+        [data-theme="dark"] .hcard,
+        [data-theme="dark"] .home-card,
+        [data-theme="dark"] .setup-card { border-color: var(--border); }
+        /* The card is its own level now, so it does not need to be tinted to
+           be told apart from the view behind it. */
+        /* :not(.kpi-primary) matters. [data-theme="dark"] .kpi outranks
+           .kpi-primary, so without it the lead card lost its accent fill and
+           kept its ink text -- black letters on a dark card. */
+        [data-theme="dark"] .kpi:not(.kpi-primary) { background: var(--surface); }
+        /* An accent wash across the whole workspace is what made every screen
+           read brown. In the dark it is barely a suggestion. */
+        [data-theme="dark"] .app-shell { background: radial-gradient(900px 560px at 100% -12%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 62%), var(--bg); }
+        [data-theme="dark"] .hcard-wide .hcard-head { background: linear-gradient(90deg, color-mix(in srgb, var(--surface-2) 92%, var(--accent) 8%), transparent); }
+        /* The command panel is mixed from the accent, and in dark the accent
+           is already lifted for legibility -- so the same recipe that reads
+           as a deep desk on white glows on black. The stops come down. */
+        [data-theme="dark"] .command-hero {
+          background:
+            radial-gradient(380px 240px at 97% -20%, rgba(255,255,255,.10), transparent 68%),
+            radial-gradient(420px 280px at -8% 110%, rgba(8,6,4,.60), transparent 72%),
+            linear-gradient(125deg,
+              color-mix(in srgb, var(--accent-dark) 8%, #12100E) 0%,
+              color-mix(in srgb, var(--accent-dark) 28%, #12100E) 54%,
+              color-mix(in srgb, var(--accent-dark) 52%, #12100E) 100%);
+          box-shadow: 0 20px 44px rgba(0,0,0,.45); }
+        /* On a dark page the two panes of the conversation split were the same
+           near-black as everything else, so the screen read as one void. */
+        [data-theme="dark"] .list-pane,
+        [data-theme="dark"] .detail-pane { background: var(--surface); }
         .hcard-wide { overflow: hidden; }
         .hcard-wide .hcard-head { background: linear-gradient(90deg, color-mix(in srgb, var(--surface-2) 84%, var(--accent) 16%), transparent); }
         .hcard-wide .hcard-body { padding-bottom: 16px; }
@@ -19321,7 +19393,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 98";
+const BUILD_ROUND = "Round 99";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
