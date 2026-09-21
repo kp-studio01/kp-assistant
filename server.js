@@ -7738,13 +7738,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .an-range { flex-shrink: 0; }
         .an-range button { min-width: 46px; font-variant-numeric: tabular-nums; }
         #analyticsEmpty { margin-bottom: 18px; }
-        .an-empty-in { display: flex; align-items: center; gap: 13px; padding: 13px 16px;
-          background: var(--accent-light); border: 1px solid var(--accent-soft); border-radius: 13px; }
-        .an-empty-mark { width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0; display: flex;
-          align-items: center; justify-content: center; background: var(--surface); color: var(--accent);
-          box-shadow: var(--shadow-sm); }
-        .an-empty-mark svg { width: 16px; height: 16px; }
-        .an-empty-in p { font-size: 13px; letter-spacing: 0; line-height: 1.55; color: var(--text); margin: 0; }
+        /* Round 97. A seller who has sold nothing opens Analytics on a page of
+           zeroes. Round 62 settled the honest shape -- show the page, do not
+           hide it behind a notice -- and that still holds. What it did not have
+           was a voice: one grey sentence in a tinted box, under a dashboard
+           that now opens on a command panel.
+           This says the same true thing in the same language, and gives the
+           two actions that actually move the numbers. It sits ABOVE the cards.
+           It does not replace them. There are no invented steps and no
+           promises about what the seller will earn. */
+        .an-zero { display: flex; align-items: center; justify-content: space-between; gap: 24px;
+          padding: 20px 24px; border-radius: 14px;
+          border: 1px solid color-mix(in srgb, var(--border) 68%, var(--accent) 32%);
+          background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface) 64%); }
+        .an-zero-copy { min-width: 0; }
+        /* --muted-2 measured 4.02:1 here at 10px: it is a secondary grey sized
+           for white, and this panel is tinted. --muted clears it on all seven
+           accents in both themes. */
+        .an-zero-kicker { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+          color: var(--muted); font-size: 10px; font-weight: 600;
+          letter-spacing: 0.12em; text-transform: uppercase; }
+        .an-zero-kicker i { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--accent);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+        .an-zero h3 { margin: 0; font-family: var(--font-heading); font-size: 20px; font-weight: 500;
+          letter-spacing: -0.02em; line-height: 1.25; color: var(--text); }
+        .an-zero p { margin: 7px 0 0; max-width: 62ch; font-size: 13px;
+          letter-spacing: 0; line-height: 1.55; color: var(--muted); }
+        .an-zero-actions { display: flex; align-items: center; gap: 9px; flex: none; }
+        .an-zero-actions .btn-quiet, .an-zero-actions .catalog-btn { white-space: nowrap; }
+        @media (max-width: 760px) {
+          .an-zero { flex-direction: column; align-items: stretch; gap: 16px; padding: 18px 16px; }
+          .an-zero h3 { font-size: 18px; }
+          .an-zero-actions .btn-quiet, .an-zero-actions .catalog-btn { flex: 1 1 0; justify-content: center; }
+        }
         .an-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
         .an-two > * { min-width: 0; }
 
@@ -14961,11 +14987,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           if (anEmpty) {
             anEmpty.style.display = neverSold ? "block" : "none";
             anEmpty.innerHTML = neverSold
-              ? '<div class="an-empty-in">' +
-                  '<span class="an-empty-mark">' + ICON_TREND + '</span>' +
-                  '<p>Nothing has been sold in this window yet, so these are all at zero. ' +
-                  'Every figure below fills in on its own from the first payment. Nothing here is ever estimated.</p>' +
-                '</div>'
+              ? '<section class="an-zero">' +
+                  '<div class="an-zero-copy">' +
+                    '<div class="an-zero-kicker"><i></i>Nothing paid for yet</div>' +
+                    '<h3>Every figure here fills in on its own.</h3>' +
+                    '<p>Nothing has been sold in this window, so the numbers below are all zero. ' +
+                    'They start moving from the first payment, and none of them is ever estimated.</p>' +
+                  '</div>' +
+                  '<div class="an-zero-actions">' +
+                    '<button class="catalog-btn" data-home-action="go-catalog">Add a product</button>' +
+                    '<button class="btn-quiet" data-home-action="open-inbox">Open conversations</button>' +
+                  '</div>' +
+                '</section>'
               : "";
           }
 
@@ -19327,7 +19360,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 96";
+const BUILD_ROUND = "Round 97";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
