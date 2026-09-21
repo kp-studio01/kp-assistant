@@ -11527,7 +11527,67 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         /* align-items on the row kept losing to a later rule, so the text
            block claims its own alignment instead -- align-self is the tool
            for "this child, regardless of what the row says". */
+        /* Round 90. Three rounds were spent on the settings rows assuming it
+           was vertical alignment. It was not, and it was not a fault either:
+           #settingsView .setting-row:first-of-type deliberately takes 14px
+           of top padding instead of 16, because the card's heading above it
+           already supplies the space. The first row of each card is the only
+           one that differs, it is meant to, and the probe was comparing
+           every row in the view against every other. The probe was wrong,
+           not the page. It compares rows within a card now, skipping the
+           first of each. */
         .setting-row .setting-text { align-self: flex-start; }
+
+        /* ================================================================
+           ROUND 90 - THE TWO THINGS SHE NAMED
+           ================================================================ */
+
+        /* 1. THE BORDER CONFLICT.
+           .hcard puts its padding on the header and the body, not on the
+           card, so the header's border-bottom spans the card edge to edge --
+           while every row divider underneath it is inset by the body's 24px.
+           Two rules at two different widths, a few pixels apart. Meanwhile
+           .home-card pads itself, so ITS header rule is already inset, and
+           the two kinds of card on the same screen disagreed about where a
+           divider starts. The header's rule is drawn to the same margin as
+           the content below it. */
+        .hcard-head { border-bottom: 0; position: relative; }
+        .hcard-head::after {
+          content: ""; position: absolute; left: 24px; right: 24px; bottom: 0;
+          height: 1px; background: var(--border-light);
+        }
+        @media (max-width: 760px) {
+          .hcard-head::after { left: 16px; right: 16px; }
+        }
+
+        /* 2. THE SEGMENTED CONTROLS IN SETTINGS.
+           Round 79 gave .seg-control BUTTON a 999px radius and left the
+           track at 10px, so the selected pill sat in a box with squarer
+           corners and less room than itself, straddling the edge on three
+           sides. Theme, Density and Refresh rate all showed it. One radius,
+           and a track with room for its own pill. */
+        .seg-control {
+          align-items: center; padding: 4px; border-radius: 12px;
+          background: var(--surface-2); gap: 2px;
+        }
+        .seg-control button {
+          border-radius: 8px; padding: 7px 14px; font-weight: 500; line-height: 1.3;
+        }
+        .seg-control button.on, .seg-control button[aria-pressed="true"] {
+          background: var(--surface); color: var(--text);
+          box-shadow: 0 1px 2px rgba(28,27,25,0.06), inset 0 0 0 1px var(--border);
+        }
+        [data-theme="dark"] .seg-control button.on,
+        [data-theme="dark"] .seg-control button[aria-pressed="true"] {
+          background: var(--surface-3); box-shadow: none;
+        }
+
+        /* 3. And the settings section headings were still uppercase. They
+              are the only headings left in the app that were. */
+        #settingsView .catalog-card h2, #supportView .catalog-card h2 {
+          text-transform: none; letter-spacing: -0.014em;
+          font-size: 16px; font-weight: 600; color: var(--text);
+        }
         .setting-row .switch, .setting-row .btn-quiet,
         .setting-row .thread-status-chip, .setting-row .setting-static { margin-top: 1px; }
         .list-tab.active-list-tab {
@@ -18946,7 +19006,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 89";
+const BUILD_ROUND = "Round 90";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
