@@ -10496,7 +10496,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-icon { margin-top: 0; }
         /* And the header rule above was losing to a later align-items:center,
            which is why one card's title sat 9px above the other four. */
-        #homeView .hcard-head, #homeView .home-sec-head { align-items: flex-start; }
+        /* Round 89. This was scoped to #homeView, so Profile -- which reuses
+           the same card -- still centred its headers and put one title 9px
+           below the other two. The card is the card on every screen. */
+        /* Doubling the class raises specificity without tying the rule to
+           one view id -- which is what the #homeView version did, and why
+           Profile kept centring its headers while the dashboard did not. */
+        .hcard-head.hcard-head, .home-sec-head.home-sec-head { align-items: flex-start; }
+        .hcard-headtext { min-width: 0; }
         /* Content over the drawing, always. */
         .kpi-top, .kpi-figure, .kpi-label, .kpi-foot { position: relative; z-index: 1; }
 
@@ -11444,6 +11451,102 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           opacity: .5;
         }
         #homeView .kpi-primary > .kpi-spark { opacity: .62; }
+
+        /* ================================================================
+           ROUND 89 - THE REST OF THE APP
+           ================================================================
+           Miji: "there's a lot you're spoiling. the tab switch on
+           conversation list, the analytics, the analytics day toggle... the
+           conversation color."
+
+           Rounds 78 to 88 rebuilt the dashboard and scoped most of it to
+           #homeView, so Analytics and Conversations were left in the design
+           language those rounds replaced. The app now reads as two products,
+           and that is worse than either one on its own. Everything below is
+           the same decision applied where it should have been applied the
+           first time, plus two things I broke outright.
+           ================================================================ */
+
+        /* --- 1. One title treatment, everywhere ----------------------- */
+        /* Uppercase, tracked, 12px labels are the exact thing she called 90s
+           on the dashboard in Round 75. They were still on every card and
+           every section heading in Analytics. */
+        .an-eyebrow, .kpi-name, .home-eyebrow, .an-title, .home-card h3 {
+          font-family: var(--font-sans);
+          text-transform: none;
+          letter-spacing: -0.006em;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text);
+        }
+        .an-eyebrow, .an-title { font-size: 16px; letter-spacing: -0.014em; }
+        .an-note, .home-eyebrow-note {
+          font-family: var(--font-sans); text-transform: none;
+          letter-spacing: 0; font-size: 13px; color: var(--muted);
+        }
+
+        /* --- 2. Analytics cards join the system ----------------------- */
+        /* They were 16px radius with a drop shadow and no edge, while every
+           card on the dashboard is 12px, bordered and flat. */
+        .kpi-card, .an-card {
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          box-shadow: none;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .kpi-card:hover, .an-card:hover {
+            transform: none; box-shadow: none; border-color: var(--border-strong);
+          }
+        }
+        /* A rule that ran half the width of the card and stopped, floating
+           above the note with nothing either side of it. A divider either
+           spans its container or it is not a divider. */
+        .kpi-card .kpi-foot {
+          border-top: 1px solid var(--border-light);
+          margin: 12px -18px 0; padding: 11px 18px 0;
+          width: auto; min-height: 0; height: auto;
+          align-self: stretch; justify-content: flex-end;
+        }
+        .kpi-card .kpi-bottom { align-items: stretch; }
+
+        /* --- 3. The conversation list tabs ---------------------------- */
+        /* Round 79 put every list control in one box-shadow: none rule, and
+           the shadow was how the selected tab was marked. The track is
+           1px bigger than its pill on every side now, so the pill sits
+           inside it instead of straddling its edge. */
+        .list-tabs { padding: 4px; border-radius: 12px; gap: 2px; background: var(--surface-2); }
+        /* The four tabs sized to their own text, so they bunched at the
+           left of the track and left a gap at the right. They share it. */
+        .list-tab { border-radius: 8px; padding: 7px 8px; font-weight: 500; flex: 1 1 0; min-width: 0; }
+
+        /* --- 5. Settings rows ----------------------------------------- */
+        /* The probe found setting names sitting at 14px from the row top on
+           some rows and 16px on others: a row with a description under it
+           centres differently from a row without. Every name starts at the
+           top of its row. */
+        /* align-items on the row kept losing to a later rule, so the text
+           block claims its own alignment instead -- align-self is the tool
+           for "this child, regardless of what the row says". */
+        .setting-row .setting-text { align-self: flex-start; }
+        .setting-row .switch, .setting-row .btn-quiet,
+        .setting-row .thread-status-chip, .setting-row .setting-static { margin-top: 1px; }
+        .list-tab.active-list-tab {
+          background: var(--surface);
+          color: var(--text);
+          box-shadow: 0 1px 2px rgba(28,27,25,0.06), inset 0 0 0 1px var(--border);
+        }
+        [data-theme="dark"] .list-tab.active-list-tab {
+          background: var(--surface-3); box-shadow: none;
+        }
+
+        /* --- 4. The conversation ground ------------------------------- */
+        /* Round 81 made every view a white panel, which flattened the one
+           screen that was deliberately two-tone: the list on paper, the
+           thread on its own darker ground. The thread had a --chat-bg all
+           along and the panel painted straight over it. */
+        #conversationsView { background: var(--chat-bg); }
+        #conversationsView .list-pane,
+        #conversationsView .detail-pane { background: var(--surface); }
         .kpi-figure, .kpi-label { flex: none; }
         /* align-content: start was holding the 1fr row closed, so three of
            the four notes floated 19px above the fourth. The rows fill the
@@ -15561,6 +15664,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="home-grid pf-grid">' +
                 '<div class="home-stack">' +
                   hcard({
+                    icon: ICON_PENCIL,
                     title: "Your shop, in your words",
                     sub: "Amara reads this when a customer asks who you are. It never writes any of it for you.",
                     body:
@@ -15582,6 +15686,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '</div>' +
                 '<div class="home-stack">' +
                   hcard({
+                    icon: ICON_IMAGE,
                     title: "Your picture",
                     sub: "The one image here that is yours. It is what customers see beside Amara\u2019s replies.",
                     body:
@@ -18841,7 +18946,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 88";
+const BUILD_ROUND = "Round 89";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
