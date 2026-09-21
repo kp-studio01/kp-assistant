@@ -3765,7 +3765,7 @@ app.get("/subscribe", async (req, res) => {
 // bundling Chart.js locally: no dependency on fonts.googleapis.com being
 // reachable, which this sandbox's own network policy already proved can
 // silently fail.
-const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/ui/files/inter-latin-wght-normal.woff2" crossorigin><link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/ui/index.css"><link rel="stylesheet" href="/vendor/fonts/plus-jakarta-sans/index.css"><link rel="stylesheet" href="/vendor/fonts/display/index.css"><link rel="stylesheet" href="/vendor/fonts/geist-mono/index.css"><link rel="stylesheet" href="/vendor/fonts/serif/latin-400-italic.css">`;
+const BRAND_FONT_LINKS = `<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/geist/files/geist-latin-wght-normal.woff2" crossorigin><link rel="stylesheet" href="/vendor/fonts/geist/index.css">`;
 
 const BRAND_TOKENS_CSS = `
   :root {
@@ -3788,23 +3788,28 @@ const BRAND_TOKENS_CSS = `
 
        The tail of each stack names the faces that carry the naira sign,
        because none of the self-hosted ones do -- measured, not assumed. */
-    /* Round 79. Two faces, two jobs -- which is what every one of the three
-       references does and what this file did not. Seline pairs Roobert with
-       Inter, Wiza pairs Britti Sans with Inter, Dub pairs Satoshi with Inter.
-       All three run Inter for every piece of UI text between 11 and 16px and
-       bring the display face out only for the big sizes. One face trying to
-       be both a 26px figure and an 11px badge is why nothing read as
-       deliberate. Inter is the workhorse; Plus Jakarta Sans is the display
-       voice (it is the substitute Wiza's own sheet names for Britti Sans). */
-    --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
-    --font-heading: 'Plus Jakarta Sans Variable', 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    /* Round 83. ONE face. Round 79 split the type into a UI face and a
+       display face because all three style references do that, and Miji can
+       see the result as exactly what it is: different fonts in different
+       parts of the same screen. A rule that works on a marketing page, where
+       a headline sits alone above a paragraph, does not survive a dashboard
+       where a 26px figure and an 11px label share a 220px card.
+
+       Worse, the file was quietly painting in FOUR faces: Inter, Plus Jakarta
+       Sans, and Schibsted Grotesk still sitting in --font-mono where 25 rules
+       read it, plus Instrument Serif on one class.
+
+       Geist for everything. It is a UI face drawn to work from 11px to 34px,
+       it carries real tabular figures, and it was already vendored here. */
+    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    --font-heading: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     /* Instrument Serif italic is the one counterweight, used once, on the
        turn of the login headline. */
-    --font-serif: 'Instrument Serif', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+    --font-serif: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     /* Kept as a token so figures can be given their own face again without a
        rewrite, but pointed at the system face. Tabular numerals, not
        fixed-width letterforms, are what line a column up. */
-    --font-mono: 'Schibsted Grotesk Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
+    --font-mono: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Segoe UI Symbol', 'Noto Sans', 'DejaVu Sans', sans-serif;
     /* Motion, tokenised. These are the values already in use, not new ones:
        cubic-bezier(.22,1,.36,1) appears fifty times hand-typed across this
        file and is the house entrance curve. Naming them stops the next near
@@ -4019,7 +4024,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
     '<div class="tilt tilt-pay"><div class="scene-chip chip-pay" style="--d:.34s">' +
       '<span class="glass-edge"></span><span class="glass-sheen"></span>' +
       '<span class="chip-mark ok">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="tick-path" d="M20 6 9 17l-5-5"/></svg>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path class="tick-path" d="M20 6 9 17l-5-5"/></svg>' +
       '</span>' +
       '<span class="chip-text">' +
         '<b>N20,500 received</b>' +
@@ -4030,7 +4035,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
     '<div class="tilt tilt-clock"><div class="scene-chip chip-clock" style="--d:.48s">' +
       '<span class="glass-edge"></span><span class="glass-sheen"></span>' +
       '<span class="chip-mark alt"><span class="pulse-ring"></span>' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>' +
       '</span>' +
       '<span class="chip-text"><b>2:14 AM</b><small>You are asleep. She is not.</small></span>' +
     '</div></div>' +
@@ -4606,7 +4611,7 @@ function authPageHtml({ title, heading, sub, formHtml, error, media }) {
             <div class="card-brand">${brandMark()}</div>
             <h1>${escapeHtmlServer(heading)}</h1>
             <p class="card-sub">${escapeHtmlServer(sub || (isSignup ? "Set up your assistant in a couple of minutes. No card needed." : "Welcome back. Pick up where you left off."))}</p>
-            ${error ? `<div class="auth-error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 7.6v5.2"/><path d="M12 16.3h.01"/></svg><span>${escapeHtmlServer(error)}</span></div>` : ""}
+            ${error ? `<div class="auth-error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 7.6v5.2"/><path d="M12 16.3h.01"/></svg><span>${escapeHtmlServer(error)}</span></div>` : ""}
             ${googleAuthEnabled() ? `
               <a class="google-btn" href="/auth/google${isSignup ? "?mode=signup" : ""}">
                 <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#D98F5D" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
@@ -5703,15 +5708,15 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
               <p class="lede">Here is what happens from here, in order.</p>
               <ul class="done-list stagger">
                 <li>
-                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
                   <span><b>Add your ${goods ? "products" : "services"}</b>Amara answers from these and nothing else, so this is the one that matters most.</span>
                 </li>
                 <li>
-                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
                   <span><b>We connect your WhatsApp number</b>This part is ours to do by hand for now, and we will reach out to get it done.</span>
                 </li>
                 <li>
-                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                  <span class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
                   <span><b>She starts answering</b>You watch it happen live, and step into any conversation whenever you want to.</span>
                 </li>
               </ul>
@@ -5722,14 +5727,14 @@ app.get("/welcome", requireSellerAuth, async (req, res) => {
           <div class="foot">
             <div class="foot-l">
               <button type="button" class="back" id="obBack" hidden>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"/><path d="m12 19-7-7 7-7"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"/><path d="m12 19-7-7 7-7"/></svg>
                 Back
               </button>
               <button type="button" class="skip" id="obSkip">Skip for now</button>
             </div>
             <button type="button" class="next" id="obNext">
               <span id="obNextLabel">Continue</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>
             </button>
           </div>
         </section>
@@ -6145,7 +6150,7 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
       <li class="step${st.done ? " is-done" : ""}">
         <span class="step-mark">${
           st.done
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
             : String(i + 1)
         }</span>
         <div class="step-body">
@@ -6305,7 +6310,7 @@ app.get("/seller/dashboard", requireSellerAuth, async (req, res) => {
           }</p>
           ${
             live
-              ? '<a class="hero-cta" href="/dashboard">Open your dashboard<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></a>'
+              ? '<a class="hero-cta" href="/dashboard">Open your dashboard<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg></a>'
               : ""
           }
         </div>
@@ -6361,7 +6366,7 @@ app.get("/customers", async (req, res) => {
       return `<tr>
         <td data-label="Phone" class="cell-primary">
           <div class="phone-cell">
-            <span class="row-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span class="status-dot ${statusDotCls}"></span></span>
+            <span class="row-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span class="status-dot ${statusDotCls}"></span></span>
             <span class="phone-num">${escapeHtmlServer(c.phone || "")}</span>
           </div>
         </td>
@@ -6466,7 +6471,7 @@ app.get("/customers", async (req, res) => {
         <div class="table-card">
           ${
             customers.length === 0
-              ? '<div class="empty-note"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="empty-title">No customers yet</div><div class="empty-sub">Once someone messages your WhatsApp number, they’ll show up here.</div></div>'
+              ? '<div class="empty-note"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="empty-title">No customers yet</div><div class="empty-sub">Once someone messages your WhatsApp number, they’ll show up here.</div></div>'
               : `<div class="table-scroll"><table>
             <thead><tr>
               <th>Phone</th><th>Status</th><th>First contact</th><th>Last contact</th>
@@ -10417,7 +10422,83 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         @media (hover: hover) and (pointer: fine) {
           .kpi-primary.kpi-link:hover .kpi-foot { color: #fff; }
         }
-        .kpi-spark { bottom: 40px; height: 34px; }
+        /* Round 87. The spark floated 40px off the floor of the card with
+           its own width, so it sat across the label rather than under the
+           figure it belongs to. It spans the card and sits on the foot. */
+        .kpi-spark { left: 0; right: 0; bottom: 38px; height: 46px; }
+        .kpi-primary .kpi-spark { bottom: 44px; }
+
+        /* ================================================================
+           ROUND 87 - WHAT THE ALIGNMENT PROBE FOUND
+           ================================================================
+           Miji: "at least if you want to make changes it has to properly
+           align and look neat. can't you always detect that?"
+
+           Yes, and I should have been. align.js walks the rendered page and
+           compares every repeated component against itself: the same part of
+           two cards must sit at the same offset, peers in a row must share a
+           top edge and a height, nothing may be cut off, and card padding
+           must come off one scale. Run at four widths it found five faults
+           in a build I had already called verified.
+           ================================================================ */
+
+        /* 1. Card titles sat at 21px in the one card with a subtitle and 30px
+              in the four without, because the header centred its contents and
+              a subtitle makes the header taller. Both parts start at the top
+              instead, so the title is on the same line in every card. */
+        .hcard-head { align-items: flex-start; }
+        .hcard-icon { margin-top: 1px; }
+
+        /* 2. The figures column in What's selling was ragged -- five rows
+              whose right edges agreed and whose left edges landed on 490,
+              490, 497, 497 and 502. Right-aligned text is not a column. */
+        .sell-figs { min-width: 96px; }
+
+        /* 3. When the four stat cards wrap to two rows the second row was
+              19px shorter than the first, because each row sized itself to
+              its own contents. */
+        .home-stats { grid-auto-rows: 1fr; }
+
+        /* 4. "New customers" was still clipping at 1100 and 390 because the
+              label had no flex basis and was free to collapse to 54px inside
+              its row. */
+        .kpi-label { flex: 1 1 auto; }
+        /* Round 81 left justify-content: space-between on this row. With the
+           arrow gone it pushed the label to the far edge and stopped it
+           growing, so it sat in 54px of a 137px row and clipped. */
+        .kpi-top { justify-content: flex-start; }
+        /* And it was carrying padding: 15px 16px of its own on top of the
+           card's. 32px of that, inside a 137px row, is why a 70px label had
+           54px to live in. The card pads itself; the row does not. */
+        .kpi-top { padding: 0; }
+        /* The featured card's note was a full-width bar flush to the bottom
+           edge while the other three were inset lines, which put it 19px
+           below them across the row. One treatment. */
+        /* The real cause of the 19px: some notes wrap to two lines ("vs
+           N91,000 the week before") and some do not ("vs N62,000
+           yesterday"), so each card's note band was as tall as its own text
+           and the four sat at different heights. The band is one height in
+           all four, and a note may take one line or two inside it. */
+        /* As a grid item in the last (1fr) row, a note band with no
+           align-self stretches to fill whatever is left, so on a taller card
+           its top moved. Fixed height, pinned to the bottom, in all four. */
+        #homeView .kpi > .kpi-foot {
+          height: 48px; min-height: 48px; flex: none; align-items: center;
+          margin-top: auto; align-self: stretch; width: 100%;
+        }
+        .kpi-foot span {
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+          overflow: hidden; white-space: normal; line-height: 1.35;
+        }
+        /* And a one-line label was centring in the 38px row while a two-line
+           label filled it, so their tops disagreed by 9px. */
+        .kpi-top { align-items: flex-start; }
+        .kpi-icon { margin-top: 0; }
+        /* And the header rule above was losing to a later align-items:center,
+           which is why one card's title sat 9px above the other four. */
+        #homeView .hcard-head, #homeView .home-sec-head { align-items: flex-start; }
+        /* Content over the drawing, always. */
+        .kpi-top, .kpi-figure, .kpi-label, .kpi-foot { position: relative; z-index: 1; }
 
         /* ---- the chart ------------------------------------------------- */
         .cf { display: flex; gap: 12px; }
@@ -11090,29 +11171,24 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .more-menu-dropdown, .emoji-picker-dropdown, .toast,
         .detail-pane, .conv-card { border-radius: 16px; }
 
-        /* ---------------------------------------------------------------
-           The display face comes out only at the top three steps -- 20, 26
-           and 34 -- and never below. Dub's sheet puts it plainly: switch to
-           the UI face for everything 30px and under; Seline runs its display
-           face at 32 and 52 only. Everything else on this screen is Inter,
-           which is what a dense product is supposed to be set in.
-           Weight 500, not 600, because at these sizes weight is not what
-           carries the emphasis. Size is.
-           --------------------------------------------------------------- */
+        /* Figures are read as columns, so they line up. Geist has real
+           tabular figures, so this is a feature setting rather than a second
+           font. */
+        .kpi-value, .kpi-figure, .htile-value, .conversion-stat,
+        .stat-tile .stat-value, .detail-amount, .wk-hero b, .wk-stat b,
+        .ht-stat b, .pf-stat b, .donut-n, .cf-axis, .sell-figs b {
+          font-variant-numeric: tabular-nums;
+          font-feature-settings: "tnum" 1;
+        }
+        /* One face, so the big steps are separated by size and tracking
+           alone -- which is what the scale in Round 78 was built to do. */
         .home-hello, .topbar h1, .an-title, .peditor-title h2, .catalog-card h2,
         .kpi-value, .kpi-figure, .htile-value, .conversion-stat,
         .stat-tile .stat-value, .detail-amount, .hero-name, .hero h1, .pf-name,
         .brand-name, .wk-hero b, .wk-stat b, .ht-stat b, .pf-stat b,
         .cat-line b, .perf-row b, .donut-n {
-          font-family: var(--font-heading);
+          font-family: var(--font-sans);
           font-weight: 500;
-        }
-        /* Figures are read as columns, so they line up. */
-        .kpi-value, .kpi-figure, .htile-value, .conversion-stat,
-        .stat-tile .stat-value, .detail-amount, .wk-hero b, .wk-stat b,
-        .ht-stat b, .pf-stat b, .donut-n {
-          font-variant-numeric: tabular-nums;
-          font-feature-settings: "tnum" 1;
         }
 
         /* ---------------------------------------------------------------
@@ -11295,6 +11371,299 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            neighbours and made the row of four read as crooked. The top row
            reserves the height either way, so all four figures start level. */
         .kpi-top { min-height: 38px; align-items: center; }
+
+        /* ================================================================
+           ROUND 85 - ONE CARD, NOT TWO
+           ================================================================
+           Miji: the four options rendered as a comparison looked organised
+           and the real dashboard did not, on the same font, the same colours
+           and the same data. She is right, and measuring every card on the
+           page says why.
+
+           There are two card components in this file. .hcard pads its header
+           20px/24px and its body 18px/24px/22px. .home-card -- Needs you,
+           Live activity, Setup checklist -- pads itself 20px/22px as a single
+           box, with no header or body part at all.
+
+           So a card in the left column and the card beside it in the right
+           column set their text on two different vertical rhythms and two
+           different left edges, two pixels apart. Two pixels is invisible on
+           its own and unmistakable stacked down a page: nothing lines up with
+           anything, which is what "not organised" looks like.
+
+           The mock looked organised for one reason. Every card in it was the
+           same component.
+           ================================================================ */
+        .home-card, .setup-card { padding: 20px 24px 22px; }
+        .home-card > .home-sec-head, .setup-card > .home-sec-head { margin-bottom: 16px; }
+        /* Every card title on this page is one size, one weight, one case. */
+        #homeView .home-eyebrow, #homeView .hcard-title, #homeView .home-card h3 {
+          font-family: var(--font-sans); font-size: 16px; font-weight: 600;
+          letter-spacing: -0.014em; text-transform: none; color: var(--text);
+        }
+        #homeView .home-eyebrow-note { font-family: var(--font-sans); text-transform: none; }
+
+        /* ================================================================
+           ROUND 86 - THE FOUR, THE HEADER RULE, AND THE MOTION
+           ================================================================ */
+
+        /* --- The four cards, on one grid ------------------------------ */
+        /* They were four boxes of equal height whose insides started at
+           different places: "New customers" wraps where the other three do
+           not, and the primary card lays out differently again. Equal height
+           is not alignment. Each card is a four-row grid now -- mark, figure,
+           label, note -- sized the same in all four, so the figures sit on
+           one line across the row and the notes on another. */
+        /* Round 87. This was a four-row grid, and the cards have three
+           children -- mark, figure, note. So the note sat in row three and
+           the empty fourth row took the slack underneath it, except on the
+           featured card, which has one child more and pushed its note into
+           row four. That is the whole of the 19px, and no amount of
+           align-self on the note was ever going to reach it. A column with
+           the note pushed to the floor does not care how many children a
+           card has. */
+        .kpi {
+          display: flex;
+          flex-direction: column;
+        }
+        .kpi-top { height: 38px; flex: none; }
+
+        /* Round 88. The graph on Paid today was 162px wide inside a 231px
+           card, and no amount of left:0/right:0 moved it. An <svg> with a
+           viewBox carries an intrinsic aspect ratio, so once a height was
+           set the browser sized its width from 200/42 and ignored the right
+           edge entirely: 34px tall x 4.76 = 161.9px. That is the missing
+           piece of the graph -- it was never clipped, it was never drawn
+           that wide. Width is stated, and the ratio is told to stop. */
+        #homeView .kpi > .kpi-spark {
+          position: absolute;
+          left: 0; right: auto; top: auto;
+          bottom: 48px;
+          width: 100%; height: 54px;
+          display: block;
+          opacity: .5;
+        }
+        #homeView .kpi-primary > .kpi-spark { opacity: .62; }
+        .kpi-figure, .kpi-label { flex: none; }
+        /* align-content: start was holding the 1fr row closed, so three of
+           the four notes floated 19px above the fourth. The rows fill the
+           card, and every note lands on the bottom edge. */
+        .kpi-top { margin: 0; }
+        .kpi-figure { margin-top: 14px; }
+        .kpi-foot { margin-top: auto; padding-top: 12px; align-self: end; }
+        /* "New customers" wraps where the other three do not. Forcing one
+           line with an ellipsis fixed the alignment and broke the words: at
+           1100 and below every one of the four truncated ("New custom..."),
+           because the label is allowed to shrink inside a flex row. The row
+           above is a fixed 38px instead, so a label may take one line or two
+           and the figure below it does not move either way. */
+        .kpi-label {
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+          overflow: hidden; line-height: 1.2; min-width: 0;
+        }
+        /* The featured card had its own column flow, which is why its label
+           and its note sat on different lines from the other three. */
+        .kpi-primary .kpi-bottom { display: contents; }
+
+        /* --- Header and body are two parts of a card ------------------ */
+        /* A card whose title floats above its content with nothing between
+           them reads as one undifferentiated block. Every reference she sent
+           separates the two, and all of them do it with a line, not a fill. */
+        .hcard-head, .home-card > .home-sec-head, .setup-card > .home-sec-head {
+          padding-bottom: 16px;
+          border-bottom: 1px solid var(--border-light);
+        }
+        .hcard-head { margin-bottom: 0; }
+        .hcard-body { padding-top: 16px; }
+        .home-card > .home-sec-head, .setup-card > .home-sec-head { margin-bottom: 16px; }
+        /* The four stat cards keep no rule: they have no header, only a mark. */
+        .kpi .kpi-top { border-bottom: 0; padding-bottom: 0; }
+
+        /* --- Motion --------------------------------------------------- */
+        /* Entrances are ease-out so the first frame is the fastest, nothing
+           runs over 320ms, hover sits behind a fine pointer, and the
+           conversation view -- opened many times an hour -- is left alone. */
+        @media (prefers-reduced-motion: no-preference) {
+          #homeView .hcard, #homeView .home-card, #homeView .setup-card, #homeView .kpi {
+            animation: cardIn 300ms var(--ease-out) both;
+            animation-delay: var(--d, 0ms);
+          }
+          @keyframes cardIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: none; }
+          }
+          .home-stats .kpi:nth-child(1) { --d: 0ms; }
+          .home-stats .kpi:nth-child(2) { --d: 45ms; }
+          .home-stats .kpi:nth-child(3) { --d: 90ms; }
+          .home-stats .kpi:nth-child(4) { --d: 135ms; }
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .kpi, #homeView .hcard, #homeView .home-card {
+            transition: border-color var(--dur-fast) ease, transform var(--dur-press) var(--ease-out);
+          }
+          .kpi-link:hover { border-color: var(--border-strong); }
+          .kpi-link:active { transform: scale(0.99); }
+          /* The mark answers the card it sits in. */
+          .kpi-icon, .hcard-icon { transition: background var(--dur-fast) ease, color var(--dur-fast) ease; }
+          .kpi-link:hover .kpi-icon { background: var(--accent); color: var(--on-accent); }
+        }
+
+        /* On the narrowest phones the mark was eating the room the label
+           needed, so three of the four still clipped at 360. The mark gives
+           some back. */
+        @media (max-width: 430px) {
+          .kpi-icon { width: 30px; height: 30px; border-radius: 9px; }
+          .kpi-icon svg { width: 16px; height: 16px; }
+          .kpi-top { gap: 8px; }
+          .kpi-label { font-size: 12px; }
+        }
+
+        /* --- What's selling ------------------------------------------- */
+        /* Round 84. The track went. A 4px rule running the full width of the
+           card, five of them stacked, is not a data mark -- it is a loading
+           skeleton, and it ran on under the figures where it collided with
+           them. Five items in a list that is already sorted do not need a
+           bar to say which is biggest: the order says it and the number
+           proves it. What the card needed was not a graphic, it was
+           alignment. */
+        .sell { gap: 0; }
+        .sell-row {
+          display: grid;
+          grid-template-columns: 34px minmax(0,1fr) auto;
+          align-items: center; gap: 12px;
+          padding: 11px 10px; border-radius: 10px;
+          border-bottom: 1px solid var(--border-light);
+        }
+        .sell-row:last-child { border-bottom: 0; }
+        .sell-thumb {
+          width: 34px; height: 34px; border-radius: 8px; overflow: hidden;
+          background: var(--accent-light); display: flex;
+          align-items: center; justify-content: center; flex: none;
+        }
+        .sell-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sell-thumb i {
+          font-style: normal; font-family: var(--font-sans);
+          font-size: 13px; font-weight: 600; letter-spacing: 0;
+          color: var(--accent);
+        }
+        .sell-name {
+          min-width: 0; font-size: 14px; letter-spacing: -0.006em;
+          font-weight: 500; color: var(--text);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        /* One right-hand column, not a ragged stack: units on the baseline
+           with its unit word, revenue beneath it, both ending on the same
+           edge so the five rows read down as a column of money. */
+        .sell-figs {
+          display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+          text-align: right; flex: none;
+        }
+        .sell-figs b {
+          font-size: 14px; font-weight: 600; letter-spacing: -0.006em;
+          color: var(--text); font-variant-numeric: tabular-nums;
+        }
+        .sell-figs em {
+          font-style: normal; font-size: 12px; letter-spacing: 0.002em;
+          color: var(--muted-2); font-variant-numeric: tabular-nums;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .sell-row { transition: background var(--dur-fast) ease; }
+          .sell-row:hover { background: var(--surface-2); }
+        }
+
+        /* ================================================================
+           ROUND 81 - THE SHELL, REBUILT FROM THE TWO SCREENSHOTS
+           ================================================================
+           Miji put Equals and Tasklify beside this build and asked what the
+           difference is. It is not the typeface. Laid side by side, four
+           things separate them from what was here, and all four are
+           structural.
+
+           1. BOTH REFERENCE RAILS ARE LIGHT. A near-black rail against a
+              light page is an admin-template silhouette, and it was the
+              heaviest thing on the screen. Her original note -- the rail and
+              the content must not be the same colour -- is satisfied by a
+              warm grey rail against a white panel just as well as by a black
+              one, and without the weight.
+
+           2. TASKLIFY FLOATS THE CONTENT. The working area is a white card
+              with a radius, inset from a tinted page, not a surface running
+              edge to edge into the browser chrome. That one move is most of
+              what reads as "neat": the page has a margin, so the content has
+              a shape.
+
+           3. AIR. Their nav rows are 44px against our 36. Their card padding
+              is 24 against our 16. Their body text is 14 against our 13.
+              Nothing in either reference is cramped, and everything here was.
+
+           4. THE FIGURE LEADS. Their stat cards go icon, then number, then
+              label. Ours put the label up beside the icon and the number
+              underneath, which buries the only part anyone reads.
+           ================================================================ */
+
+        /* --- 1. The rail --------------------------------------------- */
+        /* Round 82. The light rail is reverted. Both references run a pale
+           sidebar and that is why it was tried, but Miji sent them as
+           inspiration, not as a specification, and the dark rail is a
+           decision she made herself back in Round 62. Borrowing a reference's
+           silhouette over the top of her own choice is not taking inspiration
+           from it. The rail tokens from Round 64 stand. */
+
+        /* --- 2. The content is a panel, not the page ------------------- */
+        .app-shell { background: var(--bg); }
+        .main-column { padding: 0 14px 14px; gap: 0; }
+        .topbar { background: transparent; border-bottom: 0; padding: 14px 10px 12px; }
+        #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
+        #supportView, #profileView, #servicesView, #bookingsView, #conversationsView {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+        }
+        /* The conversation split already paints its own two grounds, so the
+           panel only supplies the outline and clips the corners. */
+        #conversationsView { overflow: hidden; }
+        @media (max-width: 1000px) {
+          /* On a phone the margin is the whole screen width, so the panel
+             goes back to being the page. */
+          .main-column { padding: 0; }
+          #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
+          #supportView, #profileView, #servicesView, #bookingsView, #conversationsView {
+            border: 0; border-radius: 0; background: transparent;
+          }
+        }
+
+        /* --- 3. Air ---------------------------------------------------- */
+        nav.tabs button { height: 42px; font-size: 14px; letter-spacing: -0.006em; padding: 0 12px; }
+        .subtabs button { height: 36px; font-size: 13px; letter-spacing: 0; }
+        .sidebar-footer-link { height: 40px; font-size: 14px; letter-spacing: -0.006em; }
+        .hcard-body { padding: 18px 24px 22px; }
+        .hcard-head { padding: 20px 24px 0; }
+        /* .kpi carries a border:0 further up and Round 79 took its shadow
+           away, so on a white panel it had nothing left to be seen by. The
+           border is what defines it now, same as every other surface. */
+        .kpi { padding: 20px 22px 18px; border: 1px solid var(--border); }
+        .kpi-primary { border-color: transparent; }
+        .kpi-labelrow, .kpi-foot, .kpi-figure { position: relative; z-index: 1; }
+        /* A note that has to fit inside a quarter of the row wraps rather
+           than getting cut off mid-word. */
+        .kpi-foot { white-space: normal; line-height: 1.45; }
+        .kpi-foot span { overflow: visible; text-overflow: clip; white-space: normal; }
+        /* The delta sat beside the figure and wrapped on whichever card had
+           the longest number, so the four cards in the row disagreed about
+           where their label sits. It gets its own line on all four, and the
+           row lines up. */
+        .kpi-figure { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; white-space: normal; overflow: visible; }
+        .kpi-figure .delta { margin-left: 0; }
+        .list-item, .sell-row, .act-row, .nr-item { min-height: 54px; }
+
+        /* --- 4. The four cards --------------------------------------- */
+        /* Round 82. The reordered stat card is reverted too -- label beside
+           the icon, figure under it, the note and the arrow along the bottom.
+           One thing is kept, and only because the card cannot be seen
+           without it: .kpi carries border: 0 from further up and Round 79
+           took its shadow away, so on the white panel it had no edge at all.
+           The border is what draws it now. */
+        .kpi { border: 1px solid var(--border); }
         .kpi-primary { border-color: transparent; }
         .kpi-foot { white-space: normal; line-height: 1.45; }
         .kpi-foot span { overflow: visible; text-overflow: clip; white-space: normal; }
@@ -11329,21 +11698,21 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           </div>
         </div>
         <nav class="tabs">
-          <button id="tabHome" class="active-tab" onclick="switchTab('home')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>Dashboard</button>
-          <button id="tabConversations" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
+          <button id="tabHome" class="active-tab" onclick="switchTab('home')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>Dashboard</button>
+          <button id="tabConversations" onclick="switchTab('conversations')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 14.286V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M20 9a2 2 0 0 1 2 2v10.286a.71.71 0 0 1-1.212.502l-2.202-2.202A2 2 0 0 0 17.172 19H10a2 2 0 0 1-2-2v-1"/></svg></span>Conversations<span class="nav-badge" id="navBadgeConversations" style="display:none;"></span></button>
           ${
             isBookable
-              ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg></span>Services</button>
-          <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span>Bookings</button>`
-              : `<button id="tabCatalog" onclick="toggleProductsGroup()"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Products<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
+              ? `<button id="tabServices" onclick="switchTab('services')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg></span>Services</button>
+          <button id="tabBookings" onclick="switchTab('bookings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg></span>Bookings</button>`
+              : `<button id="tabCatalog" onclick="toggleProductsGroup()"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/></svg></span>Products<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
           <div class="subtabs" id="subProducts">
             <button id="subCatalog" onclick="switchTab('catalog')">Product list</button>
             <button id="subProduct" onclick="newProduct()">Add a product</button>
             <button id="subDelivery" onclick="switchTab('delivery')">Delivery fees</button>
           </div>`
           }
-          <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-6"/><path d="M12 21V3"/><path d="M19 21V9"/></svg></span>Analytics</button>
-          <button id="tabCustomers" onclick="window.location.href='/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>Plain table view</button>
+          <button id="tabAnalytics" onclick="switchTab('analytics')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21v-6"/><path d="M12 21V3"/><path d="M19 21V9"/></svg></span>Analytics</button>
+          <button id="tabCustomers" onclick="window.location.href='/customers?key=${key}${sellerId ? "&sellerId=" + encodeURIComponent(sellerId) : ""}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18"/><path d="M9 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>Plain table view</button>
         </nav>
 
         <!-- Round 50. Channels, named honestly. WhatsApp carries the live dot
@@ -11352,14 +11721,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
              page pretending to be a channel is worse than no menu item. -->
         <div class="rail-group-label">Channels</div>
         <nav class="tabs">
-          <button id="tabWhatsApp" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>WhatsApp<span class="live-tag" title="Connected"></span></button>
+          <button id="tabWhatsApp" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>WhatsApp<span class="live-tag" title="Connected"></span></button>
           <!-- Round 76. Two disabled rows, both saying "Soon", were taking
                two of the rail's most valuable inches to advertise things that
                do not exist yet. They are one row, with both marks on it. -->
           <div class="soon-row" title="Instagram and Facebook are not connected yet">
             <span class="soon-marks">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             </span>
             <span class="soon-text">Instagram &amp; Facebook</span>
             <span class="soon-tag">Soon</span>
@@ -11369,9 +11738,9 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         <div class="sidebar-footer">
           <span class="live-indicator" title="This dashboard refreshes itself automatically every few seconds"><span class="live-dot"></span>Live</span>
           <nav class="tabs" style="padding:0 0 2px;">
-            <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></span>Settings</button>
-            <button id="tabSupport" onclick="switchTab('support')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>Help &amp; support</button>
-            ${key ? `<button onclick="window.location.href='/admin?key=${key}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg></span>All sellers</button>` : ""}
+            <button id="tabSettings" onclick="switchTab('settings')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></span>Settings</button>
+            <button id="tabSupport" onclick="switchTab('support')"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>Help &amp; support</button>
+            ${key ? `<button onclick="window.location.href='/admin?key=${key}'"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg></span>All sellers</button>` : ""}
           </nav>
           <div class="sidebar-divider"></div>
           <div class="rail-account" onclick="switchTab('profile')" title="Your shop profile">
@@ -11380,27 +11749,27 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="rail-account-name">${escapeHtmlServer(businessName || "Your business")}</div>
               <div class="rail-account-mail">${escapeHtmlServer(sellerEmail || "")}</div>
             </div>
-            <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+            <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
           </div>
         </div>
       </aside>
       <div class="main-column">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
           <div class="crumbs">
             <span class="crumb-root">Stafly</span>
-            <span class="crumb-sep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>
+            <span class="crumb-sep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>
             <span class="crumb-mid" id="crumbTrail"></span>
             <h1 class="crumb-here" id="crumbHere">Dashboard</h1>
           </div>
-          ${businessName ? `<span class="topbar-biz" title="${escapeHtmlServer(businessName)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg><span>${escapeHtmlServer(businessName)}</span></span>` : ""}
+          ${businessName ? `<span class="topbar-biz" title="${escapeHtmlServer(businessName)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg><span>${escapeHtmlServer(businessName)}</span></span>` : ""}
         </div>
         <div class="topbar-right">
-          <span class="topbar-date-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg><span id="topbarDate"></span></span>
+          <span class="topbar-date-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg><span id="topbarDate"></span></span>
           <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Switch between light and dark" aria-label="Switch theme">
-            <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
-            <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>
+            <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
           </button>
           <button class="topbar-avatar" onclick="switchTab('profile')" data-initial="${escapeHtmlServer((businessName || "S").trim().charAt(0).toUpperCase())}" title="${escapeHtmlServer(businessName || "Your business")}" aria-label="Your shop profile"></button>
         </div>
@@ -11408,16 +11777,16 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       <div class="home-view" id="homeView"></div>
       <div class="layout" id="conversationsView" style="display:none;">
         <div class="list-pane">
-          <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by name, phone or reason..." oninput="applyFilter()"></div></div>
+          <div class="search-box"><div class="search-box-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchBox" placeholder="Search by name, phone or reason..." oninput="applyFilter()"></div></div>
           <div class="list-tabs">
-            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')" title="All conversations"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg></span><span class="list-tab-label">All</span><span class="list-tab-count">0</span></button>
-            <button class="list-tab" id="tab-active" onclick="setTab('active')" title="Amara is handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span><span class="list-tab-label">Active</span><span class="list-tab-count">0</span></button>
-            <button class="list-tab" id="tab-paused" onclick="setTab('paused')" title="Paused — you're handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg></span><span class="list-tab-label">Paused</span><span class="list-tab-count">0</span></button>
-            <button class="list-tab" id="tab-starred" onclick="setTab('starred')" title="Starred"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 14.9 8.9 21.5 9.8 16.7 14.4 17.9 21 12 17.9 6.1 21 7.3 14.4 2.5 9.8 9.1 8.9 12 3"/></svg></span><span class="list-tab-label">Starred</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab active-list-tab" id="tab-all" onclick="setTab('all')" title="All conversations"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg></span><span class="list-tab-label">All</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-active" onclick="setTab('active')" title="Amara is handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span><span class="list-tab-label">Active</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-paused" onclick="setTab('paused')" title="Paused — you're handling these"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg></span><span class="list-tab-label">Paused</span><span class="list-tab-count">0</span></button>
+            <button class="list-tab" id="tab-starred" onclick="setTab('starred')" title="Starred"><span class="list-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 14.9 8.9 21.5 9.8 16.7 14.4 17.9 21 12 17.9 6.1 21 7.3 14.4 2.5 9.8 9.1 8.9 12 3"/></svg></span><span class="list-tab-label">Starred</span><span class="list-tab-count">0</span></button>
           </div>
           <div class="list" id="list"><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:62%"></div><div class="sk sk-line" style="width:40%"></div></div></div><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:54%"></div><div class="sk sk-line" style="width:34%"></div></div></div><div class="skeleton-row"><div class="sk sk-avatar"></div><div class="sk-lines"><div class="sk sk-line" style="width:58%"></div><div class="sk sk-line" style="width:44%"></div></div></div></div>
         </div>
-        <div class="main" id="main"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><div class="empty-title">Select a conversation</div><div class="empty-sub">Pick a customer from the list on the left to see the full thread.</div></div></div>
+        <div class="main" id="main"><div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><div class="empty-title">Select a conversation</div><div class="empty-sub">Pick a customer from the list on the left to see the full thread.</div></div></div>
         <aside class="detail-pane" id="detailPane"></aside>
       </div>
       <div class="catalog-view" id="catalogView" style="display:none;">
@@ -11433,7 +11802,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           </div>
           <div class="cat-toolbar">
             <div class="cat-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input id="productSearch" placeholder="Search products" oninput="renderProductGrid()" autocomplete="off">
             </div>
             <!-- Round 63. Grid is right when you are looking at pictures.
@@ -11441,10 +11810,10 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                  which is the other half of what this page is for. -->
             <div class="viewswitch" role="group" aria-label="View">
               <button type="button" id="viewGrid" class="on" onclick="setProductView('grid')" title="Grid view" aria-label="Grid view">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
               </button>
               <button type="button" id="viewList" onclick="setProductView('list')" title="List view" aria-label="List view">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.6" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.6" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
               </button>
             </div>
             <div class="cat-sort">
@@ -11631,7 +12000,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
       <div class="drawer-scrim" id="productScrim"></div>
       <!-- Round 65. Phone only, catalogue only. -->
       <button class="fab" id="addFab" onclick="newProduct()" aria-label="Add a product">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add a product
       </button>
 
@@ -11707,7 +12076,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               <div class="card-sub">What Amara can quote, describe and book on your behalf.</div>
             </div>
             <button class="catalog-btn" id="addServiceBtn" onclick="openOfferingForm()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add service
             </button>
           </div>
@@ -11715,7 +12084,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           <div class="inline-panel" id="offeringPanel" style="display:none;">
             <div class="inline-panel-head">
               <span id="offeringPanelTitle">New service</span>
-              <button class="icon-btn small-icon-btn" onclick="closeOfferingForm()" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <button class="icon-btn small-icon-btn" onclick="closeOfferingForm()" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <input type="hidden" id="oKey">
             <div id="offeringEditingNote" style="display:none;" class="edit-note">
@@ -12360,45 +12729,45 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // since this dashboard has no build step / icon package of its
         // own) -- one per stat tile, so each reads at a glance instead of
         // every tile being the same undifferentiated block of text.
-        const ICON_USERS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
-        const ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
-        const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>';
-        const ICON_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>';
-        const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
-        const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
-        const ICON_STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+        const ICON_USERS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></svg>';
+        const ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></svg>';
+        const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <line x1="10" x2="10" y1="15" y2="9" /> <line x1="14" x2="14" y1="15" y2="9" /></svg>';
+        const ICON_WALLET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></svg>';
+        const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></svg>';
+        const ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /> <path d="m21.854 2.147-10.94 10.939" /></svg>';
+        const ICON_STAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></svg>';
         const ICON_STAR_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
-        const ICON_MORE = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
-        const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
-        const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
-        const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-        const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/></svg>';
-        const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-        const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>';
+        const ICON_MORE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1" /> <circle cx="12" cy="5" r="1" /> <circle cx="12" cy="19" r="1" /></svg>';
+        const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></svg>';
+        const ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10V9" /> <path d="M16.472 15a6 6 0 01-8.943 0" /> <path d="M9 10V9" /> <circle cx="12" cy="12" r="10" /></svg>';
+        const ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>';
+        const ICON_SIDEPANEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /> <path d="M15 3v18" /></svg>';
+        const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>';
+        const ICON_TREND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></svg>';
         // Round 68. Icons the new page head and KPI cards need.
         // Round 73. WhatsApp's own two shapes: one check, and two overlapping.
         const ICON_TICK1 = '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 7.5 11 15 3"/></svg>';
         const ICON_TICK2 = '<svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 7.5 5 11 12.5 3"/><path d="M8 11 15.5 3"/></svg>';
         // Round 75. A hand for taking the thread off Amara, a spark for
         // giving it back to her.
-        const ICON_HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 10.5V4a1.5 1.5 0 0 1 3 0v7"/><path d="M17 11V6.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1.5a6 6 0 0 1-4.6-2.2L4 15"/><path d="M11 11V8.5a1.5 1.5 0 0 0-3 0V15"/></svg>';
-        const ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.7 9l5.5 1.7-5.5 1.7L12 18l-1.7-5.6L4.8 10.7 10.3 9z"/><path d="M18.5 16.5 19 18l1.5.5L19 19l-.5 1.5L18 19l-1.5-.5L18 18z"/></svg>';
-        const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="14" r="1.1" fill="currentColor" stroke="none"/></svg>';
-        const ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m12 5 7 7-7 7"/></svg>';
-        const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>';
-        const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
-        const ICON_TREND_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
-        const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
-        const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
-        const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
-        const ICON_IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m3.6 17.5 4.9-4.4a2 2 0 0 1 2.7 0l3.4 3.1a2 2 0 0 0 2.7 0l3.1-2.8"/></svg>';
-        const ICON_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="11" x2="12" y2="16.5"/><line x1="12" y1="7.5" x2="12.01" y2="7.5"/></svg>';
-        const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+        const ICON_HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>';
+        const ICON_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></svg>';
+        const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></svg>';
+        const ICON_ARROW_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></svg>';
+        const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></svg>';
+        const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></svg>';
+        const ICON_TREND_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></svg>';
+        const ICON_BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /> <path d="M12 22V12" /> <polyline points="3.29 7 12 12 20.71 7" /> <path d="m7.5 4.27 9 5.15" /></svg>';
+        const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></svg>';
+        const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>';
+        const ICON_IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>';
+        const ICON_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 16v-4" /> <path d="M12 8h.01" /></svg>';
+        const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg>';
         // WhatsApp gives us no profile photo and no name, so a contact chip
         // shows a person mark rather than repeating digits we already print
         // as text right beside it -- the per-contact colour is what makes
         // one customer visually distinct from another.
-        const ICON_PERSON = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8.2" r="4"/><path d="M12 13.6c-4.2 0-7.2 2.3-7.2 5.2 0 .7.5 1.2 1.2 1.2h12c.7 0 1.2-.5 1.2-1.2 0-2.9-3-5.2-7.2-5.2z"/></svg>';
+        const ICON_PERSON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></svg>';
         // Real WhatsApp-sendable unicode emoji, nothing that needs a font or
         // library to render -- inserted straight into the compose textarea.
         const EMOJI_SET = ["😀","😂","😍","👍","🙏","🎉","❤️","😊","🔥","👏","😢","😅","🤔","💯","✅","⏳","📦","💰","🙌","😎"];
@@ -12780,7 +13149,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           main.innerHTML =
             '<div class="thread-header">' +
               '<div class="thread-header-id" style="--thread-accent:' + avatarColorFor(phone) + ';">' +
-                '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
+                '<button class="mobile-back-btn icon-btn" onclick="closeThreadMobile()" title="Back to conversations" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' +
                 '<div class="thread-avatar" style="' + avatarStyleFor(phone) + '">' + (avatarTextFor(customer) ? '<span class="avatar-initials">' + escapeHtml(avatarTextFor(customer)) + '</span>' : ICON_PERSON) + '<span class="status-dot ' + (isPaused ? "paused" : "active") + '"></span></div>' +
                 // Two lines, the way a messaging app does it: who, then one
                 // meta line. This used to be four stacked rows -- name, number,
@@ -12831,7 +13200,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '<div class="thread-search-bar" id="threadSearchBar" style="display:none;">' +
               '<input id="threadSearchInput" placeholder="Search in this conversation..." oninput="filterThreadSearch()" onkeydown="if(event.key===\\'Enter\\') jumpToNextMatch(event.shiftKey)">' +
               '<span class="thread-search-count" id="threadSearchCount"></span>' +
-              '<button class="icon-btn" onclick="closeThreadSearch()" title="Close search" aria-label="Close search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+              '<button class="icon-btn" onclick="closeThreadSearch()" title="Close search" aria-label="Close search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
             '</div>' +
             '<div class="thread" id="thread"></div>' +
             '<div class="msg-compose">' +
@@ -13298,7 +13667,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           openProductForm();
         }
 
-        const CRUMB_SEP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+        const CRUMB_SEP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
 
         function switchTab(tab) {
           // Not every element below exists on every seller's dashboard --
@@ -14257,13 +14626,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // changing. 120ms out, rebuild, then back -- fast enough that it reads
         // as a transition rather than a wait.
 
-        const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
-        const ICON_TICK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><polyline points="8 12.2 11 15.2 16 9.5"/></svg>';
-        const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-        const ICON_CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
-        const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
-        const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
-        const ICON_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg>';
+        const ICON_CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>';
+        const ICON_TICK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m16 9-5.5 5.5L8 12" /></svg>';
+        const ICON_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>';
+        const ICON_CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></svg>';
+        const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></svg>';
+        const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5" /> <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" /></svg>';
+        const ICON_CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></svg>';
 
         // Round 69. Four of the new Home sections read from /api/analytics --
         // the same endpoint the Analytics page calls. It is fetched once
@@ -14459,18 +14828,39 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const vals = (values || []).map((v) => Number(v) || 0);
           if (vals.length < 2) return "";
           const max = Math.max.apply(null, vals.concat([1]));
-          const step = w / (vals.length - 1);
-          const pts = vals.map((v, i) => [i * step, h - (v / max) * (h - 4) - 2]);
+          // Round 88. The last point sat exactly on the right edge of the
+           // box, so with a radius on it half the dot was drawn outside the
+           // card and got clipped by the corner. The line is inset by its
+           // own dot so both ends land inside the drawing.
+          const pad = 3;
+          const step = (w - pad * 2) / (vals.length - 1);
+          const pts = vals.map((v, i) => [pad + i * step, h - (v / max) * (h - 6) - 3]);
           const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
-          const area = line + " L" + w + " " + h + " L0 " + h + " Z";
+          const area = line + " L" + (w - pad) + " " + h + " L" + pad + " " + h + " Z";
           const gid = "sp" + Math.random().toString(36).slice(2, 8);
+          // Round 87. Days with nothing taken put the line flat on the floor
+          // of the box, where it was invisible, so a week that started slow
+          // drew as a shape beginning halfway across the card with nothing to
+          // its left. It read as a graph that had failed to finish. A
+          // baseline runs the full width underneath it now, so the flat part
+          // of a flat week is drawn rather than left out, and every point on
+          // the line is marked -- the last one solid, because that is today.
+          const dots = pts.map((pt) =>
+            '<circle cx="' + pt[0].toFixed(1) + '" cy="' + pt[1].toFixed(1) + '" r="1.6" ' +
+            'fill="var(--accent)" opacity=".45" vector-effect="non-scaling-size"/>').join("");
+          const last = pts[pts.length - 1];
           return '<svg class="kpi-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
             '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0" stop-color="var(--accent)" stop-opacity=".26"/>' +
+            '<stop offset="0" stop-color="var(--accent)" stop-opacity=".30"/>' +
             '<stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>' +
+            '<path d="M0 ' + (h - 0.75) + ' L' + w + ' ' + (h - 0.75) + '" fill="none" ' +
+              'stroke="var(--accent)" stroke-width="1" opacity=".22"/>' +
             '<path d="' + area + '" fill="url(#' + gid + ')"/>' +
             '<path d="' + line + '" fill="none" stroke="var(--accent)" stroke-width="1.8" ' +
-            'stroke-linejoin="round" stroke-linecap="round" opacity=".7"/></svg>';
+            'stroke-linejoin="round" stroke-linecap="round" opacity=".75"/>' +
+            dots +
+            '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" ' +
+              'fill="var(--accent)"/></svg>';
         }
 
         function pctChange(cur, prev) {
@@ -14683,8 +15073,8 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           // The delta is a fact or it is absent. With no earlier week on
           // record it says so rather than inventing a baseline of zero.
           const diff = totalNew - priorNew;
-          const ARROW_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
-          const ARROW_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
+          const ARROW_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
+          const ARROW_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
           const delta = !hasPrior
             ? '<span class="wk-delta flat">no earlier week on record</span>'
             : diff > 0 ? '<span class="wk-delta up">' + ARROW_UP + '+' + diff + ' vs last week</span>'
@@ -14872,11 +15262,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             '<button type="button" class="hseg-btn' + (n === homeRange ? " on" : "") +
             '" data-home-action="range" data-range="' + n + '">' + n + 'd</button>').join("");
           const aside = '<div class="hseg">' + seg + '</div>';
-          if (!total && !orders) {
-            return hcard({ title: "Revenue and orders", cls: "hcard-wide", aside: aside, icon: ICON_TREND,
-              sub: "Last " + homeRange + " days",
-              body: hEmpty(ICON_TREND, "Nothing banked in the last " + homeRange + " days.") });
-          }
+          // Round 86. A week with no takings is a reading, not a missing
+          // reading. Replacing the whole card with a sentence threw away the
+          // axis, the seven days and the three totals, and it made a slow
+          // week look like a broken dashboard. Zero is drawn like any other
+          // number now: the chart renders, the bars sit flat on the axis and
+          // the footer reads zero. Nothing is invented to fill the space --
+          // these are the same stored records, and they say zero.
           // Round 71. Rebuilt on the chart in the dashboard Miji sent.
           //
           // The old one drew a line for money and bars for orders with a text
@@ -14954,21 +15346,31 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             return hcard({ title: "What's selling", aside: aside, icon: ICON_BOX,
               body: hEmpty(ICON_BOX, "Nothing sold yet.") });
           }
+          // Round 83. The share used to be a pale wash painted behind the
+          // whole row, which is the shape of a hover state, not of a
+          // measurement -- so the one thing the card exists to show, how
+          // these five compare, was the thing you could not read. It is a
+          // real track under the name now: a full-width rule in the border
+          // colour with an accent fill across it. Length means something.
+          //
+          // The rank digit is gone. The list is ordered, so its position
+          // already says which is first, and a column of numbers next to a
+          // column of numbers is just noise.
           const max = Math.max.apply(null, rows.map((r) => Number(r.sold) || 0).concat([1]));
-          const body = '<ol class="sell">' + rows.map((r, i) => {
+          const body = '<ol class="sell">' + rows.map((r) => {
             const sold = Number(r.sold) || 0;
-            const pct = Math.max(3, (sold / max) * 100);
+            const pct = Math.max(2, (sold / max) * 100);
             const rev = Number(r.revenue) || 0;
             const shot = r.image && r.hasOwnPhoto
               ? '<img src="' + escapeHtml(r.image) + '" alt="" loading="lazy">'
               : '<i>' + escapeHtml((r.name || "?").trim().charAt(0).toUpperCase()) + '</i>';
             return '<li class="sell-row">' +
-              '<span class="sell-fill" style="width:' + pct.toFixed(1) + '%"></span>' +
-              '<span class="sell-rank">' + (i + 1) + '</span>' +
               '<span class="sell-thumb">' + shot + '</span>' +
               '<span class="sell-name" title="' + escapeHtml(r.name || "") + '">' + escapeHtml(r.name || "") + '</span>' +
-              '<span class="sell-figs"><b>' + sold + '</b>' +
-                (rev ? '<em>\u20A6' + rev.toLocaleString() + '</em>' : '<em>sold</em>') + '</span>' +
+              '<span class="sell-figs">' +
+                '<b>' + sold + (sold === 1 ? " sold" : " sold") + '</b>' +
+                (rev ? '<em>\u20A6' + rev.toLocaleString() + '</em>' : "") +
+              '</span>' +
             '</li>';
           }).join("") + '</ol>';
           return hcard({ title: "What's selling", aside: aside, icon: ICON_BOX,
@@ -15268,6 +15670,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // everything else starts underneath.
               '<div class="home-full" style="--d:150ms">' + homeTrendCard() + '</div>' +
               '<div class="home-grid" style="--d:190ms">' +
+                // Round 85. Live activity was moved to the right column to
+                // even the two out, and measuring showed why that is the
+                // wrong lever: the setup card only renders until setup is
+                // finished, so the balance changes underneath any fixed
+                // arrangement. 728 against 585 became 728 against 1172.
+                // It stays where it was; the columns end where the content
+                // ends, and nothing is stretched to pretend otherwise.
                 '<div class="home-stack">' +
                   homeSellingCard(d) +
                   '<div class="home-pair">' + homeRhythmCard() + homeConversionCard() + '</div>' +
@@ -18432,7 +18841,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 82";
+const BUILD_ROUND = "Round 88";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
