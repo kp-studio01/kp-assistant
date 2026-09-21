@@ -8930,6 +8930,13 @@ const DASHBOARD_CSS_BODY = `
            0, 0, 2 against 15, 15, 15. One value, and it is the same on both
            kinds of card. */
         .hcard-head { padding: 20px 24px 15px; }
+        /* Round 100. With the icon tile gone, the tallest thing in the header
+           became whichever card happened to carry an action button, so those
+           titles centred 4px lower than the ones without. Measured 25/21/21/21
+           at 1100 and 860. The text block holds the header's height itself
+           now, so every title sits at the same offset with a button or
+           without one. */
+        .hcard-headtext { display: flex; flex-direction: column; justify-content: center; min-height: 28px; }
         /* .kpi carries a border:0 further up and Round 79 took its shadow
            away, so on a white panel it had nothing left to be seen by. The
            border is what defines it now, same as every other surface. */
@@ -9077,13 +9084,10 @@ const DASHBOARD_CSS_BODY = `
            as a deep desk on white glows on black. The stops come down. */
         [data-theme="dark"] .command-hero {
           background:
-            radial-gradient(380px 240px at 97% -20%, rgba(255,255,255,.10), transparent 68%),
-            radial-gradient(420px 280px at -8% 110%, rgba(8,6,4,.60), transparent 72%),
-            linear-gradient(125deg,
-              color-mix(in srgb, var(--accent-dark) 8%, #12100E) 0%,
-              color-mix(in srgb, var(--accent-dark) 28%, #12100E) 54%,
-              color-mix(in srgb, var(--accent-dark) 52%, #12100E) 100%);
-          box-shadow: 0 20px 44px rgba(0,0,0,.45); }
+            radial-gradient(520px 320px at 88% 120%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+            radial-gradient(420px 260px at 2% -30%, rgba(255,255,255,.045), transparent 68%),
+            linear-gradient(118deg, #121110 0%, #191816 52%, #211F1C 100%);
+          box-shadow: 0 18px 40px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,0.045); }
         /* On a dark page the two panes of the conversation split were the same
            near-black as everything else, so the screen read as one void. */
         [data-theme="dark"] .list-pane,
@@ -9098,21 +9102,21 @@ const DASHBOARD_CSS_BODY = `
         .command-hero { position: relative; display: flex; justify-content: space-between; gap: 28px;
           overflow: hidden; margin: 0 0 18px; padding: 30px 32px; color: #FFFFFF; border: 0;
           border-radius: 18px;
+          /* Round 100. This was a slab of accent: three stops of it across the
+             widest thing on the page, plus a printed grid over the top. Two
+             problems. The grid is a texture that says nothing -- it is not
+             data, it is not structure, it is a pattern -- and the accent at
+             that size left the screen with no neutral ground, which is what
+             "the colour balance is off" was pointing at.
+             It is graphite now, the same material as the rail, so the panel
+             and the sidebar read as one surface holding the page. The accent
+             appears once, as a low glow in the far corner where no text sits,
+             and the four stat cards below are free to be the warm note. */
           background:
-            radial-gradient(380px 240px at 97% -20%, rgba(255,255,255,.15), transparent 68%),
-            radial-gradient(420px 280px at -8% 110%, rgba(12,8,5,.55), transparent 72%),
-            linear-gradient(125deg,
-              color-mix(in srgb, var(--accent-dark) 10%, #17110D) 0%,
-              color-mix(in srgb, var(--accent-dark) 41%, #17110D) 54%,
-              color-mix(in srgb, var(--accent-dark) 76%, #17110D) 100%);
-          box-shadow: 0 20px 44px color-mix(in srgb, var(--accent) 18%, transparent); }
-        /* A faint plotting grid, faded out before it reaches the copy. */
-        .command-hero::before { content: ""; position: absolute; inset: 0; opacity: .24; pointer-events: none;
-          background-image: linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px);
-          background-size: 34px 34px;
-          -webkit-mask-image: linear-gradient(90deg, #000, transparent 78%);
-                  mask-image: linear-gradient(90deg, #000, transparent 78%); }
+            radial-gradient(520px 320px at 88% 120%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+            radial-gradient(420px 260px at 2% -30%, rgba(255,255,255,.06), transparent 68%),
+            linear-gradient(118deg, #171614 0%, #201E1B 52%, #2A2724 100%);
+          box-shadow: 0 18px 40px rgba(20,16,12,.20); }
         .command-copy, .command-side { position: relative; z-index: 1; }
         .command-copy { flex: 1 1 auto; min-width: 0; max-width: 680px; }
         .command-kicker { display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
@@ -9122,7 +9126,7 @@ const DASHBOARD_CSS_BODY = `
           box-shadow: 0 0 0 4px rgba(240,179,122,.14); }
         .command-kicker span.on { background: #B9EE74; box-shadow: 0 0 0 4px rgba(185,238,116,.14); }
         .command-hero .home-hello { margin: 0; color: #FFFFFF; font-size: clamp(29px, 3vw, 42px); font-weight: 600; }
-        .command-hero .home-hello span { color: color-mix(in srgb, var(--accent-dark) 34%, #FFFFFF); }
+        .command-hero .home-hello span { color: var(--accent); }
         .command-hero .home-summary { max-width: 590px; margin: 10px 0 0; color: rgba(255,255,255,.72); font-size: 14px; line-height: 1.55; }
         .command-statuses { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
         .command-status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; white-space: nowrap;
@@ -9144,7 +9148,7 @@ const DASHBOARD_CSS_BODY = `
         .orbit-c { width: 72px; height: 72px; top: 4px; left: 16px; transform: rotate(45deg); }
         .command-hero .home-head-actions { margin-top: 10px; }
         .command-hero .btn-quiet { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22); color: #FFFFFF; }
-        .command-hero .catalog-btn { background: #FFFFFF; color: #3A1B10; box-shadow: none; }
+        .command-hero .catalog-btn { background: #FFFFFF; color: #1B1A18; box-shadow: none; }
 
         @media (max-width: 1000px) {
           .main-column { padding: 0; }
@@ -15183,7 +15187,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="setup-card">' +
               '<div class="home-sec-head">' +
-                '<span class="hcard-icon">' + ICON_TICK + '</span>' +
                 '<span class="home-eyebrow">Setup checklist</span>' +
                 '<span class="sec-count">' + doneCount + ' of ' + steps.length + '</span>' +
               '</div>' +
@@ -15256,7 +15259,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="home-card">' +
               '<div class="home-sec-head">' +
-                '<span class="hcard-icon">' + ICON_ALERT + '</span>' +
                 '<span class="home-eyebrow">Needs you</span>' +
                 '<span class="sec-count' + (n ? ' hot' : '') + '">' + n + '</span>' +
                 '<span class="home-eyebrow-note">' + (n === 1 ? 'Waiting on a reply' : 'Waiting on a reply') + '</span>' +
@@ -15548,7 +15550,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return '' +
             '<div class="home-card">' +
               '<div class="home-sec-head">' +
-                '<span class="hcard-icon">' + ICON_CHAT + '</span>' +
                 '<span class="home-eyebrow">Live activity</span>' +
               '</div>' +
               '<div class="act-list">' +
@@ -15756,10 +15757,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         // sub beneath it, an optional control on the right. The uppercase
         // tracked eyebrow is gone -- it was the thing making every section
         // shout at the same volume.
+        // Round 100. The icon tile is gone from the header, and the reason is
+        // alignment rather than taste. It pushed the title 50px right of the
+        // card's padding edge while everything under it -- the body copy, the
+        // rows, the empty line -- started at that edge. Every one of these
+        // cards had two left edges, and "What's selling" is where it showed
+        // worst: a title at 360 above a sentence at 310.
+        // One card, one left edge. It also takes eight accent-tinted squares
+        // off the screen, which is the other half of what was making this
+        // page read as warm everywhere at once.
         function hcard(o) {
           return '<section class="hcard' + (o.cls ? " " + o.cls : "") + '">' +
             '<div class="hcard-head">' +
-              (o.icon ? '<span class="hcard-icon">' + o.icon + '</span>' : "") +
               '<div class="hcard-headtext">' +
                 '<h3 class="hcard-title">' + escapeHtml(o.title) + '</h3>' +
                 (o.sub ? '<p class="hcard-sub">' + o.sub + '</p>' : "") +
@@ -15885,7 +15894,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="ht-stat"><b id="htAvg">' + (orders ? money(Math.round(total / orders)) : "\u2014") + '</b><span>average order</span></div>' +
             '</div>';
           return hcard({ title: "Revenue and orders", sub: "Last " + homeRange + " days",
-            aside: aside, cls: "hcard-wide", icon: ICON_TREND, body: body,
+            aside: aside, cls: "hcard-wide", body: body,
             foot: "See the full breakdown in Analytics", footAction: "go-analytics" });
         }
 
@@ -15894,8 +15903,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const rows = ((d.catalogue || {}).topProducts || []).slice(0, 5);
           const aside = '<button type="button" class="btn-quiet btn-tiny" data-home-action="go-catalog">Catalogue</button>';
           if (!rows.length) {
-            return hcard({ title: "What's selling", aside: aside, icon: ICON_BOX,
-              body: hEmpty(ICON_BOX, "Nothing sold yet.") });
+            return hcard({ title: "What's selling", aside: aside, body: hEmpty(ICON_BOX, "Nothing sold yet. Your best sellers rank here from the first paid order.") });
           }
           // Round 83. The share used to be a pale wash painted behind the
           // whole row, which is the shape of a hover state, not of a
@@ -15924,8 +15932,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '</span>' +
             '</li>';
           }).join("") + '</ol>';
-          return hcard({ title: "What's selling", aside: aside, icon: ICON_BOX,
-            body: body, foot: "Open the catalogue", footAction: "go-catalog" });
+          return hcard({ title: "What's selling", aside: aside, body: body, foot: "Open the catalogue", footAction: "go-catalog" });
         }
 
         // ---- Rhythm of the week ------------------------------------------
@@ -15935,8 +15942,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const total = vals.reduce((a, b) => a + (Number(b) || 0), 0);
           const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
           if (!total) {
-            return hcard({ title: "Rhythm of the week", icon: ICON_CALENDAR,
-              body: hEmpty(ICON_TREND, "Not enough orders to see a pattern.") });
+            return hcard({ title: "Rhythm of the week", body: hEmpty(ICON_TREND, "Not enough orders to see a pattern.") });
           }
           const max = Math.max.apply(null, vals.concat([1]));
           const order = [1, 2, 3, 4, 5, 6, 0];
@@ -15952,7 +15958,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           }).join("") + '</div>' +
           '<p class="hcard-note">Busiest day is <b>' + escapeHtml(best) + '</b>, from ' + total +
             ' order' + (total === 1 ? "" : "s") + ' on record.</p>';
-          return hcard({ title: "Rhythm of the week", icon: ICON_CALENDAR, body: body });
+          return hcard({ title: "Rhythm of the week", body: body });
         }
 
         // ---- Chat to order -----------------------------------------------
@@ -15962,8 +15968,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const totalC = Number(conv.totalCustomers) || 0;
           const paid = Number(conv.paidCustomers) || 0;
           if (!totalC) {
-            return hcard({ title: "Chat to order", icon: ICON_USERS,
-              body: hEmpty(ICON_USERS, "Nobody has written in yet.") });
+            return hcard({ title: "Chat to order", body: hEmpty(ICON_USERS, "Nobody has written in yet.") });
           }
           const pct = Math.round((paid / totalC) * 100);
           const r = 52, circ = 2 * Math.PI * r;
@@ -15982,7 +15987,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '<div><i class="sw"></i>Have not<b>' + Math.max(0, totalC - paid) + '</b></div>' +
               '</div>' +
             '</div>';
-          return hcard({ title: "Chat to order", icon: ICON_USERS, body: body });
+          return hcard({ title: "Chat to order", body: body });
         }
 
         // ---- Amara right now ---------------------------------------------
@@ -16011,8 +16016,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               : (gaps.total
                 ? "Your catalogue is complete \u2014 every product has a photo, a category and a price."
                 : "Add a product and Amara can start quoting it.")) + '</p>';
-          return hcard({ title: "Amara right now", icon: ICON_CHAT,
-            body: body, foot: "Change what Amara knows", footAction: "go-catalog" });
+          return hcard({ title: "Amara right now", body: body, foot: "Change what Amara knows", footAction: "go-catalog" });
         }
 
         // ==================================================================
@@ -16112,7 +16116,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               '<div class="home-grid pf-grid">' +
                 '<div class="home-stack">' +
                   hcard({
-                    icon: ICON_PENCIL,
                     title: "Your shop, in your words",
                     sub: "Amara reads this when a customer asks who you are. It never writes any of it for you.",
                     body:
@@ -16134,7 +16137,6 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
                 '</div>' +
                 '<div class="home-stack">' +
                   hcard({
-                    icon: ICON_IMAGE,
                     title: "Your picture",
                     sub: "The one image here that is yours. It is what customers see beside Amara\u2019s replies.",
                     body:
@@ -19393,7 +19395,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 99";
+const BUILD_ROUND = "Round 100";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
