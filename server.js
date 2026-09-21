@@ -9470,13 +9470,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            bands: long enough to read as deliberate, short enough that the
            whole page is settled inside a third of a second. */
         .home-enter > .home-masthead,
+        .home-enter > .command-hero,
         .home-enter > .hero,
         .home-enter > .home-sec { animation: homeRise 420ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
         .home-enter > .hero { animation-delay: 50ms; }
         @keyframes homeRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
         @media (prefers-reduced-motion: reduce) {
-          .home-enter > .home-masthead, .home-enter > .hero, .home-enter > .home-sec { animation: none !important; }
+          .home-enter > .home-masthead, .home-enter > .command-hero, .home-enter > .hero, .home-enter > .home-sec { animation: none !important; }
           .ring-badge .fill { transition: none !important; }
           .home-swapping .hero, .home-swapping .brand-card { filter: none !important; }
         }
@@ -11346,7 +11347,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .subtabs button { height: 36px; font-size: 13px; letter-spacing: 0; }
         .sidebar-footer-link { height: 40px; font-size: 14px; letter-spacing: -0.006em; }
         .hcard-body { padding: 18px 24px 22px; }
-        .hcard-head { padding: 20px 24px 0; }
+        .hcard-head { padding: 20px 24px 15px; }
         /* .kpi carries a border:0 further up and Round 79 took its shadow
            away, so on a white panel it had nothing left to be seen by. The
            border is what defines it now, same as every other surface. */
@@ -11551,14 +11552,118 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            the two kinds of card on the same screen disagreed about where a
            divider starts. The header's rule is drawn to the same margin as
            the content below it. */
+        /* Round 92. The divider is back. Round 91 read her complaint as
+           "remove it" when it was "it is fighting the line under it" -- the
+           header rule ran the card edge to edge while the first row rule
+           below it was inset by 24px, two lines at two widths a few pixels
+           apart. The fix was the one made in Round 90: draw the header rule
+           on the same margin as the content, so there is one line and it
+           lines up. Removing it was the wrong half of that.
+
+           Drawn as a positioned ::after rather than a border-bottom, because
+           a border spans the padding box and the padding box is the card. */
+        /* Round 95. The divider was inset to the content margin, which left
+           it stopping 25px short of the card on both sides -- a line that
+           does not meet anything reads as unfinished, which is exactly what
+           she said. A divider inside a box meets the box. It runs edge to
+           edge now, and so does every other rule inside a card, so there is
+           one behaviour rather than two. */
         .hcard-head { border-bottom: 0; position: relative; }
         .hcard-head::after {
-          content: ""; position: absolute; left: 24px; right: 24px; bottom: 0;
+          content: ""; position: absolute; left: 0; right: 0; bottom: 0;
           height: 1px; background: var(--border-light);
         }
-        @media (max-width: 760px) {
-          .hcard-head::after { left: 16px; right: 16px; }
+        .home-card > .home-sec-head, .setup-card > .home-sec-head {
+          border-bottom: 1px solid var(--border-light);
+          padding-bottom: 15px; margin-bottom: 16px;
+          /* the card pads itself, so the rule is pulled back out to its edge */
+          margin-left: -24px; margin-right: -24px;
+          padding-left: 24px; padding-right: 24px;
         }
+        .hcard-body { padding-top: 16px; }
+
+        /* Row rules inside a card reach the edge too. */
+        .sell-row, .nr-item, .act-row, .list-empty + *, .hcard-body .list-item {
+          margin-left: -24px; margin-right: -24px;
+          padding-left: 24px; padding-right: 24px;
+        }
+        @media (max-width: 760px) {
+          /* Round 94. At phone width .hcard pulls its content in to 16px
+             while .home-card stayed on 24, so the two kinds of card drew
+             their dividers 8px apart -- 17 against 25, measured. Both kinds
+             use the same gutter. */
+          .home-card.home-card, .setup-card.setup-card {
+            padding-left: 16px; padding-right: 16px;
+          }
+          /* And .hcard-body was still on 24 at phone width, because the
+             Round 86 rule that set it sits later in the file than the mobile
+             one. So inside a single card the divider was at 16 and the text
+             under it at 24: the misalignment, within one card. */
+          .hcard-body.hcard-body { padding-left: 16px; padding-right: 16px; }
+          .hcard-head.hcard-head { padding-left: 16px; padding-right: 16px; }
+          /* The 17px inset at phone width was not the card's gutter at all:
+             a Round 90 rule in this same block still pinned the line to
+             left:16px. Overshooting it by -16 put the line 15px outside the
+             card. It is zero here as it is everywhere else. */
+          .hcard-head::after { left: 0; right: 0; }
+          .home-card > .home-sec-head, .setup-card > .home-sec-head {
+            margin-left: -16px; margin-right: -16px;
+            padding-left: 16px; padding-right: 16px;
+          }
+          .sell-row, .nr-item, .act-row, .hcard-body .list-item {
+            margin-left: -16px; margin-right: -16px;
+            padding-left: 16px; padding-right: 16px;
+          }
+        }
+
+        /* Round 93. Balanced columns instead of two hand-packed stacks.
+           column-count divides by HEIGHT, not by count, so the two sides
+           finish together no matter what each card holds. break-inside
+           keeps a card whole. */
+        .home-grid {
+          display: block;
+          column-count: 2;
+          column-gap: 18px;
+        }
+        .home-grid > * {
+          break-inside: avoid;
+          -webkit-column-break-inside: avoid;
+          page-break-inside: avoid;
+          margin: 0 0 18px;
+          display: block;
+          width: 100%;
+        }
+        .home-grid > *:last-child { margin-bottom: 0; }
+        @media (max-width: 1000px) {
+          .home-grid { column-count: 1; }
+        }
+
+        /* A white panel with its own radius and its own drop shadow, sitting
+           inside a white card that already has a radius and an edge. Two
+           boxes drawn around one sentence. The panel inside a card is the
+           card's body, not another card. */
+        .home-card .list-panel, .hcard .list-panel {
+          background: transparent; box-shadow: none; border: 0; border-radius: 0;
+        }
+        .home-card .list-empty, .hcard .list-empty { padding: 2px 0 4px; }
+
+        /* The setup bar was 6px of solid grey with a gradient inside it,
+           which at that weight reads as a divider rather than a measure. */
+        /* At 0 of 4 the bar is entirely its own track, and a slab of
+           --surface-3 across a card reads as a divider rather than as a
+           measure of nothing. Lighter. */
+        .setup-bar { height: 4px; background: var(--border-light); }
+        .setup-bar-fill { background: var(--accent); }
+        .setup-progress { margin: 4px 0 14px; }
+
+        /* And the mark sits with the words, not above them. Round 89 set
+           align-items: flex-start to solve a Profile complaint, which pinned
+           a 40px icon and a 19px line to the same top edge -- so every title
+           in the app floated at the top of its own icon. The head centres
+           again; a card with a subtitle centres both its lines against the
+           mark, which is what every reference does and what it looked like
+           before I touched it. */
+        .hcard-head.hcard-head, .home-sec-head.home-sec-head { align-items: center; }
 
         /* 2. THE SEGMENTED CONTROLS IN SETTINGS.
            Round 79 gave .seg-control BUTTON a 999px radius and left the
@@ -11633,8 +11738,7 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
            them reads as one undifferentiated block. Every reference she sent
            separates the two, and all of them do it with a line, not a fill. */
         .hcard-head, .home-card > .home-sec-head, .setup-card > .home-sec-head {
-          padding-bottom: 16px;
-          border-bottom: 1px solid var(--border-light);
+          padding-bottom: 14px;
         }
         .hcard-head { margin-bottom: 0; }
         .hcard-body { padding-top: 16px; }
@@ -11800,7 +11904,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .subtabs button { height: 36px; font-size: 13px; letter-spacing: 0; }
         .sidebar-footer-link { height: 40px; font-size: 14px; letter-spacing: -0.006em; }
         .hcard-body { padding: 18px 24px 22px; }
-        .hcard-head { padding: 20px 24px 0; }
+        /* Round 94. Two copies of this rule set padding-bottom to 0, the
+           later one after every rule that tried to give the divider room --
+           so on five cards the line was drawn flush against the bottom of
+           the icon while the other three had 15px of air. Measured: 0px, 0,
+           0, 0, 2 against 15, 15, 15. One value, and it is the same on both
+           kinds of card. */
+        .hcard-head { padding: 20px 24px 15px; }
         /* .kpi carries a border:0 further up and Round 79 took its shadow
            away, so on a white panel it had nothing left to be seen by. The
            border is what defines it now, same as every other surface. */
@@ -11830,6 +11940,160 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
         .kpi-primary { border-color: transparent; }
         .kpi-foot { white-space: normal; line-height: 1.45; }
         .kpi-foot span { overflow: visible; text-overflow: clip; white-space: normal; }
+
+        /* --- 5. The command centre ----------------------------------- */
+        /* Round 96. The dashboard used to open on a title row -- a greeting
+           at body weight, two buttons, then straight into the grid. Nothing
+           on it said what the page was, and the four figures had to carry
+           the whole first screen on their own.
+           The page steps back and the room gets deeper: the workspace sits
+           on a warm wash instead of flat paper, every view is lifted off it,
+           and the first band is one dark panel that states the desk.
+           The panel is mixed from --accent rather than painted brown, so a
+           seller who picks teal gets a teal desk. Its lightest stop stops at
+           76 percent because white on a bright accent at full strength
+           measures under 4.5:1, and this panel always carries white. */
+        .app-shell { background: radial-gradient(900px 560px at 100% -12%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 64%), var(--bg); }
+        .main-column { padding: 0 20px 20px; }
+        .topbar { min-height: 68px; padding: 16px 16px 14px; }
+        .topbar h1 { font-size: 17px; letter-spacing: -0.025em; }
+        #homeView, #catalogView, #deliveryView, #analyticsView, #settingsView,
+        #supportView, #profileView, #servicesView, #bookingsView,
+        #conversationsView { box-shadow: 0 18px 60px rgba(15, 10, 6, .08), 0 2px 6px rgba(15, 10, 6, .04); }
+        [data-theme="dark"] #homeView, [data-theme="dark"] #catalogView,
+        [data-theme="dark"] #deliveryView, [data-theme="dark"] #analyticsView,
+        [data-theme="dark"] #settingsView, [data-theme="dark"] #supportView,
+        [data-theme="dark"] #profileView, [data-theme="dark"] #servicesView,
+        [data-theme="dark"] #bookingsView,
+        [data-theme="dark"] #conversationsView { box-shadow: 0 24px 70px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.018); }
+        .sidebar { box-shadow: 10px 0 30px rgba(0,0,0,.10); }
+        nav.tabs button, .nav-pill { border-radius: 10px; }
+
+        /* The page was reading 960px wide on a 1440px screen, so a third of
+           the desk was margin. It uses the room now. */
+        .home-inner { max-width: 1480px; }
+        .home-hello { font-size: clamp(25px, 2.1vw, 34px); line-height: 1.08; letter-spacing: -0.045em; }
+        .home-summary { margin-top: 8px; font-size: 14px; }
+        .home-alert { border-radius: 12px; border-left-width: 3px; }
+        .home-stats { gap: 14px; }
+
+        /* The four figures get the height to breathe and one degree of
+           accent in the paper, so they read as one instrument rather than
+           four white boxes. The lift on hover is the only motion. */
+        .kpi { min-height: 208px; border-radius: 14px; overflow: hidden;
+               background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
+               transition: transform 200ms var(--ease-out), border-color 200ms ease, box-shadow 200ms ease; }
+        /* The preview brightens the leading card with a gradient. Measured off
+           the rendered pixels across all seven accents, a gradient in either
+           direction breaks the rule the accent system rests on: the foreground
+           is worked out against ONE colour, so the fill has to be that colour
+           everywhere. Lightening cost white 0.28 on clay; darkening cost ink
+           about the same on teal, where ink is what the accent picks. The card
+           is flat, and the depth comes from a shadow, which owes contrast
+           nothing. */
+        .kpi-primary { background: var(--accent);
+                       box-shadow: 0 16px 34px color-mix(in srgb, var(--accent) 22%, transparent); }
+        /* The leading card is an accent fill, and the accent is the
+           seller's to choose. White was written into it by hand, so on
+           amber or teal the figures on this one card were the only text
+           in the product not covered by the foreground the theme works
+           out for itself. */
+        .kpi-primary .kpi-label, .kpi-primary .kpi-value { color: var(--on-accent); }
+        .kpi-primary .kpi-foot { color: var(--on-accent); }
+        .kpi-primary .delta, .kpi-primary .delta.up, .kpi-primary .delta.down,
+        .kpi-primary .delta.flat { background: var(--on-accent-veil); color: var(--on-accent); border-color: transparent; }
+        .kpi-primary .kpi-icon { background: color-mix(in srgb, var(--on-accent) 18%, transparent); color: var(--on-accent); }
+        .kpi-primary .kpi-spark path[fill] { fill: color-mix(in srgb, var(--on-accent) 22%, transparent); }
+        .kpi-primary .kpi-spark path[stroke] { stroke: color-mix(in srgb, var(--on-accent) 70%, transparent); }
+        .kpi-primary .kpi-spark circle { fill: var(--on-accent); }
+        .kpi-value { font-size: clamp(28px, 2.35vw, 38px); letter-spacing: -0.055em; }
+        .kpi-icon { border-radius: 10px; }
+        .kpi-foot { font-size: 12px; }
+        @media (hover: hover) and (pointer: fine) {
+          .kpi:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); box-shadow: 0 14px 30px rgba(15,10,6,.10); }
+          .kpi-primary:hover { box-shadow: 0 20px 38px color-mix(in srgb, var(--accent) 30%, transparent); }
+        }
+
+        .hcard, .home-card, .setup-card { border-radius: 14px; border-color: color-mix(in srgb, var(--border) 88%, var(--accent) 12%); }
+        .hcard-wide { overflow: hidden; }
+        .hcard-wide .hcard-head { background: linear-gradient(90deg, color-mix(in srgb, var(--surface-2) 84%, var(--accent) 16%), transparent); }
+        .hcard-wide .hcard-body { padding-bottom: 16px; }
+        .hcard-wide .ht-foot { padding-top: 12px; }
+        .hcard-title { letter-spacing: -0.025em; }
+        .hcard-foot { min-height: 48px; }
+
+        .command-hero { position: relative; display: flex; justify-content: space-between; gap: 28px;
+          overflow: hidden; margin: 0 0 18px; padding: 30px 32px; color: #FFFFFF; border: 0;
+          border-radius: 18px;
+          background:
+            radial-gradient(380px 240px at 97% -20%, rgba(255,255,255,.15), transparent 68%),
+            radial-gradient(420px 280px at -8% 110%, rgba(12,8,5,.55), transparent 72%),
+            linear-gradient(125deg,
+              color-mix(in srgb, var(--accent-dark) 10%, #17110D) 0%,
+              color-mix(in srgb, var(--accent-dark) 41%, #17110D) 54%,
+              color-mix(in srgb, var(--accent-dark) 76%, #17110D) 100%);
+          box-shadow: 0 20px 44px color-mix(in srgb, var(--accent) 18%, transparent); }
+        /* A faint plotting grid, faded out before it reaches the copy. */
+        .command-hero::before { content: ""; position: absolute; inset: 0; opacity: .24; pointer-events: none;
+          background-image: linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px);
+          background-size: 34px 34px;
+          -webkit-mask-image: linear-gradient(90deg, #000, transparent 78%);
+                  mask-image: linear-gradient(90deg, #000, transparent 78%); }
+        .command-copy, .command-side { position: relative; z-index: 1; }
+        .command-copy { flex: 1 1 auto; min-width: 0; max-width: 680px; }
+        .command-kicker { display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+          color: rgba(255,255,255,.84); font-size: 10px; font-weight: 600;
+          letter-spacing: .12em; text-transform: uppercase; }
+        .command-kicker span { width: 7px; height: 7px; border-radius: 50%; background: #F0B37A;
+          box-shadow: 0 0 0 4px rgba(240,179,122,.14); }
+        .command-kicker span.on { background: #B9EE74; box-shadow: 0 0 0 4px rgba(185,238,116,.14); }
+        .command-hero .home-hello { margin: 0; color: #FFFFFF; font-size: clamp(29px, 3vw, 42px); font-weight: 600; }
+        .command-hero .home-hello span { color: color-mix(in srgb, var(--accent-dark) 34%, #FFFFFF); }
+        .command-hero .home-summary { max-width: 590px; margin: 10px 0 0; color: rgba(255,255,255,.72); font-size: 14px; line-height: 1.55; }
+        .command-statuses { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+        .command-status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; white-space: nowrap;
+          border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(255,255,255,.08);
+          color: rgba(255,255,255,.82); font-size: 11px; }
+        .command-status i { width: 6px; height: 6px; border-radius: 50%; background: #FFB38C; flex: none; }
+        .command-status.is-live i { background: #B9EE74; box-shadow: 0 0 0 3px rgba(185,238,116,.16); }
+        .command-status b { color: #FFFFFF; font-weight: 600; }
+        .command-side { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end;
+          justify-content: space-between; min-width: 214px; }
+        .command-orbit { position: relative; width: 104px; height: 82px; margin: -10px 10px 0 0; }
+        .orbit-core { position: absolute; z-index: 2; top: 25px; left: 38px; display: grid;
+          width: 38px; height: 38px; place-items: center; border: 1px solid rgba(255,255,255,.35);
+          border-radius: 13px; background: rgba(255,255,255,.16); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+          font-family: var(--font-heading); font-weight: 600; }
+        .command-orbit i { position: absolute; display: block; border: 1px solid rgba(255,255,255,.32); border-radius: 50%; }
+        .orbit-a { width: 102px; height: 48px; top: 18px; left: 1px; transform: rotate(25deg); }
+        .orbit-b { width: 100px; height: 48px; top: 17px; left: 1px; transform: rotate(-29deg); }
+        .orbit-c { width: 72px; height: 72px; top: 4px; left: 16px; transform: rotate(45deg); }
+        .command-hero .home-head-actions { margin-top: 10px; }
+        .command-hero .btn-quiet { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22); color: #FFFFFF; }
+        .command-hero .catalog-btn { background: #FFFFFF; color: #3A1B10; box-shadow: none; }
+
+        @media (max-width: 1000px) {
+          .main-column { padding: 0; }
+          .topbar { min-height: 58px; padding: 12px 16px; }
+          .kpi { min-height: 180px; }
+        }
+        /* On a phone the two halves cannot sit side by side: the copy gets
+           about 180px and the greeting breaks one word to a line. The panel
+           becomes a column, the orbit goes, and the two actions split the
+           width the way every other pair of buttons on a phone does. */
+        @media (max-width: 760px) {
+          .command-hero { flex-direction: column; gap: 0; padding: 24px 20px; border-radius: 14px; margin-bottom: 16px; }
+          .command-hero .home-hello { font-size: 27px; }
+          .command-hero .home-summary { max-width: none; }
+          .command-copy { max-width: none; }
+          .command-statuses { margin-top: 18px; }
+          .command-side { min-width: 0; width: 100%; align-items: stretch; }
+          .command-orbit { display: none; }
+          .command-hero .home-head-actions { margin-top: 20px; width: 100%; }
+          .command-hero .home-head-actions .btn-quiet,
+          .command-hero .home-head-actions .catalog-btn { flex: 1 1 0; justify-content: center; }
+        }
       </style>
     </head>
     <body>
@@ -14172,7 +14436,14 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           const L = lum(dark ? a.darkBase : a.base);
           const vsWhite = 1.05 / (L + 0.05);
           const vsInk = (L + 0.05) / (lum(INK) + 0.05);
-          root.setProperty("--on-accent", vsWhite >= vsInk ? "#FFFFFF" : INK);
+          const onWhite = vsWhite >= vsInk;
+          root.setProperty("--on-accent", onWhite ? "#FFFFFF" : INK);
+          // Round 96. A pill drawn on top of an accent fill has to move the
+          // ground AWAY from whatever is written on it. A translucent white
+          // chip under white text measured 1.6:1 on amber and 2.6:1 on clay --
+          // the pill was making its own label harder to read. This veil darkens
+          // under white text and lightens under ink, so it always helps.
+          root.setProperty("--on-accent-veil", onWhite ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.48)");
           // The glow under accent-coloured buttons has to be derived from the
           // chosen accent too -- left hardcoded, a teal button kept an indigo
           // halo and the edges read as wrong.
@@ -14984,6 +15255,49 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
           return bits.join(" \u00b7 ") + ".";
         }
 
+        // Round 96. The first band of the dashboard. Everything in it is
+        // read: the greeting from the clock, the name from the profile, the
+        // sentence from the queue, the connection from the channel record and
+        // the count from the catalogue. Nothing here is written by hand, and
+        // no figure appears that is not already true elsewhere on the page.
+        function homeCommandHero(d) {
+          const conn = d.connection || {};
+          const live = !!conn.connected && !conn.suspended;
+          const state = conn.suspended ? "Paused by support"
+            : conn.connected ? "Live on WhatsApp" : "Needs connection";
+          const total = (d.catalogue || {}).total || 0;
+          const name = ((d.profile || {}).businessName || "Stafly").trim();
+          const mark = escapeHtml((name.charAt(0) || "S").toUpperCase());
+          return '' +
+            '<section class="command-hero" style="--d:0ms">' +
+              '<div class="command-copy">' +
+                '<div class="command-kicker"><span' + (live ? ' class="on"' : '') + '></span>Your sales desk</div>' +
+                '<h2 class="home-hello">' + greetingWord() +
+                  (firstNameOf(d.profile) ? ', ' + escapeHtml(firstNameOf(d.profile)) : '') +
+                  '<span>.</span></h2>' +
+                '<p class="home-summary">' + homeSummaryLine(d) + '</p>' +
+                '<div class="command-statuses">' +
+                  '<span class="command-status' + (live ? ' is-live' : '') + '">' +
+                    '<i></i>Amara &middot; <b>' + state + '</b></span>' +
+                  '<span class="command-status"><i></i><b>' + total + ' ' +
+                    (total === 1 ? 'product' : 'products') + '</b> in your catalogue</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="command-side">' +
+                '<div class="command-orbit" aria-hidden="true">' +
+                  '<span class="orbit-core">' + mark + '</span>' +
+                  '<i class="orbit-a"></i><i class="orbit-b"></i><i class="orbit-c"></i>' +
+                '</div>' +
+                '<div class="home-head-actions">' +
+                  '<button class="btn-quiet" id="homeRefresh" data-home-action="refresh">' +
+                    ICON_REFRESH + 'Refresh</button>' +
+                  '<button class="catalog-btn" data-home-action="open-inbox">' +
+                    ICON_CHAT + 'Open inbox</button>' +
+                '</div>' +
+              '</div>' +
+            '</section>';
+        }
+
         // A sparkline drawn straight from the seven days the API already
         // returns. It is the shape of the same numbers printed above it, so it
         // adds no claim the card was not already making.
@@ -15452,10 +15766,18 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
             const n = (raw || 1) / mag;
             return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
           };
-          const tickStep = niceStep(max / 4);
+          // Round 91. On a quiet week the axis read 0 / 1 / 1 / 1 / 1 / 2,
+           // because a step below 1 was rounded to whole naira for the label
+           // and several steps landed on the same number. Money has no
+           // fractions here, so the step never goes below 1, and identical
+           // labels are dropped rather than drawn on top of each other.
+          const tickStep = Math.max(1, niceStep(max / 4));
           const top = Math.max(tickStep, Math.ceil(max / tickStep) * tickStep);
           const ticks = [];
-          for (let t = 0; t <= top + 0.5; t += tickStep) ticks.push(Math.round(t));
+          for (let t = 0; t <= top + 0.5; t += tickStep) {
+            const v = Math.round(t);
+            if (!ticks.length || ticks[ticks.length - 1] !== v) ticks.push(v);
+          }
           const fmtDay = (iso) => {
             const dt = new Date(iso + "T00:00:00");
             return dt.toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -15806,20 +16128,13 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // was away -- not the date, which the phone already shows. The
               // two actions a seller wants from this screen sit on the right
               // of it rather than being hunted for further down.
-              '<div class="home-masthead" style="--d:0ms">' +
-                '<div style="min-width:0;">' +
-                  '<h2 class="home-hello">' + greetingWord() +
-                    (firstNameOf(d.profile) ? ', ' + escapeHtml(firstNameOf(d.profile)) : '') +
-                    '<span>.</span></h2>' +
-                  '<p class="home-summary">' + homeSummaryLine(d) + '</p>' +
-                '</div>' +
-                '<div class="home-head-actions">' +
-                  '<button class="btn-quiet" id="homeRefresh" data-home-action="refresh">' +
-                    ICON_REFRESH + 'Refresh</button>' +
-                  '<button class="catalog-btn" data-home-action="open-inbox">' +
-                    ICON_CHAT + 'Open inbox</button>' +
-                '</div>' +
-              '</div>' +
+              // Round 96. The masthead is a command panel now. Same
+              // greeting, same two actions, same sentence about what
+              // happened while she was away -- but the screen opens on
+              // something that states what it is, and carries the two
+              // facts checked first: is Amara live, and how many
+              // products can it sell from. Both read from the record.
+              homeCommandHero(d) +
               // Round 70. The hero card is gone from here. It is the profile
               // page now, and the dashboard opens on the figures.
               // Round 69. The page was a stack of bands, each opened by the
@@ -15835,23 +16150,29 @@ function dashboardHtml(key, sellerId, businessName, businessType, connection) {
               // everything else starts underneath.
               '<div class="home-full" style="--d:150ms">' + homeTrendCard() + '</div>' +
               '<div class="home-grid" style="--d:190ms">' +
-                // Round 85. Live activity was moved to the right column to
-                // even the two out, and measuring showed why that is the
-                // wrong lever: the setup card only renders until setup is
-                // finished, so the balance changes underneath any fixed
-                // arrangement. 728 against 585 became 728 against 1172.
-                // It stays where it was; the columns end where the content
-                // ends, and nothing is stretched to pretend otherwise.
-                '<div class="home-stack">' +
-                  homeSellingCard(d) +
-                  '<div class="home-pair">' + homeRhythmCard() + homeConversionCard() + '</div>' +
-                  homeActivityCard(d) +
-                '</div>' +
-                '<div class="home-stack">' +
-                  homeWaitingCard(d) +
-                  homeAmaraCard(d) +
-                  setup +
-                '</div>' +
+                // Round 93. Two hand-packed columns cannot balance content
+                // whose height is not known in advance -- a card is short
+                // until the seller has data, the setup card disappears once
+                // setup is done, and Round 85 proved that moving one card to
+                // even them out just moves the imbalance. Measured at 1440
+                // the left column ran out at 850px against 1900 on the
+                // right: half the screen blank down one side.
+                //
+                // The wrappers are gone. The cards are laid out in balanced
+                // columns, which is the one layout that divides by height
+                // rather than by count, so the two sides end together
+                // whatever each card happens to contain today.
+                homeSellingCard(d) +
+                homeWaitingCard(d) +
+                // The pair wrapper goes too: two cards welded together is one
+                // block the balancer cannot split, and inside a column they
+                // were stacking anyway. Six free cards balance better than
+                // five and a welded pair.
+                homeRhythmCard() +
+                homeConversionCard() +
+                homeAmaraCard(d) +
+                homeActivityCard(d) +
+                setup +
               '</div>' +
               '<hr class="hair">' +
               '<div class="home-footline">' +
@@ -19006,7 +19327,7 @@ app.post("/paystack-webhook", async (req, res) => {
 // looks identical whether the code is wrong or simply not deployed yet.
 // The hash is taken from this file's own bytes at boot, so it can't drift
 // out of date the way a hand-maintained version string does.
-const BUILD_ROUND = "Round 90";
+const BUILD_ROUND = "Round 96";
 let BUILD_HASH = "unknown";
 try {
   BUILD_HASH = crypto.createHash("sha256").update(require("fs").readFileSync(__filename)).digest("hex").slice(0, 12);
